@@ -112,13 +112,13 @@ HUECOS = [
 
 # ---------------------------------------------------------------- estancias
 ESTANCIAS = [
-    dict(id="salon", nombre="Salón-comedor", superficie=24.77, uso="dia", suelo="porcelanico",
+    dict(id="salon", nombre="Salón-comedor", superficie=24.77, uso="dia", suelo="madera",
          pts=[(815, 460), (1027, 460), (1027, 523), (1031, 523), (1031, 583), (1044, 583),
               (1044, 631), (1020, 631), (1020, 665), (1044, 665), (1044, 900), (1016, 900),
               (1016, 915), (815, 915)]),
-    dict(id="recibidor", nombre="Recibidor", superficie=5.07, uso="circulacion", suelo="porcelanico",
+    dict(id="recibidor", nombre="Recibidor", superficie=5.07, uso="circulacion", suelo="madera",
          pts=[(1031, 412), (1160, 412), (1160, 583), (1031, 583)]),
-    dict(id="distribuidor", nombre="Distribuidor", superficie=4.31, uso="circulacion", suelo="porcelanico",
+    dict(id="distribuidor", nombre="Distribuidor", superficie=4.31, uso="circulacion", suelo="madera",
          pts=[(1173, 523), (1386, 523), (1386, 583), (1323, 583), (1323, 621), (1193, 621),
               (1193, 583), (1173, 583)]),
     dict(id="espacio-homes", nombre="Espacio Homes", superficie=3.11, uso="servicio", suelo="ceramico",
@@ -129,11 +129,11 @@ ESTANCIAS = [
          pts=[(1420, 333), (1537, 333), (1537, 518), (1420, 518)]),
     dict(id="cocina", nombre="Cocina", superficie=11.18, uso="dia", suelo="porcelanico-cocina",
          pts=[(1047, 586), (1188, 586), (1188, 915), (1047, 915)]),
-    dict(id="dormitorio2", nombre="Dormitorio 2", superficie=13.98, uso="noche", suelo="porcelanico",
+    dict(id="dormitorio2", nombre="Dormitorio 2", superficie=13.98, uso="noche", suelo="madera",
          pts=[(1193, 624), (1326, 624), (1326, 586), (1386, 586), (1386, 896), (1366, 896),
               (1366, 915), (1193, 915)]),
     dict(id="dormitorio-principal", nombre="Dormitorio principal", superficie=16.58, uso="noche",
-         suelo="porcelanico",
+         suelo="madera",
          pts=[(1389, 523), (1537, 523), (1537, 744), (1604, 744), (1604, 915), (1400, 915),
               (1400, 896), (1389, 896), (1389, 826), (1409, 826), (1409, 796), (1389, 796)]),
     dict(id="terraza", nombre="Terraza", superficie=11.33, uso="exterior", suelo="exterior",
@@ -193,6 +193,51 @@ BARANDILLA = dict(
 )
 
 
+# ---------------------------------------------------------------- variantes de distribución
+# Cada variante es un parche sobre la vivienda base: solo describe lo que cambia.
+# Lo que no aparece aquí se conserva exactamente igual.
+VARIANTES = [
+    dict(
+        id="cocina-abierta",
+        nombre="Cocina abierta al salón",
+        descripcion="Se abre un paso de 2,0 m en el tabique entre salón y cocina, junto a la fachada. "
+                    "La cocina conserva su puerta al recibidor.",
+        muros=dict(modificar={
+            # el tabique salón-cocina se acorta: se conserva el tramo norte (desde el pilar)
+            "m-salon-cocina": dict(px=(1044, 586, 1047, 788)),
+        }),
+        estancias=dict(modificar={
+            # el salón gana la franja que ocupaba el tabique retirado
+            "salon": dict(nombre="Salón-comedor", pts=[
+                (815, 460), (1027, 460), (1027, 523), (1031, 523), (1031, 583), (1044, 583),
+                (1044, 631), (1020, 631), (1020, 665), (1044, 665), (1044, 788), (1047, 788),
+                (1047, 915), (1044, 915), (1044, 900), (1016, 900), (1016, 915), (815, 915)]),
+            "cocina": dict(nombre="Cocina abierta"),
+        }),
+    ),
+]
+
+
+def variante_json(v):
+    out = {"id": v["id"], "nombre": v["nombre"], "descripcion": v["descripcion"], "origen": "propuesta (prueba de configurador)"}
+    muros = v.get("muros", {})
+    out["muros"] = {
+        "quitar": muros.get("quitar", []),
+        "anadir": [{"id": i, "tipo": t, "rect": rect(*r), "origen": "variante"} for i, t, r in muros.get("anadir", [])],
+        "modificar": {k: {"rect": rect(*d["px"])} for k, d in muros.get("modificar", {}).items()},
+    }
+    est = v.get("estancias", {})
+    out["estancias"] = {"modificar": {}}
+    for k, d in est.get("modificar", {}).items():
+        m = {kk: vv for kk, vv in d.items() if kk != "pts"}
+        if "pts" in d:
+            m["poligono"] = poly(d["pts"])
+        out["estancias"]["modificar"][k] = m
+    out["huecos"] = v.get("huecos", {"quitar": [], "anadir": [], "modificar": {}})
+    out["equipamiento"] = v.get("equipamiento", {"quitar": [], "anadir": [], "modificar": {}})
+    return out
+
+
 def main():
     out = {
         "meta": {
@@ -236,7 +281,8 @@ def main():
             "armarios": {"valor": "lacado blanco", "origen": "memoria"},
             "paredes": {"valor": "pintura lisa blanco roto", "origen": "memoria (tono: supuesto)"},
             "techos": {"valor": "falso techo continuo, pintura clara", "origen": "memoria"},
-            "suelo_general": {"valor": "gres porcelánico gran formato claro", "origen": "memoria (formato y tono: supuesto)"},
+            "suelo_general": {"valor": "tarima de roble natural en salón, recibidor, distribuidor y dormitorios", "origen": "usuario (opciones comerciales; la memoria indica gres porcelánico)"},
+            "suelo_cocina_banos": {"valor": "gres porcelánico", "origen": "memoria"},
             "suelo_espacio_homes": {"valor": "cerámico", "origen": "memoria"},
             "suelo_terraza": {"valor": "porcelánico antideslizante", "origen": "memoria"},
             "alicatado_banos": {"valor": "gres cerámico claro", "origen": "memoria (tono: supuesto)"},
@@ -266,6 +312,10 @@ def main():
 
     dst = Path(__file__).resolve().parent.parent / "src" / "modelo" / "vivienda.json"
     dst.write_text(json.dumps(out, ensure_ascii=False, indent=2))
+
+    dst_var = dst.parent / "variantes.json"
+    dst_var.write_text(json.dumps([variante_json(v) for v in VARIANTES], ensure_ascii=False, indent=2))
+    print("->", dst_var)
 
     # comprobación de superficies
     def area(p):

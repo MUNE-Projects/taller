@@ -65,3 +65,44 @@ La tolerancia es de ±10 cm, y está dentro de lo esperable midiendo sobre una i
 - **Vidrio y espejos:** reflejan el cielo, no la estancia.
 - **Techo del porche:** se representa como el canto de un forjado. No se modela el edificio de encima porque no hay datos.
 - **Probado en Chromium con WebGL 2** (renderizado por software). El backend WebGPU requiere un navegador actual (Chrome 13x o superior, Edge o Safari 26).
+
+## Iteración 2: configurador comercial
+
+### Cómo se ha integrado
+
+- **La vivienda base no se toca.** Una distribución alternativa es un parche en `variantes.json` que solo nombra lo que cambia. `aplicarVariante()` genera la vivienda resultante y la escena se reconstruye dentro de contenedores persistentes. Estados, cámaras y render siguen apuntando a los mismos objetos, y todo lo que el parche no nombra conserva la misma geometría.
+- **Acabados.** Suelo de madera, frentes de cocina, encimera y baños leen uniforms de TSL (`P` en `materiales.ts`). Cambiar una opción cambia valores y los funde en 450 ms, sin reconstruir geometría ni recompilar shaders.
+- **Piscina.** Se construye una vez y aparece o desaparece con el equipamiento (estados 3 y 4). En planta se dibuja su contorno.
+- **Cámaras maestras.** El objeto `VISTAS` está congelado.
+
+### Variante "cocina abierta al salón" (+4.500 €)
+
+- **Tabique:** el tabique salón-cocina se acorta. Se conserva el tramo norte, junto al pilar, y se abre un paso de 2,0 m junto a la fachada.
+- **Puerta:** no hace falta modificar ninguna. La cocina conserva su puerta al recibidor, que sigue siendo el acceso directo desde la entrada.
+- **Superficies:** el salón pasa de 24,77 a 24,87 m² (gana la franja del tabique retirado) y el útil interior de 88,18 a 88,28 m². La cocina pasa a llamarse "Cocina abierta" y mantiene 11,18 m².
+- **Mobiliario:** el mueble de TV, que se apoyaba en ese tabique, se ajusta automáticamente al tramo que queda (de 3,63 m a 1,90 m). El resto del mobiliario no cambia.
+
+### Suelo
+
+Las opciones comerciales plantean tarima de roble como suelo de serie, lo que cambia lo que dice la memoria (gres porcelánico en toda la vivienda):
+
+- **Tarima:** salón, recibidor, distribuidor y dormitorios, en lamas de 19 × 145 cm a junta trabada.
+- **Gres porcelánico:** cocina y baños, como dice la memoria.
+- **Cerámico:** Espacio Homes, como dice la memoria.
+
+### Piscina (+18.000 €)
+
+Es un vaso elevado de 2,20 × 1,10 m y 0,60 m de altura, con 0,52 m de lámina de agua. Va elevado porque bajo la planta baja hay garaje y no se puede excavar el forjado.
+
+Se sitúa en la parte descubierta de la terraza:
+- deja 1,0 m de paso frente a la fachada;
+- no invade el porche cubierto;
+- no ocupa la posición de la cámara maestra Terraza.
+
+`validarPiscina()` comprueba estas condiciones al arrancar.
+
+**Limitación:** es la única zona descubierta con sitio. Queda justo delante y debajo de la cámara maestra Terraza, así que en esa vista la piscina aparece en primer plano inferior. Para lucirla haría falta una cámara maestra adicional; la decisión es de la propietaria del proyecto.
+
+### Sin cámara maestra
+
+La opción de baños no tiene cámara maestra propia, así que mantiene la vista actual.

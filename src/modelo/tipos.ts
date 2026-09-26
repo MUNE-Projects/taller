@@ -78,3 +78,47 @@ export interface Vivienda {
 		barandilla: { recorrido: Punto[]; postes_x: number[] };
 	};
 }
+
+// ------------------------------------------------------------ configurador
+
+/** Parche de distribución: solo describe lo que cambia respecto a la vivienda base. */
+export interface Variante {
+	id: string;
+	nombre: string;
+	descripcion: string;
+	origen: string;
+	muros: { quitar: string[]; anadir: Muro[]; modificar: Record<string, Partial<Muro>> };
+	huecos: { quitar: string[]; anadir: Hueco[]; modificar: Record<string, Partial<Hueco>> };
+	estancias: { modificar: Record<string, Partial<Estancia>> };
+	equipamiento: { quitar: string[]; anadir: Equipamiento[]; modificar: Record<string, Partial<Equipamiento>> };
+}
+
+export interface Opcion {
+	id: string;
+	nombre: string;
+	detalle?: string;
+	precio: number;
+	variante?: string | null;
+	piscina?: boolean;
+	parametros?: Record<string, string | number>;
+}
+
+export interface Categoria {
+	id: string;
+	nombre: string;
+	detalle?: string;
+	/** Vista maestra a la que llevar al cambiar la opción, o "mantener". */
+	vista: string;
+	/** Solo lleva a la vista al activar una mejora, no al volver a la opción incluida. */
+	soloAlActivar?: boolean;
+	opciones: Opcion[];
+}
+
+export interface Configuracion {
+	moneda: string;
+	precioBase: number;
+	categorias: Categoria[];
+	piscina: {
+		rect: Rect; alturaVaso: number; alturaAgua: number; espesor: number; albardilla: number; pasoMinimoFachada: number;
+	};
+}

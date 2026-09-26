@@ -3,12 +3,12 @@
 
 import * as THREE from 'three/webgpu';
 import { color, float, uniform } from 'three/tsl';
-import type { Vivienda } from '../modelo/tipos';
+import type { Rect, Vivienda } from '../modelo/tipos';
 
 export const uLineas = uniform( 1 );
 const Y = 0.012;
 
-export function construirLineas( v: Vivienda ) {
+export function construirLineas( v: Vivienda, extras: { piscina?: Rect } = {} ) {
 
 	const seg: number[] = [];
 	const suaves: number[] = [];
@@ -55,6 +55,15 @@ export function construirLineas( v: Vivienda ) {
 	}
 
 	for ( const e of v.equipamiento ) rect( e.fijo ? seg : suaves, e.rect );
+
+	// piscina opcional: contorno exterior del vaso e interior (lámina de agua)
+	if ( extras.piscina ) {
+
+		const [ x0, y0, x1, y1 ] = extras.piscina;
+		rect( seg, [ x0, y0, x1, y1 ] );
+		rect( suaves, [ x0 + 0.12, y0 + 0.12, x1 - 0.12, y1 - 0.12 ] );
+
+	}
 
 	// borde de terraza
 	const rec = v.exterior.barandilla.recorrido;

@@ -11,15 +11,18 @@ export interface Vista {
 	interior?: boolean;
 }
 
-// Coordenadas de mundo: x este, y altura, z sur. La vivienda ocupa x 0..12.7, z -9.4..2.8.
-export const VISTAS: Record<string, Vista> = {
+// CÁMARAS MAESTRAS. Coordenadas de mundo: x este, y altura, z sur (la vivienda
+// ocupa x 0..12.7, z -9.4..2.8). Son la referencia para imágenes comerciales
+// coherentes de la promoción: no se modifican desde el configurador ni desde
+// ningún otro sitio (el objeto está congelado). Una vista nueva se añade aquí.
+export const VISTAS: Readonly<Record<string, Readonly<Vista>>> = Object.freeze( {
 	planta: { nombre: 'Planta', pos: [ 6.35, 30, - 3.3 ], obj: [ 6.35, 0, - 3.32 ], fov: 28 },
 	aerea: { nombre: 'Aérea', pos: [ 17.5, 14.5, 9.5 ], obj: [ 6.0, 0, - 3.6 ], fov: 32 },
 	salon: { nombre: 'Salón', pos: [ 3.25, 1.45, - 5.55 ], obj: [ 0.9, 1.0, - 0.9 ], fov: 64, interior: true },
 	cocina: { nombre: 'Cocina', pos: [ 4.3, 1.5, - 5.05 ], obj: [ 5.4, 0.95, - 0.4 ], fov: 64, interior: true },
 	dormitorio: { nombre: 'Dormitorio', pos: [ 9.85, 1.45, - 5.05 ], obj: [ 11.9, 0.7, - 1.35 ], fov: 64, interior: true },
 	terraza: { nombre: 'Terraza', pos: [ 0.75, 1.55, 2.25 ], obj: [ 9.0, 1.1, - 0.4 ], fov: 58 },
-};
+} );
 
 /**
  * El fov de cada vista está pensado para pantalla apaisada (16:10). En pantallas

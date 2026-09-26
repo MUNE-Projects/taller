@@ -17,7 +17,7 @@ function crearMateriales() {
 
 	return {
 		lacado: M.lacado( '#f2f0eb', 0.4 ),
-		laminado: M.lacado( '#efeeea', 0.5 ),
+		laminado: M.laminadoCocina(),
 		zocalo: M.material( { acabado: color( '#3a3a39' ), rugosidad: 0.6 } ),
 		sombra: M.material( { acabado: color( '#1b1b1b' ), rugosidad: 0.9 } ),
 		cuarzo: M.cuarzo(),

@@ -111,6 +111,13 @@ export class Estados {
 
 	}
 
+	/** Reaplica escalas y visibilidad (p. ej. tras reconstruir grupos por una variante). */
+	refrescar() {
+
+		this.aplicar( performance.now() );
+
+	}
+
 	private aplicar( _ahora: number ) {
 
 		const v = this.valores;

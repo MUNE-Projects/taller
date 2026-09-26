@@ -1,17 +1,23 @@
 // Suelos, umbrales, techos, sofito del porche, volúmenes de estancias y entorno.
 
 import * as THREE from 'three/webgpu';
-import type { Vivienda } from '../modelo/tipos';
-import { forma } from '../util/geo';
+import type { Estancia, Hueco, Rect, Vivienda } from '../modelo/tipos';
+import { forma, puntoEnPoligono } from '../util/geo';
 import * as M from './materiales';
 
 const MAT_SUELO: Record<string, () => THREE.Material> = {
+	'madera': () => M.tarima(),
 	'porcelanico': () => M.porcelanico( '#ddd5c8', 0.9 ),
 	'porcelanico-cocina': () => M.porcelanico( '#ddd5c8', 0.9 ),
-	'porcelanico-bano': () => M.porcelanico( '#d6d2cb', 0.6, 0.002, 0.28 ),
+	'porcelanico-bano': () => M.porcelanico( M.P.banos.suelo, 0.6, 0.002, 0.28 ),
 	'ceramico': () => M.porcelanico( '#cfcac1', 0.33, 0.003, 0.5 ),
 	'exterior': () => M.porcelanico( '#cfcac2', 0.6, 0.004, 0.72 ),
 };
+
+// Materiales compartidos entre reconstrucciones (cambiar de distribución no recompila shaders).
+const cache = new Map<string, THREE.Material>();
+let matTecho: THREE.MeshStandardNodeMaterial | null = null;
+const matVolumen = new Map<string, THREE.Material>();
 
 /** Geometría horizontal (normal arriba o abajo) a partir de un polígono de planta. */
 function plano( pol: [ number, number ][], altura: number, haciaAbajo = false ) {
@@ -33,12 +39,20 @@ function plano( pol: [ number, number ][], altura: number, haciaAbajo = false ) 
 
 }
 
-export function construirSuelos( v: Vivienda ) {
+/** ¿La estancia toca el hueco por alguna de las caras del muro? */
+function estanciaJunto( e: Estancia, h: Hueco, r: Rect ) {
+
+	const c = ( h.desde + h.hasta ) / 2;
+	const pts: [ number, number ][] = h.eje === 'x' ? [ [ c, r[ 1 ] - 0.05 ], [ c, r[ 3 ] + 0.05 ] ] : [ [ r[ 0 ] - 0.05, c ], [ r[ 2 ] + 0.05, c ] ];
+	return pts.some( ( [ x, y ] ) => puntoEnPoligono( x, y, e.poligono ) );
+
+}
+
+export function construirSuelos( v: Vivienda, conEntorno = true ) {
 
 	const H = v.alturas.libre.valor;
 	const suelos = new THREE.Group();
 	suelos.name = 'suelos';
-	const cache = new Map<string, THREE.Material>();
 	const mat = ( k: string ) => {
 
 		if ( ! cache.has( k ) ) cache.set( k, ( MAT_SUELO[ k ] ?? MAT_SUELO.porcelanico )() );
@@ -63,7 +77,9 @@ export function construirSuelos( v: Vivienda ) {
 		const r: [ number, number ][] = h.eje === 'x'
 			? [ [ h.desde, y0 ], [ h.hasta, y0 ], [ h.hasta, y1 ], [ h.desde, y1 ] ]
 			: [ [ x0, h.desde ], [ x1, h.desde ], [ x1, h.hasta ], [ x0, h.hasta ] ];
-		const m = new THREE.Mesh( plano( r, h.tipo === 'balconera' ? - 0.005 : 0 ), mat( 'porcelanico' ) );
+		// umbral del mismo suelo que la estancia a la que abre la puerta (o gres en balconeras)
+		const destino = h.tipo === 'balconera' ? 'porcelanico' : ( v.estancias.find( ( e ) => e.suelo === 'madera' && estanciaJunto( e, h, muro.rect ) )?.suelo ?? 'porcelanico' );
+		const m = new THREE.Mesh( plano( r, h.tipo === 'balconera' ? - 0.005 : 0 ), mat( destino ) );
 		m.receiveShadow = true;
 		suelos.add( m );
 
@@ -73,8 +89,13 @@ export function construirSuelos( v: Vivienda ) {
 	// pero siguen proyectando sombra cuando la cámara está dentro.
 	const techos = new THREE.Group();
 	techos.name = 'techos';
-	const matTecho = M.pintura( '#f4f3f0' );
-	matTecho.shadowSide = THREE.DoubleSide;
+	if ( ! matTecho ) {
+
+		matTecho = M.pintura( '#f4f3f0' );
+		matTecho.shadowSide = THREE.DoubleSide;
+
+	}
+
 	for ( const e of v.estancias ) {
 
 		if ( e.uso === 'exterior' && e.id !== 'porche' ) continue;
@@ -94,13 +115,16 @@ export function construirSuelos( v: Vivienda ) {
 		const alto = e.uso === 'exterior' ? 0.12 : H * 0.94;
 		const g = new THREE.ExtrudeGeometry( forma( e.poligono ), { depth: alto, bevelEnabled: false } );
 		g.rotateX( - Math.PI / 2 );
-		const m = new THREE.Mesh( g, M.volumen( e.uso ) );
+		if ( ! matVolumen.has( e.uso ) ) matVolumen.set( e.uso, M.volumen( e.uso ) );
+		const m = new THREE.Mesh( g, matVolumen.get( e.uso )! );
 		m.castShadow = true;
 		m.receiveShadow = true;
 		m.name = `volumen-${ e.id }`;
 		volumenes.add( m );
 
 	}
+
+	if ( ! conEntorno ) return { suelos, techos, volumenes, entorno: null };
 
 	// entorno: pavimento de urbanización (zonas comunes) bajo y alrededor de la vivienda
 	const centro = new THREE.Vector3( 6.4, 0, - 3.5 );

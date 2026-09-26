@@ -25,6 +25,17 @@ export const U = {
 	anchoX: uniform( 13 ),
 };
 
+// Parámetros de acabado configurables. Cada material que depende de una opción
+// comercial lee estos uniforms: cambiar una opción es cambiar valores, sin
+// reconstruir geometría ni recompilar shaders. Valores iniciales = opción incluida.
+const uc = ( hex: string ) => uniform( new THREE.Color( hex ) );
+export const P = {
+	suelo: { claro: uc( '#b38c63' ), oscuro: uc( '#8c6845' ), rugosidad: uniform( 0.5 ) },
+	cocina: { claro: uc( '#efeeea' ), oscuro: uc( '#efeeea' ), veta: uniform( 0 ), rugosidad: uniform( 0.5 ) },
+	encimera: { base: uc( '#ecebe7' ), mota: uc( '#b9b6b0' ), densidad: uniform( 0.04 ), nube: uniform( 0.02 ), rugosidad: uniform( 0.2 ) },
+	banos: { pared: uc( '#dcd8d1' ), suelo: uc( '#d6d2cb' ) },
+};
+
 export const PALETA = {
 	papel: '#f5f3ef',
 	poche: '#232323',
@@ -155,14 +166,16 @@ export function material( o: Opciones ): THREE.MeshStandardNodeMaterial {
 const ruidoSuave = ( p: N, escala: number ): N => mx_fractal_noise_float( p.mul( escala ), 3, 2.0, 0.5 );
 
 /** Gres porcelánico en baldosa grande, junta fina, leve variación entre piezas. */
-export function porcelanico( tono: string, tam = 0.9, junta = 0.0025, rug = 0.32 ) {
+export function porcelanico( tono: string | N, tam = 0.9, junta = 0.0025, rug = 0.32 ) {
+
+	const c: N = typeof tono === 'string' ? color( tono ) : tono;
 
 	const p = vec2( positionWorld.x, positionWorld.z );
 	const [ enJunta, id ] = baldosas( p, vec2( tam, tam ), junta );
 	const vetas = ruidoSuave( vec3( p.x, p.y, id.mul( 9 ) ), 1.6 ).mul( 0.5 ).add( 0.5 );
 	const grano = mx_noise_float( vec3( p.mul( 90 ), 0 ) ).mul( 0.5 ).add( 0.5 );
-	const base = color( tono ).mul( float( 0.975 ).add( id.mul( 0.05 ) ) ).mul( float( 0.97 ).add( vetas.mul( 0.05 ) ).add( grano.mul( 0.012 ) ) );
-	const acabado = mix( base, color( tono ).mul( 0.72 ), enJunta );
+	const base = c.mul( float( 0.975 ).add( id.mul( 0.05 ) ) ).mul( float( 0.97 ).add( vetas.mul( 0.05 ) ).add( grano.mul( 0.012 ) ) );
+	const acabado = mix( base, c.mul( 0.72 ), enJunta );
 	return material( {
 		acabado,
 		rugosidad: mix( float( rug ).add( vetas.mul( 0.08 ) ), float( 0.9 ), enJunta ),
@@ -174,10 +187,11 @@ export function porcelanico( tono: string, tam = 0.9, junta = 0.0025, rug = 0.32
 }
 
 /** Alicatado de paredes (baños): pieza rectangular apaisada con brillo. */
-export function alicatado( tono: string, creceConMuros = false ) {
+export function alicatado( tono: string | N, creceConMuros = false ) {
 
+	const c: N = typeof tono === 'string' ? color( tono ) : tono;
 	const [ enJunta, id ] = baldosas( uvPared(), vec2( 0.6, 0.3 ), 0.002 );
-	const acabado = mix( color( tono ).mul( float( 0.985 ).add( id.mul( 0.03 ) ) ), color( tono ).mul( 0.78 ), enJunta );
+	const acabado = mix( c.mul( float( 0.985 ).add( id.mul( 0.03 ) ) ), c.mul( 0.78 ), enJunta );
 	return material( { acabado, rugosidad: mix( float( 0.16 ), float( 0.85 ), enJunta ), relieve: enJunta.oneMinus(), relieveEscala: 0.25, creceConMuros } );
 
 }
@@ -232,16 +246,66 @@ export function madera( tono = '#b99a78', oscuro = '#94765a', rug = 0.55 ) {
 
 }
 
-/** Cuarzo compacto oscuro con árido fino brillante. */
-export function cuarzo( tono = '#2b2b2c' ) {
+/** Encimera (cuarzo, granito o piedra) según los parámetros de P.encimera. */
+export function cuarzo() {
 
-	const p = positionWorld.mul( 520 );
-	const motas = step( 0.965, mx_cell_noise_float( p ) ).mul( 0.6 );
-	const nube = ruidoSuave( positionWorld, 4 ).mul( 0.04 );
+	const e = P.encimera;
+	const motas = step( float( 1 ).sub( e.densidad ), mx_cell_noise_float( positionWorld.mul( 520 ) ) );
+	const nube = ruidoSuave( positionWorld, 5 ).mul( 0.5 ).add( 0.5 );
+	const base = mix( e.base, e.mota, nube.mul( e.nube ).mul( 4 ) );
 	return material( {
-		acabado: color( tono ).add( nube ).add( motas.mul( 0.12 ) ),
-		rugosidad: float( 0.22 ).sub( motas.mul( 0.1 ) ),
+		acabado: mix( base, e.mota, motas.mul( 0.85 ) ),
+		rugosidad: e.rugosidad,
 		fisico: { clearcoat: 0.4, clearcoatRoughness: 0.08 },
+	} );
+
+}
+
+/** Frentes de cocina: liso o con veta de madera según P.cocina (veta 0..1). */
+export function laminadoCocina() {
+
+	const k = P.cocina;
+	const p = positionLocal;
+	const deform = mx_noise_float( vec3( p.x.mul( 0.6 ), p.y.mul( 6 ), p.z.mul( 6 ) ) ).mul( 0.35 );
+	const anillos = fract( p.y.mul( 14 ).add( p.z.mul( 14 ) ).add( deform.mul( 4 ) ) );
+	const veta = smoothstep( 0.0, 0.5, anillos ).mul( smoothstep( 1.0, 0.5, anillos ) );
+	const fibra = mx_noise_float( vec3( p.x.mul( 3 ), p.y.mul( 160 ), p.z.mul( 160 ) ) ).mul( 0.5 ).add( 0.5 );
+	const madera = mix( k.oscuro, k.claro, veta.mul( 0.55 ).add( fibra.mul( 0.45 ) ) );
+	return material( {
+		acabado: mix( k.claro, madera, k.veta ),
+		rugosidad: k.rugosidad,
+		relieve: fibra.mul( k.veta ).mul( 0.4 ),
+		relieveEscala: 0.1,
+		fisico: { clearcoat: 0.25, clearcoatRoughness: 0.3 },
+	} );
+
+}
+
+/** Tarima de madera en lamas de 19 x 145 cm a junta trabada, según P.suelo. */
+export function tarima() {
+
+	const s = P.suelo;
+	const p = vec2( positionWorld.x, positionWorld.z );
+	const ancho = 0.19, largo = 1.45;
+	const fila = floor( p.y.div( ancho ) );
+	const u = p.x.div( largo ).add( hash( fila.mul( 7.13 ).add( 3.0 ) ) );
+	const tabla = floor( u );
+	const fu = fract( u ), fv = fract( p.y.div( ancho ) );
+	const jx = 0.0015 / largo, jy = 0.0015 / ancho;
+	const enJunta = max(
+		float( 1 ).sub( smoothstep( 0, jx, fu ).mul( smoothstep( 0, jx, float( 1 ).sub( fu ) ) ) ),
+		float( 1 ).sub( smoothstep( 0, jy, fv ).mul( smoothstep( 0, jy, float( 1 ).sub( fv ) ) ) ),
+	);
+	const id = hash( tabla.mul( 31.7 ).add( fila.mul( 17.3 ) ).add( 5.0 ) );
+	const veta = mx_noise_float( vec3( p.x.mul( 1.2 ).add( id.mul( 40 ) ), p.y.mul( 55 ), id.mul( 7 ) ) ).mul( 0.5 ).add( 0.5 );
+	const fibra = mx_noise_float( vec3( p.x.mul( 6 ), p.y.mul( 420 ), id.mul( 3 ) ) ).mul( 0.5 ).add( 0.5 );
+	const t = clamp( id.mul( 0.45 ).add( veta.mul( 0.4 ) ).add( fibra.mul( 0.25 ) ).sub( 0.1 ), 0, 1 );
+	const madera = mix( s.oscuro, s.claro, t );
+	return material( {
+		acabado: mix( madera, s.oscuro.mul( 0.6 ), enJunta ),
+		rugosidad: s.rugosidad.add( fibra.mul( 0.1 ) ),
+		relieve: enJunta.oneMinus().mul( 0.7 ).add( fibra.mul( 0.3 ) ),
+		relieveEscala: 0.25,
 	} );
 
 }

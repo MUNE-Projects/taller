@@ -535,7 +535,7 @@
       "nombre": "Salón-comedor",
       "superficie": 24.77,
       "uso": "dia",
-      "suelo": "porcelanico",
+      "suelo": "madera",
       "poligono": [
         [
           0.252,
@@ -601,7 +601,7 @@
       "nombre": "Recibidor",
       "superficie": 5.07,
       "uso": "circulacion",
-      "suelo": "porcelanico",
+      "suelo": "madera",
       "poligono": [
         [
           3.659,
@@ -627,7 +627,7 @@
       "nombre": "Distribuidor",
       "superficie": 4.31,
       "uso": "circulacion",
-      "suelo": "porcelanico",
+      "suelo": "madera",
       "poligono": [
         [
           5.899,
@@ -773,7 +773,7 @@
       "nombre": "Dormitorio 2",
       "superficie": 13.98,
       "uso": "noche",
-      "suelo": "porcelanico",
+      "suelo": "madera",
       "poligono": [
         [
           6.215,
@@ -815,7 +815,7 @@
       "nombre": "Dormitorio principal",
       "superficie": 16.58,
       "uso": "noche",
-      "suelo": "porcelanico",
+      "suelo": "madera",
       "poligono": [
         [
           9.306,
@@ -1397,8 +1397,12 @@
       "origen": "memoria"
     },
     "suelo_general": {
-      "valor": "gres porcelánico gran formato claro",
-      "origen": "memoria (formato y tono: supuesto)"
+      "valor": "tarima de roble natural en salón, recibidor, distribuidor y dormitorios",
+      "origen": "usuario (opciones comerciales; la memoria indica gres porcelánico)"
+    },
+    "suelo_cocina_banos": {
+      "valor": "gres porcelánico",
+      "origen": "memoria"
     },
     "suelo_espacio_homes": {
       "valor": "cerámico",

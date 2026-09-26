@@ -14,11 +14,42 @@
 		<p class="antetitulo">Caso de prueba · Planta baja, puerta A</p>
 		<h1>Vivienda de 2 dormitorios y 2 baños</h1>
 		<dl class="datos">
-			<div><dt>Útil interior</dt><dd>88,18 m²</dd></div>
+			<div><dt>Útil interior</dt><dd id="util-interior">88,18 m²</dd></div>
 			<div><dt>Terraza y porche</dt><dd>32,71 m²</dd></div>
 		</dl>
 		<p class="lema" id="lema" aria-live="polite">Distribución en planta</p>
+		<button type="button" id="personalizar" class="personalizar">Personalizar vivienda</button>
+		<p id="total-ficha" class="total-ficha" hidden></p>
 	</header>
+
+	<aside id="configurador" class="configurador" aria-label="Personalizar vivienda" hidden>
+		<header class="cabecera">
+			<div>
+				<p class="antetitulo">Planta baja, puerta A</p>
+				<h2>Personalizar vivienda</h2>
+			</div>
+			<button type="button" class="cerrar" aria-label="Cerrar personalización">Cerrar</button>
+		</header>
+		<div class="opciones"></div>
+		<footer class="precio">
+			<dl>
+				<div><dt>Precio base vivienda</dt><dd data-precio="base"></dd></div>
+				<div class="bloque-extras"><dt>Personalizaciones seleccionadas</dt><dd><ul class="extras"></ul></dd></div>
+				<div><dt>Total de extras</dt><dd data-precio="extras"></dd></div>
+				<div class="total"><dt>Precio total</dt><dd data-precio="total"></dd></div>
+			</dl>
+			<button type="button" class="guardar">Guardar configuración</button>
+		</footer>
+	</aside>
+
+	<dialog id="resumen-configuracion" aria-labelledby="titulo-resumen">
+		<h2 id="titulo-resumen">Configuración guardada</h2>
+		<div class="contenido"></div>
+		<div class="acciones">
+			<button type="button" class="copiar">Copiar resumen</button>
+			<button type="button" class="cerrar-dialogo">Cerrar</button>
+		</div>
+	</dialog>
 
 	<nav class="estados" aria-label="Estado de la visualización">
 		<button type="button" data-estado="1" aria-current="true"><span class="num">01</span><span class="txt">Plano</span></button>
