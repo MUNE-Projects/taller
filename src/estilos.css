@@ -57,8 +57,12 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--acento); outlin
 	-webkit-backdrop-filter: blur(14px) saturate(1.2);
 	border: 1px solid var(--linea);
 	border-radius: 14px;
-	pointer-events: none;
 }
+.ficha .marca { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.ficha .logo { display: block; height: 22px; flex: none; }
+.ficha .logo svg { display: block; height: 22px; width: auto; }
+.ficha .marca .antetitulo { margin: 0; padding-left: 10px; border-left: 1px solid var(--linea); }
+.acceso-comprador { margin: 10px 0 0; padding-top: 9px; border-top: 1px solid var(--linea); }
 
 .antetitulo {
 	margin: 0 0 3px;
@@ -134,7 +138,9 @@ body[data-modo="plano"] .vistas { display: none; }
 	.vistas button:not([aria-pressed="true"]):hover, .modos button:not([aria-current="true"]):hover { background: rgb(28 28 26 / 0.05); color: var(--tinta); }
 	.cabecera-cat:hover .nombre-cat { color: var(--acento); }
 	.opcion:not(.elegida):hover { background: rgb(28 28 26 / 0.035); }
-	.configurador .guardar:hover { background: #000; }
+	.configurador .generar:hover { filter: brightness(0.92); }
+	.enlace:hover { color: var(--tinta); }
+	.carrito .quitar:hover { background: rgb(28 28 26 / 0.07); color: var(--tinta); }
 	.configurador .cerrar:hover { background: rgb(28 28 26 / 0.06); color: var(--tinta); }
 }
 
@@ -259,36 +265,46 @@ body[data-modo="plano"] .vistas { display: none; }
 .linea-total { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 .linea-total span { font-size: 12.5px; color: var(--tinta-2); }
 .linea-total strong { font-size: 20px; font-weight: 600; letter-spacing: -0.01em; }
-.ver-desglose {
-	display: flex;
-	justify-content: space-between;
-	gap: 8px;
-	padding: 0;
-	border: 0;
-	background: transparent;
-	font-size: 12px;
-	color: var(--tinta-2);
-	cursor: pointer;
-}
-.ver-desglose .accion { color: var(--acento); text-decoration: underline; text-underline-offset: 2px; }
-.desglose { display: grid; gap: 4px; padding: 8px 0 2px; border-top: 1px dashed var(--linea); font-size: 12px; color: var(--tinta-2); }
-.desglose[hidden] { display: none; }
-.desglose .fila, .desglose .extras li { display: flex; justify-content: space-between; gap: 12px; }
-.desglose .extras { display: grid; gap: 3px; margin: 0; padding: 0; list-style: none; }
-.desglose .extras .vacio { color: var(--tinta-3); }
-.configurador .guardar {
+.configurador .generar {
 	margin-top: 4px;
 	padding: 11px 16px;
 	border: 0;
 	border-radius: 10px;
-	background: var(--tinta);
+	background: var(--acento);
 	color: var(--papel);
 	font-size: 13px;
 	font-weight: 500;
 	cursor: pointer;
 	transition: background-color 160ms var(--salida), transform 120ms var(--salida);
 }
-.configurador .guardar:active { transform: scale(0.98); }
+.configurador .generar:active { transform: scale(0.98); }
+
+/* resumen tipo carrito */
+.seleccion-cabecera { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.resumen-seleccion { margin: 0; font-size: 12.5px; color: var(--tinta-2); }
+.resumen-seleccion strong { color: var(--tinta); font-weight: 600; }
+.resumen-seleccion [data-precio="extras"] { color: var(--acento); font-weight: 600; }
+.carrito { display: grid; gap: 2px; max-height: 132px; margin: 0; padding: 0; overflow-y: auto; list-style: none; }
+.carrito[hidden] { display: none; }
+.carrito li { display: grid; grid-template-columns: 1fr auto 26px; align-items: center; gap: 6px; padding: 3px 0 3px 2px; font-size: 12px; }
+.carrito .nombre-extra { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--tinta); }
+.carrito .cat { color: var(--tinta-3); }
+.carrito .coste { color: var(--tinta-2); white-space: nowrap; }
+.carrito .quitar { display: grid; place-items: center; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 7px; background: transparent; color: var(--tinta-3); cursor: pointer; transition: background-color 140ms var(--salida), color 140ms var(--salida); }
+.confirmar-restablecer { display: grid; gap: 8px; padding: 10px 12px; border-radius: 10px; background: var(--acento-suave); font-size: 12.5px; }
+.confirmar-restablecer[hidden] { display: none; }
+.confirmar-restablecer p { margin: 0; }
+.confirmar-restablecer .botones { display: flex; justify-content: flex-end; gap: 6px; }
+.confirmar-restablecer button { padding: 6px 10px; border: 1px solid var(--linea); border-radius: 8px; background: #fff; font-size: 12px; cursor: pointer; }
+.confirmar-restablecer .si { background: var(--tinta); color: var(--papel); border-color: var(--tinta); }
+.linea-total span small { display: block; font-size: 11px; color: var(--tinta-3); }
+
+.enlace { padding: 0; border: 0; background: none; color: var(--acento); font-size: 12.5px; text-align: left; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.enlace.discreto { color: var(--tinta-3); font-size: 11.5px; }
+
+/* acceso público / comprador */
+body:not(.comprador) .solo-comprador { display: none !important; }
+body.comprador .solo-publico { display: none !important; }
 
 /* ------------------------------------------------ aviso tras un cambio */
 .aviso {
@@ -363,9 +379,35 @@ body.con-etiquetas .etiqueta { opacity: 1; }
 #resumen-configuracion tfoot th { color: var(--tinta); }
 #resumen-configuracion tfoot .total th, #resumen-configuracion tfoot .total td { font-size: 15px; font-weight: 600; border-bottom: 0; }
 #resumen-configuracion .nota { margin: 12px 0 0; font-size: 12px; color: var(--tinta-3); }
-#resumen-configuracion .acciones { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+#resumen-configuracion .acciones { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+#resumen-configuracion .acciones .cerrar-dialogo { margin-right: auto; }
 #resumen-configuracion .acciones button { padding: 9px 14px; border: 1px solid var(--linea); border-radius: 8px; background: transparent; font-size: 13px; cursor: pointer; }
-#resumen-configuracion .acciones .cerrar-dialogo { background: var(--tinta); color: var(--papel); border-color: var(--tinta); }
+#resumen-configuracion .acciones .principal, #acceso .principal { background: var(--acento); color: #fff; border-color: var(--acento); }
+
+/* acceso de comprador */
+#acceso {
+	width: min(440px, calc(100% - 32px));
+	padding: 22px 24px;
+	border: 1px solid var(--linea);
+	border-radius: 16px;
+	background: var(--papel);
+	color: var(--tinta);
+	box-shadow: 0 24px 64px rgb(0 0 0 / 0.2);
+}
+#acceso::backdrop { background: rgb(28 28 26 / 0.45); }
+#acceso form { display: grid; gap: 10px; }
+#acceso h2 { margin: 0; font-size: 18px; font-weight: 500; }
+#acceso p { margin: 0; font-size: 13px; color: var(--tinta-2); }
+#acceso label { margin-top: 4px; font-size: 12px; color: var(--tinta-2); }
+#acceso input { padding: 10px 12px; border: 1px solid rgb(28 28 26 / 0.2); border-radius: 9px; background: #fff; font: inherit; font-size: 14px; }
+#acceso input:focus-visible { outline: 2px solid var(--acento); outline-offset: 1px; }
+#acceso .error { color: #9b2c2c; font-size: 12.5px; }
+#acceso .acciones { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
+#acceso .acciones button { padding: 9px 14px; border: 1px solid var(--linea); border-radius: 8px; background: transparent; font-size: 13px; cursor: pointer; }
+
+/* aviso mientras se renderiza una imagen o el documento */
+.preparando { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; background: var(--papel); color: var(--tinta-2); font-size: 13px; }
+.preparando[hidden] { display: none; }
 
 /* ------------------------------------------------ imagen capturada */
 #captura {

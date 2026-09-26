@@ -5,10 +5,7 @@ import { traa } from 'three/addons/tsl/display/TRAANode.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DObject, CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
 
-import datos from './modelo/vivienda.json';
-import datosVariantes from './modelo/variantes.json';
-import datosConfiguracion from './modelo/configuracion.json';
-import type { Configuracion, Variante, Vivienda } from './modelo/tipos';
+import type { Vivienda, ViviendaPromocion } from './modelo/tipos';
 import { centroide, puntoEnPoligono } from './util/geo';
 import * as M from './escena/materiales';
 import { construirMuros } from './escena/muros';
@@ -23,14 +20,41 @@ import { construirPiscina, validarPiscina } from './escena/piscina';
 import { aplicarVariante, fmtM2 } from './configurador/variantes';
 import { Configurador, fmtEuros, fmtPrecio, type Seleccion } from './configurador/configurador';
 import { Panel } from './configurador/panel';
+import { PROMOCION, cargarModelo, catalogoPara, extraerCodigo, resolverAcceso, viviendaPublica, type Modelo } from './promocion/promocion';
+import { aplicarMarca } from './promocion/marca';
+import { generarPDF } from './documento/pdf';
 import './estilos.css';
 
-const base = datos as unknown as Vivienda;
-const variantes = datosVariantes as unknown as Variante[];
-const CLAVE_GUARDADO = 'inmobiliarias:configuracion';
 const $ = <T extends HTMLElement>( s: string ) => document.querySelector( s ) as T;
+const CLAVE_ACCESO = 'inmobiliarias:acceso';
+const claveSeleccion = ( ref: string ) => `inmobiliarias:seleccion:${ PROMOCION.id }:${ ref }`;
+const guardar = ( k: string, v: string | null ) => {
+
+	try {
+
+		if ( v === null ) localStorage.removeItem( k ); else localStorage.setItem( k, v );
+
+	} catch { /* sin almacenamiento local: solo dura la sesión */ }
+
+};
+
+const leer = ( k: string ) => {
+
+	try {
+
+		return localStorage.getItem( k );
+
+	} catch {
+
+		return null;
+
+	}
+
+};
 
 async function iniciar() {
+
+	aplicarMarca( PROMOCION );
 
 	const lienzo = $( '#lienzo' );
 	const forzarWebGL = new URLSearchParams( location.search ).has( 'webgl' );
@@ -40,7 +64,7 @@ async function iniciar() {
 	renderer.toneMapping = THREE.NeutralToneMapping;
 	renderer.toneMappingExposure = 1.08;
 	renderer.shadowMap.enabled = true;
-	renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+	renderer.shadowMap.type = THREE.PCFShadowMap;
 	lienzo.appendChild( renderer.domElement );
 	await renderer.init();
 	const backend = ( renderer.backend as unknown as { isWebGPUBackend?: boolean } ).isWebGPUBackend ? 'WebGPU' : 'WebGL 2';
@@ -58,15 +82,21 @@ async function iniciar() {
 	ctrl.minDistance = 0.3;
 	ctrl.maxDistance = 60;
 
+	// ---------------------------------------------------------------- acceso
+	// Parte pública: plano, vivienda y vistas. Con el enlace privado de una
+	// vivienda (#código) se carga esa vivienda y se habilita la personalización.
+	const codigoInicial = extraerCodigo( location.hash ) || leer( CLAVE_ACCESO ) || '';
+	let comprador: ViviendaPromocion | null = await resolverAcceso( codigoInicial );
+	if ( ! comprador && codigoInicial ) guardar( CLAVE_ACCESO, null );
+	let fichaVivienda: ViviendaPromocion = comprador ?? viviendaPublica();
+
 	// ---------------------------------------------------------------- modelo
-	// La vivienda se construye en contenedores persistentes. Una variante de
-	// distribución genera una vivienda nueva a partir del parche y solo se
-	// sustituye el contenido de los contenedores: estados, cámaras y render
-	// siguen apuntando a los mismos objetos.
-	let estados!: Estados;
-	const conf = new Configurador( datosConfiguracion as unknown as Configuracion );
-	let vivienda = base;
-	const H = base.alturas.libre.valor;
+	// Contenedores persistentes: cambiar de distribución o de vivienda solo
+	// sustituye su contenido; estados, cámaras y render apuntan a lo mismo.
+	let modelo: Modelo = cargarModelo( fichaVivienda.tipologia, fichaVivienda.espejo );
+	let conf = new Configurador( catalogoPara( fichaVivienda ), fichaVivienda.precioBase );
+	let vivienda: Vivienda = modelo.vivienda;
+	const H = modelo.vivienda.alturas.libre.valor;
 	M.U.altura.value = H;
 	const matMuros = {
 		pintura: M.conPoche( M.pintura( '#efede8', true, true ) ),
@@ -77,7 +107,7 @@ async function iniciar() {
 	const c = {
 		muros: grupo( 'muros' ), suelos: grupo( 'suelos' ), techos: grupo( 'techos' ), volumenes: grupo( 'volumenes' ),
 		carpinterias: grupo( 'carpinterias' ), barandilla: grupo( 'barandilla' ), fijo: grupo( 'equipamiento-fijo' ),
-		mobiliario: grupo( 'mobiliario' ), lineas: grupo( 'lineas' ),
+		mobiliario: grupo( 'mobiliario' ), lineas: grupo( 'lineas' ), canto: grupo( 'canto-porche' ), piscina: grupo( 'piscina' ),
 	};
 	const volcar = ( destino: THREE.Group, origen: THREE.Object3D, liberarMateriales = false ) => {
 
@@ -98,16 +128,11 @@ async function iniciar() {
 
 	};
 
-	const { entorno: suelo } = construirSuelos( base );
-	const canto = construirCantoPorche( base );
-	const centro = new THREE.Vector3( 6.35, 0, - 3.3 );
-	const luzSol = crearSol( centro );
-	const piscina = construirPiscina( conf.datos.piscina );
-	const fallosPiscina = validarPiscina( conf.datos.piscina, base );
-	if ( fallosPiscina.length ) console.warn( 'La piscina no cumple:', fallosPiscina.join( '; ' ) );
-	escena.add( ...Object.values( c ), suelo!, canto, piscina, luzSol, luzSol.target );
+	const { entorno: suelo } = construirSuelos( modelo.vivienda );
+	const luzSol = crearSol( new THREE.Vector3( 6.35, 0, - 3.3 ) );
+	escena.add( ...Object.values( c ), suelo!, luzSol, luzSol.target );
 
-	// ---------------------------------------------------------------- etiquetas
+	// etiquetas de estancias (modo Plano)
 	const etiquetas = new CSS2DRenderer( { element: $( '#etiquetas' ) } );
 	etiquetas.setSize( innerWidth, innerHeight );
 	const grupoEtiquetas = new THREE.Group();
@@ -129,14 +154,16 @@ async function iniciar() {
 
 	};
 
-	let interiores = base.estancias.filter( ( e ) => e.uso !== 'exterior' );
-	const construirLineasActuales = () => volcar( c.lineas, construirLineas( vivienda, { piscina: conf.piscina ? conf.datos.piscina.rect : undefined } ), true );
+	let interiores = vivienda.estancias.filter( ( e ) => e.uso !== 'exterior' );
+	const utilInterior = () => interiores.reduce( ( t, x ) => t + x.superficie, 0 );
+	const construirLineasActuales = () => volcar( c.lineas, construirLineas( vivienda, { piscina: conf.piscina ? modelo.tipologia.piscina.rect : undefined } ), true );
 
 	/** Reconstruye la vivienda según la distribución elegida. Devuelve el informe de cambios. */
+	let estados: Estados | undefined;
 	const reconstruir = () => {
 
-		const variante = variantes.find( ( v ) => v.id === conf.variante ) ?? null;
-		const r = aplicarVariante( base, variante );
+		const variante = modelo.variantes.find( ( v ) => v.id === conf.variante ) ?? null;
+		const r = aplicarVariante( modelo.vivienda, variante );
 		vivienda = r.vivienda;
 		const { geos } = construirMuros( vivienda );
 		const muros = new THREE.Group();
@@ -162,10 +189,22 @@ async function iniciar() {
 		construirLineasActuales();
 		construirEtiquetas();
 		interiores = vivienda.estancias.filter( ( x ) => x.uso !== 'exterior' );
-		const util = interiores.reduce( ( t, x ) => t + x.superficie, 0 );
-		$( '#util-interior' ).textContent = fmtM2( util );
+		actualizarFicha();
 		estados?.refrescar();
+		despertar();
 		return r.informe;
+
+	};
+
+	/** Carga (o recarga) la tipología de la vivienda: canto del porche y piscina dependen de la geometría. */
+	const cargarGeometriaTipologia = () => {
+
+		volcar( c.canto, construirCantoPorche( modelo.vivienda ) );
+		const g = new THREE.Group();
+		g.add( construirPiscina( modelo.tipologia.piscina ) );
+		volcar( c.piscina, g );
+		const fallos = validarPiscina( modelo.tipologia.piscina, modelo.vivienda );
+		if ( fallos.length ) console.warn( 'La piscina no cumple:', fallos.join( '; ' ) );
 
 	};
 
@@ -188,24 +227,25 @@ async function iniciar() {
 	gi.giIntensity.value = 1.6;
 	gi.aoIntensity.value = 1.0;
 	gi.thickness.value = 0.5;
-	// en planta la oclusión se atenúa para que el papel quede limpio
-	const ao = mix( gi.getAONode(), float( 1 ), M.U.plano.mul( 0.85 ) );
+	// en planta no hay oclusión: el papel queda limpio y sin ruido temporal
+	const ao = mix( gi.getAONode(), float( 1 ), M.U.plano );
 	const compuesto = vec4( add( color.rgb.mul( ao ), difuso.rgb.mul( gi.getGINode().rgb ) ), color.a );
 	pipeline.outputNode = traa( compuesto, profundidad, vel, camara );
 
 	// ---------------------------------------------------------------- estados y cámara
-	// Internamente se conservan los cuatro estados (sirven de transición: la
-	// vivienda "se construye" al pasar del plano a la vivienda), pero la
-	// interfaz solo ofrece tres modos: Plano, Vivienda y Personalizar.
+	// Internamente se conservan los estados de construcción (la vivienda "se
+	// construye" al pasar del plano a la vivienda); la interfaz ofrece tres
+	// modos: Plano, Vivienda y Personalizar (este último, solo con acceso).
 	estados = new Estados( { volumenes: c.volumenes, lineas: c.lineas, carpinterias: [ c.carpinterias, c.barandilla ], fijo: c.fijo, mobiliario: c.mobiliario, sol: luzSol, escena } );
-	reconstruir();
+	const est = estados;
 	const cam = new Camarografo( camara, ctrl, $( '#velo' ) );
-	cam.reducido = estados.reducido;
+	cam.reducido = est.reducido;
 	type Modo = 'plano' | 'vivienda' | 'personalizar';
 	let modo: Modo = 'vivienda';
 
-	const botonesModo = [ ...document.querySelectorAll<HTMLButtonElement>( '[data-modo]' ) ].filter( ( b ) => b.tagName === 'BUTTON' );
-	const botonesVista = [ ...document.querySelectorAll<HTMLButtonElement>( '[data-vista]' ) ];
+	const botonesModo = [ ...document.querySelectorAll<HTMLButtonElement>( '.modos [data-modo]' ) ];
+	const barraVistas = $( '.vistas' );
+	let botonesVista: HTMLButtonElement[] = [];
 	const actualizarEtiquetas = () => document.body.classList.toggle( 'con-etiquetas', modo === 'plano' );
 	const marcarVista = ( k: string ) => botonesVista.forEach( ( b ) => b.setAttribute( 'aria-pressed', String( b.dataset.vista === k ) ) );
 
@@ -217,16 +257,41 @@ async function iniciar() {
 
 	};
 
-	const vistaDeVariante = () => ( variantes.find( ( v ) => v.id === conf.variante ) ?? variantes[ 0 ] )?.vista ?? null;
+	/** Barra de vistas guiadas de la tipología cargada. */
+	const construirBarraVistas = () => {
+
+		for ( const b of botonesVista ) b.remove();
+		const antes = barraVistas.querySelector( '.separador' );
+		botonesVista = modelo.tipologia.guiadas.map( ( k ) => {
+
+			const b = document.createElement( 'button' );
+			b.type = 'button';
+			b.dataset.vista = k;
+			b.textContent = modelo.tipologia.vistas[ k ].nombre;
+			b.setAttribute( 'aria-pressed', 'false' );
+			b.addEventListener( 'click', () => irVista( k ) );
+			barraVistas.insertBefore( b, antes );
+			return b;
+
+		} );
+
+	};
 
 	const irModo = ( m: Modo ) => {
+
+		if ( m === 'personalizar' && ! comprador ) {
+
+			abrirAcceso();
+			return;
+
+		}
 
 		const anterior = modo;
 		modo = m;
 		document.body.dataset.modo = m;
 		botonesModo.forEach( ( b ) => b.setAttribute( 'aria-current', String( b.dataset.modo === m ) ) );
 		const n = m === 'plano' ? 1 : 4;
-		if ( estados.actual !== n ) estados.ir( n );
+		if ( est.actual !== n ) est.ir( n );
 		document.body.dataset.estado = String( n );
 		$( '#configurador' ).hidden = m !== 'personalizar';
 		actualizarEtiquetas();
@@ -244,13 +309,13 @@ async function iniciar() {
 	};
 
 	botonesModo.forEach( ( b ) => b.addEventListener( 'click', () => irModo( b.dataset.modo as Modo ) ) );
-	botonesVista.forEach( ( b ) => b.addEventListener( 'click', () => irVista( b.dataset.vista! ) ) );
 	addEventListener( 'keydown', ( ev ) => {
 
 		const t = ev.target as HTMLElement | null;
-		if ( t instanceof HTMLInputElement || t?.closest?.( '#configurador, dialog' ) ) return;
+		if ( t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement || t?.closest?.( '#configurador, dialog' ) ) return;
 		const modos: Record<string, Modo> = { 1: 'plano', 2: 'vivienda', 3: 'personalizar' };
 		if ( modos[ ev.key ] ) irModo( modos[ ev.key ] );
+		if ( ev.key === 'Escape' ) $( '#captura' ).hidden = true;
 
 	} );
 	ctrl.addEventListener( 'start', () => {
@@ -260,17 +325,21 @@ async function iniciar() {
 
 	} );
 
+	// ---------------------------------------------------------------- ficha
+	function actualizarFicha() {
+
+		const t = modelo.tipologia;
+		const v = fichaVivienda;
+		$( '#ficha-vivienda' ).textContent = comprador ? `${ v.ref } · ${ t.nombre }` : t.nombre;
+		$( '#ficha-datos' ).textContent = `${ t.dormitorios } dormitorios · ${ t.banos } baños · ${ fmtM2( utilInterior() ) } útiles · terraza y porche de ${ fmtM2( v.superficies.exterior ) }`;
+		document.body.classList.toggle( 'comprador', !! comprador );
+
+	}
+
 	// ---------------------------------------------------------------- personalizar
-	const guardarLocal = () => {
+	const guardarSeleccion = () => comprador && guardar( claveSeleccion( comprador.ref ), JSON.stringify( conf.seleccion ) );
 
-		try {
-
-			localStorage.setItem( CLAVE_GUARDADO, JSON.stringify( conf.seleccion ) );
-
-		} catch { /* almacenamiento no disponible: la configuración vive solo en esta sesión */ }
-
-	};
-
+	const vistaDeVariante = () => ( modelo.variantes.find( ( v ) => v.id === conf.variante ) ?? modelo.variantes[ 0 ] )?.vista ?? null;
 	/** Vista que corresponde a una categoría ("mantener" = ninguna). */
 	const vistaDeCategoria = ( id: string ): string | Vista | null => {
 
@@ -302,158 +371,176 @@ async function iniciar() {
 
 	};
 
-	// el aviso no se cierra mientras el ratón está encima
 	aviso.addEventListener( 'pointerenter', () => clearTimeout( temporizadorAviso ) );
 	aviso.addEventListener( 'pointerleave', () => ( temporizadorAviso = window.setTimeout( () => ( aviso.hidden = true ), 4000 ) ) );
 
-	const panel = new Panel( conf, {
-		abrir( categoria ) {
+	/**
+	 * Aplica una opción: modelo 3D, precio y vista. `moverCamara` = false cuando
+	 * la opción se quita desde el resumen (el cambio no debe arrastrar la cámara).
+	 */
+	const aplicarOpcion = ( categoria: string, opcion: string, moverCamara = true ) => {
 
-			// al desplegar una categoría se enseña la estancia a la que afecta
-			const v = vistaDeCategoria( categoria );
-			if ( v ) irVista( v );
+		const cat = conf.categoria( categoria );
+		const anterior = conf.elegir( categoria, opcion );
+		const nueva = conf.opcion( categoria );
+		if ( categoria === 'distribucion' && anterior.variante !== nueva.variante ) {
 
-		},
-		elegir( categoria, opcion ) {
+			const informe = reconstruir();
+			const variante = modelo.variantes.find( ( v ) => v.id === nueva.variante );
+			panel.informe( 'distribucion', variante ? [ variante.descripcion, ...informe ] : [] );
+			avisar( variante ? variante.resumen : 'Distribución base: salón y cocina vuelven a estar separados.', {
+				etiqueta: 'Ver en plano', hacer: () => irModo( 'plano' ),
+			} );
 
-			const cat = conf.categoria( categoria );
-			const anterior = conf.elegir( categoria, opcion );
-			const nueva = conf.opcion( categoria );
-			if ( categoria === 'distribucion' && anterior.variante !== nueva.variante ) {
+		}
 
-				const informe = reconstruir();
-				const variante = variantes.find( ( v ) => v.id === nueva.variante );
-				panel.informe( 'distribucion', variante ? [ variante.descripcion, ...informe ] : [] );
-				avisar( variante ? variante.resumen : 'Distribución base: salón y cocina vuelven a estar separados.', {
-					etiqueta: 'Ver en plano', hacer: () => irModo( 'plano' ),
-				} );
+		if ( categoria === 'exterior' ) construirLineasActuales();
+		const activa = nueva.precio > 0 || !! nueva.piscina;
+		const v = vistaDeCategoria( categoria );
+		if ( moverCamara && v && ( ! cat.soloAlActivar || activa ) ) irVista( v );
+		panel.resumen();
+		guardarSeleccion();
+		despertar();
 
-			}
+	};
 
-			if ( categoria === 'exterior' ) construirLineasActuales();
-			const activa = nueva.precio > 0 || !! nueva.piscina;
-			const v = vistaDeCategoria( categoria );
-			if ( v && ( ! cat.soloAlActivar || activa ) ) irVista( v );
-			panel.resumen();
-			guardarLocal();
+	let panel = crearPanel();
+	function crearPanel() {
 
-		},
-		cerrar: () => irModo( 'vivienda' ),
-		guardar: () => mostrarResumen(),
+		return new Panel( conf, {
+			abrir( categoria ) {
+
+				// al desplegar una categoría se enseña la estancia a la que afecta
+				const v = vistaDeCategoria( categoria );
+				if ( v ) irVista( v );
+
+			},
+			elegir: ( categoria, opcion ) => aplicarOpcion( categoria, opcion ),
+			quitar: ( categoria ) => aplicarOpcion( categoria, conf.base( categoria ).id, false ),
+			restablecer: () => {
+
+				for ( const x of conf.extras ) aplicarOpcion( x.categoria.id, conf.base( x.categoria.id ).id, false );
+				panel.sincronizar();
+
+			},
+			cerrar: () => irModo( 'vivienda' ),
+			generar: () => mostrarResumen(),
+		} );
+
+	}
+
+	/** Carga una vivienda (y su tipología) sin recargar la página. */
+	const cargarVivienda = ( v: ViviendaPromocion ) => {
+
+		const cambiaGeometria = v.tipologia !== fichaVivienda.tipologia || v.espejo !== fichaVivienda.espejo;
+		fichaVivienda = v;
+		if ( cambiaGeometria ) {
+
+			modelo = cargarModelo( v.tipologia, v.espejo );
+			cargarGeometriaTipologia();
+
+		}
+
+		cam.vistas = modelo.tipologia.vistas;
+		construirBarraVistas();
+		conf = new Configurador( catalogoPara( v ), v.precioBase );
+		for ( const k of conf.datos.categorias ) conf.aplicarParametros( k.id, true );
+		// selección anterior de esta vivienda en este navegador (comodidad, no se envía a ningún sitio)
+		if ( comprador ) {
+
+			try {
+
+				const s = JSON.parse( leer( claveSeleccion( v.ref ) ) ?? 'null' ) as Seleccion | null;
+				if ( s ) conf.restaurar( s );
+
+			} catch { /* selección ilegible: se empieza desde lo incluido */ }
+
+		}
+
+		panel.destruir();
+		panel = crearPanel();
+		panel.desplegar( 'distribucion', false );
+		const variante = modelo.variantes.find( ( x ) => x.id === conf.variante );
+		const informe = reconstruir();
+		if ( variante ) panel.informe( 'distribucion', [ variante.descripcion, ...informe ] );
+		panel.resumen();
+
+	};
+
+	// ---------------------------------------------------------------- acceso de comprador
+	const dialogoAcceso = $<HTMLDialogElement>( '#acceso' );
+	const campoAcceso = $<HTMLInputElement>( '#codigo-acceso' );
+	function abrirAcceso() {
+
+		$( '#acceso .error' ).hidden = true;
+		campoAcceso.value = '';
+		dialogoAcceso.showModal();
+
+	}
+
+	$( '#abrir-acceso' ).addEventListener( 'click', abrirAcceso );
+	$( '#acceso .cancelar' ).addEventListener( 'click', () => dialogoAcceso.close() );
+	$( '#acceso form' ).addEventListener( 'submit', async ( ev ) => {
+
+		ev.preventDefault();
+		const v = await resolverAcceso( campoAcceso.value );
+		if ( ! v ) {
+
+			$( '#acceso .error' ).hidden = false;
+			campoAcceso.focus();
+			return;
+
+		}
+
+		comprador = v;
+		guardar( CLAVE_ACCESO, extraerCodigo( campoAcceso.value ) );
+		dialogoAcceso.close();
+		cargarVivienda( v );
+		irModo( 'personalizar' );
+
 	} );
-	panel.desplegar( 'distribucion', false );
+	$( '#salir-comprador' ).addEventListener( 'click', () => {
 
+		comprador = null;
+		guardar( CLAVE_ACCESO, null );
+		if ( location.hash ) history.replaceState( null, '', location.pathname + location.search );
+		cargarVivienda( viviendaPublica() );
+		irModo( 'vivienda' );
+
+	} );
+
+	// ---------------------------------------------------------------- documento de selección
 	const dialogo = $<HTMLDialogElement>( '#resumen-configuracion' );
 	const mostrarResumen = () => {
 
-		guardarLocal();
-		const fecha = new Date().toLocaleString( 'es-ES', { dateStyle: 'long', timeStyle: 'short' } );
 		const filas = conf.datos.categorias.map( ( k ) => {
 
 			const o = conf.opcion( k.id );
 			return `<tr><th scope="row">${ k.nombre }</th><td>${ o.nombre }${ o.detalle ? ` <span class="detalle">(${ o.detalle })</span>` : '' }</td><td>${ fmtPrecio( o.precio ) }</td></tr>`;
 
 		} ).join( '' );
-		const util = interiores.reduce( ( t, x ) => t + x.superficie, 0 );
 		dialogo.querySelector( '.contenido' )!.innerHTML = `
-			<p class="fecha">Guardada el ${ fecha }</p>
+			<p class="fecha">${ PROMOCION.promocion.nombre } · ${ fichaVivienda.ref } · ${ modelo.tipologia.nombre }</p>
 			<table>
 				<tbody>${ filas }</tbody>
 				<tfoot>
-					<tr><th scope="row">Precio base vivienda</th><td></td><td>${ fmtEuros( conf.datos.precioBase ) }</td></tr>
-					<tr><th scope="row">Total de extras</th><td></td><td>${ fmtEuros( conf.totalExtras ) }</td></tr>
+					<tr><th scope="row">Precio base vivienda</th><td></td><td>${ fmtEuros( conf.precioBase ) }</td></tr>
+					<tr><th scope="row">Mejoras (${ conf.extras.length })</th><td></td><td>+${ fmtEuros( conf.totalExtras ) }</td></tr>
 					<tr class="total"><th scope="row">Precio total</th><td></td><td>${ fmtEuros( conf.total ) }</td></tr>
 				</tfoot>
 			</table>
-			<p class="nota">Superficie útil interior con esta distribución: ${ fmtM2( util ) }. Precios orientativos de la prueba del configurador.</p>`;
-		dialogo.dataset.texto = [
-			`Configuración de vivienda (${ fecha })`,
-			...conf.datos.categorias.map( ( k ) => `${ k.nombre }: ${ conf.opcion( k.id ).nombre } (${ fmtPrecio( conf.opcion( k.id ).precio ) })` ),
-			`Precio base vivienda: ${ fmtEuros( conf.datos.precioBase ) }`,
-			`Total de extras: ${ fmtEuros( conf.totalExtras ) }`,
-			`Precio total: ${ fmtEuros( conf.total ) }`,
-		].join( '\n' );
+			<p class="nota">El documento incluye una imagen de tu vivienda configurada y un apartado para tu firma. Descárgalo, fírmalo y envíalo a tu comercial para confirmar tu selección.</p>`;
 		dialogo.showModal();
 
 	};
 
-	dialogo.querySelector( '.cerrar-dialogo' )!.addEventListener( 'click', () => dialogo.close() );
-	dialogo.querySelector( '.copiar' )!.addEventListener( 'click', async ( ev ) => {
+	dialogo.querySelector( '.seguir' )!.addEventListener( 'click', () => dialogo.close() );
+	dialogo.querySelector( '.cerrar-dialogo' )!.addEventListener( 'click', () => {
 
-		const b = ev.currentTarget as HTMLButtonElement;
-		try {
-
-			await navigator.clipboard.writeText( dialogo.dataset.texto ?? '' );
-			b.textContent = 'Resumen copiado';
-
-		} catch {
-
-			b.textContent = 'No se ha podido copiar';
-
-		}
-
-		setTimeout( () => ( b.textContent = 'Copiar resumen' ), 2000 );
+		dialogo.close();
+		irModo( 'vivienda' );
 
 	} );
-
-	// configuración guardada anteriormente en este navegador
-	try {
-
-		const guardada = JSON.parse( localStorage.getItem( CLAVE_GUARDADO ) ?? 'null' ) as Seleccion | null;
-		if ( guardada ) {
-
-			conf.restaurar( guardada );
-			const variante = variantes.find( ( v ) => v.id === conf.variante );
-			if ( variante ) panel.informe( 'distribucion', [ variante.descripcion, ...reconstruir() ] );
-			construirLineasActuales();
-			panel.sincronizar();
-
-		}
-
-	} catch { /* sin configuración guardada */ }
-
-	// ---------------------------------------------------------------- captura de imagen
-	const foto = async () => {
-
-		const boton = $<HTMLButtonElement>( '#foto' );
-		boton.disabled = true;
-		boton.dataset.ocupado = 'true';
-		const [ w, h ] = [ innerWidth, innerHeight ];
-		const ratio = renderer.getPixelRatio();
-		const escala = Math.min( 3, 2400 / Math.max( w, h ) * ( 1 / 1 ) );
-		// la imagen usa el encuadre maestro, sin el desplazamiento del panel
-		const desplazado = desplazamiento;
-		encuadrar( 0 );
-		renderer.setPixelRatio( escala );
-		gi.sliceCount.value = 3;
-		gi.stepCount.value = 16;
-		for ( let i = 0; i < 72; i ++ ) {
-
-			pipeline.render();
-			if ( i % 8 === 0 ) await new Promise( requestAnimationFrame );
-
-		}
-
-		pipeline.render();
-		const url = renderer.domElement.toDataURL( 'image/png' );
-		const nombre = `vivienda-${ cam.actual || 'vista' }-${ Date.now() }.png`;
-		// la imagen se muestra siempre en pantalla: en visores que bloquean
-		// descargas se puede guardar con clic derecho o pulsación larga
-		$<HTMLImageElement>( '#captura img' ).src = url;
-		const enlace = $<HTMLAnchorElement>( '#captura a' );
-		enlace.href = url;
-		enlace.download = nombre;
-		$( '#captura' ).hidden = false;
-		renderer.setPixelRatio( ratio );
-		encuadrar( desplazado );
-		gi.sliceCount.value = 2;
-		gi.stepCount.value = 8;
-		boton.disabled = false;
-		delete boton.dataset.ocupado;
-
-	};
-
-	$( '#foto' ).addEventListener( 'click', foto );
 
 	// Publicado en claude.ai, las descargas pasan por el capability `downloads`
 	// (el visor bloquea los enlaces de descarga normales). En local, enlace normal.
@@ -461,101 +548,237 @@ async function iniciar() {
 	const rt = ( window as unknown as { claude?: { use( n: string ): Promise<unknown> } } ).claude;
 	let descargas: Descargas = null;
 	rt?.use?.( 'downloads' ).then( ( d ) => ( descargas = d as Descargas ), () => {} );
+	const descargar = async ( nombre: string, blob: Blob ) => {
+
+		if ( descargas ) {
+
+			await descargas.save( { filename: nombre, data: blob } ).catch( () => {} );
+			return;
+
+		}
+
+		const a = document.createElement( 'a' );
+		a.href = URL.createObjectURL( blob );
+		a.download = nombre;
+		a.click();
+		setTimeout( () => URL.revokeObjectURL( a.href ), 5000 );
+
+	};
+
+	dialogo.querySelector( '.descargar-pdf' )!.addEventListener( 'click', async ( ev ) => {
+
+		const b = ev.currentTarget as HTMLButtonElement;
+		b.disabled = true;
+		b.textContent = 'Preparando documento…';
+		try {
+
+			const imagen = await renderizarVista( 'aerea', 1800, 40 );
+			const vistaVariante = conf.variante ? vistaDeVariante() : null;
+			const imagenDistribucion = vistaVariante ? await renderizarVista( vistaVariante, 1400, 32 ) : null;
+			const blob = await generarPDF( {
+				promocion: PROMOCION, vivienda: fichaVivienda, tipologia: modelo.tipologia, conf,
+				superficieUtil: utilInterior(), imagen, imagenDistribucion,
+				tituloDistribucion: vistaVariante?.nombre ?? null,
+			} );
+			const fecha = new Date().toISOString().slice( 0, 10 );
+			await descargar( `seleccion-${ fichaVivienda.ref.toLowerCase().replace( /[^a-z0-9]+/g, '-' ) }-${ fecha }.pdf`, blob );
+
+		} catch ( e ) {
+
+			console.error( e );
+			avisar( 'No se ha podido generar el documento. Inténtalo de nuevo.' );
+
+		} finally {
+
+			b.disabled = false;
+			b.textContent = 'Descargar PDF';
+
+		}
+
+	} );
+
+	// ---------------------------------------------------------------- imágenes con encuadre maestro
+	/**
+	 * Renderiza una vista maestra a alta resolución y devuelve un JPEG/PNG.
+	 * La cámara vuelve después exactamente a donde estaba.
+	 */
+	let capturando = false;
+	async function renderizarVista( vista: string | Vista | null, ancho: number, fotogramas: number, tipo = 'image/jpeg' ) {
+
+		capturando = true;
+		const velo = $( '#preparando' );
+		velo.hidden = false;
+		const antes = { pos: camara.position.clone(), obj: ctrl.target.clone(), fov: camara.fov, actual: cam.actual };
+		const ratio = renderer.getPixelRatio();
+		try {
+
+			if ( vista ) cam.ir( vista, true );
+			camara.filmOffset = 0;
+			camara.zoom = 1;
+			camara.updateProjectionMatrix();
+			renderer.setPixelRatio( Math.min( 3, ancho / innerWidth ) );
+			gi.sliceCount.value = 3;
+			gi.stepCount.value = 16;
+			for ( let i = 0; i < fotogramas; i ++ ) {
+
+				pipeline.render();
+				if ( i % 8 === 0 ) await new Promise( requestAnimationFrame );
+
+			}
+
+			pipeline.render();
+			return renderer.domElement.toDataURL( tipo, 0.9 );
+
+		} finally {
+
+			renderer.setPixelRatio( ratio );
+			gi.sliceCount.value = 2;
+			gi.stepCount.value = 8;
+			camara.position.copy( antes.pos );
+			ctrl.target.copy( antes.obj );
+			camara.fov = antes.fov;
+			camara.updateProjectionMatrix();
+			ctrl.update();
+			cam.actual = antes.actual;
+			velo.hidden = true;
+			capturando = false;
+			despertar();
+
+		}
+
+	}
+
+	$( '#foto' ).addEventListener( 'click', async () => {
+
+		const boton = $<HTMLButtonElement>( '#foto' );
+		boton.disabled = true;
+		const url = await renderizarVista( null, 2400, 72, 'image/png' );
+		boton.disabled = false;
+		$<HTMLImageElement>( '#captura img' ).src = url;
+		const enlace = $<HTMLAnchorElement>( '#captura a' );
+		enlace.href = url;
+		enlace.download = `${ PROMOCION.promocion.nombre }-${ cam.actual || 'vista' }.png`.toLowerCase().replace( /\s+/g, '-' );
+		$( '#captura' ).hidden = false;
+
+	} );
 	$( '#captura a' ).addEventListener( 'click', async ( ev ) => {
 
-		const d = descargas;
-		if ( ! d ) return; // sin capability: el enlace normal hace la descarga
+		if ( ! descargas ) return; // sin capability: el enlace normal hace la descarga
 		ev.preventDefault();
 		const a = ev.currentTarget as HTMLAnchorElement;
-		const blob = await ( await fetch( a.href ) ).blob();
-		d.save( { filename: a.download, data: blob } ).catch( () => {} );
+		await descargar( a.download, await ( await fetch( a.href ) ).blob() );
 
 	} );
 	$( '#captura button' ).addEventListener( 'click', () => ( $( '#captura' ).hidden = true ) );
-	addEventListener( 'keydown', ( ev ) => {
-
-		if ( ev.key === 'Escape' ) $( '#captura' ).hidden = true;
-
-	} );
 
 	// ---------------------------------------------------------------- bucle
 	addEventListener( 'resize', () => {
 
-		encuadrar( desplazamiento );
+		camara.aspect = innerWidth / innerHeight;
+		camara.updateProjectionMatrix();
 		cam.reencuadrar();
 		renderer.setSize( innerWidth, innerHeight );
 		etiquetas.setSize( innerWidth, innerHeight );
 
 	} );
 
-	// Con el cajón abierto, la composición de la cámara maestra se encaja entera en
-	// el hueco libre: se reduce la imagen (camera.zoom) y se desplaza su centro
-	// (setViewOffset). La cámara no cambia: misma posición, objetivo y fov.
+	// Con el cajón abierto, la composición maestra se encaja entera en el hueco
+	// libre: se reduce la imagen (zoom) y se desplaza su centro (filmOffset). La
+	// cámara no cambia: misma posición, objetivo y fov. (No se usa setViewOffset
+	// porque el antialiasing temporal lo reescribe en cada fotograma.)
 	let desplazamiento = 0;
 	const encuadrar = ( d: number ) => {
 
-		const W = innerWidth, Hh = innerHeight;
-		if ( d < 0.5 ) {
+		const W = innerWidth;
+		const zoom = d < 0.5 ? 1 : ( W - d ) / W;
+		const tan = Math.tan( THREE.MathUtils.degToRad( camara.fov / 2 ) );
+		const film = d < 0.5 ? 0 : camara.getFilmWidth() * ( d / W ) * tan * camara.aspect / zoom;
+		if ( camara.zoom !== zoom || camara.filmOffset !== film ) {
 
-			camara.clearViewOffset();
-			camara.aspect = W / Hh;
-			camara.zoom = 1;
-
-		} else {
-
-			camara.aspect = ( W + d ) / Hh;
-			camara.setViewOffset( W + d, Hh, d, 0, W, Hh );
-			camara.zoom = ( W - d ) / W;
+			camara.zoom = zoom;
+			camara.filmOffset = film;
+			camara.updateProjectionMatrix();
 
 		}
 
-		camara.updateProjectionMatrix();
-
 	};
 
+	// Render bajo demanda: con todo quieto se acumulan unos fotogramas (el
+	// antialiasing temporal converge) y la imagen se congela. Sin esto, el
+	// vaivén de subpíxel del antialiasing hace "temblar" los bordes finos del
+	// plano. Cualquier interacción o animación vuelve a activar el render.
+	const FOTOGRAMAS_ESTABLES = Number( new URLSearchParams( location.search ).get( 'estables' ) ) || 48;
+	let quietos = 0;
+	const despertar = () => ( quietos = 0 );
+	for ( const ev of [ 'pointerdown', 'wheel', 'keydown', 'click', 'resize' ] ) addEventListener( ev, despertar, { passive: true } );
+	addEventListener( 'pointermove', ( e ) => e.buttons && despertar(), { passive: true } );
+	const matAnterior = new THREE.Matrix4(), proyAnterior = new THREE.Matrix4();
+
+	let diagnostico: Record<string, unknown> = {};
 	let pausado = false;
 	let exposicion = renderer.toneMappingExposure;
 	let piscinaT = conf.piscina ? 1 : 0;
 	renderer.setAnimationLoop( ( t ) => {
 
-		if ( pausado ) return;
-		estados.actualizar( t );
+		if ( pausado || capturando ) return;
+		est.actualizar( t );
 		cam.actualizar( performance.now() );
-		ctrl.update();
+		const orbitando = ctrl.update();
+		// plano cercano según la altura: más precisión de profundidad en vistas lejanas
+		const near = THREE.MathUtils.clamp( ( camara.position.y - 2.5 ) * 0.04, 0.05, 1.2 );
+		if ( Math.abs( camara.near - near ) > 1e-3 ) {
+
+			camara.near = near;
+			camara.updateProjectionMatrix();
+
+		}
+
 		// dentro de la vivienda los techos proyectan sombra; en la maqueta no
 		const bajo = camara.position.y < H + 0.2;
 		for ( const tc of c.techos.children ) tc.castShadow = bajo || tc.userData.porche;
-		c.techos.visible = estados.valores.muros > 0.98;
-		canto.visible = bajo && c.techos.visible;
+		c.techos.visible = est.valores.muros > 0.98;
+		c.canto.visible = bajo && c.techos.visible;
 		conf.actualizar( performance.now() );
 		const objetivo = modo === 'personalizar' && innerWidth > 760 ? innerWidth - $( '#configurador' ).getBoundingClientRect().left : 0;
-		if ( Math.abs( objetivo - desplazamiento ) > 0.5 || ( desplazamiento > 0 && objetivo === 0 ) ) {
-
-			desplazamiento += ( objetivo - desplazamiento ) * ( estados.reducido ? 1 : 0.2 );
-			if ( Math.abs( objetivo - desplazamiento ) < 0.5 ) desplazamiento = objetivo;
-			encuadrar( desplazamiento );
-
-		}
-		// piscina: aparece con el equipamiento (estados 3 y 4) si está elegida
-		piscinaT += ( ( conf.piscina ? 1 : 0 ) - piscinaT ) * ( estados.reducido ? 1 : 0.08 );
-		const ep = piscinaT * estados.valores.fijo;
-		piscina.visible = ep > 0.003;
-		piscina.scale.y = Math.max( 0.001, ep );
+		desplazamiento += ( objetivo - desplazamiento ) * ( est.reducido ? 1 : 0.2 );
+		if ( Math.abs( objetivo - desplazamiento ) < 0.5 ) desplazamiento = objetivo;
+		encuadrar( desplazamiento );
+		// piscina: aparece con el equipamiento (vivienda terminada) si está elegida
+		piscinaT += ( ( conf.piscina ? 1 : 0 ) - piscinaT ) * ( est.reducido ? 1 : 0.08 );
+		if ( Math.abs( piscinaT - ( conf.piscina ? 1 : 0 ) ) < 0.002 ) piscinaT = conf.piscina ? 1 : 0;
+		const ep = piscinaT * est.valores.fijo;
+		c.piscina.visible = ep > 0.003;
+		c.piscina.scale.y = Math.max( 0.001, ep );
 		// exposición automática: dentro de la vivienda se abre el "diafragma"
 		const dentro = bajo && interiores.some( ( e ) => puntoEnPoligono( camara.position.x, - camara.position.z, e.poligono ) );
-		exposicion += ( ( dentro ? 1.5 : 1.08 ) - exposicion ) * 0.06;
+		const expObjetivo = dentro ? 1.5 : 1.08;
+		exposicion = Math.abs( expObjetivo - exposicion ) < 0.001 ? expObjetivo : exposicion + ( expObjetivo - exposicion ) * 0.06;
 		renderer.toneMappingExposure = exposicion;
+
+		camara.updateMatrixWorld();
+		const cambia = orbitando || cam.animando || est.animando || conf.animando
+			|| ! matAnterior.equals( camara.matrixWorld ) || ! proyAnterior.equals( camara.projectionMatrix )
+			|| exposicion !== expObjetivo || desplazamiento !== objetivo || ( piscinaT !== 0 && piscinaT !== 1 );
+		matAnterior.copy( camara.matrixWorld );
+		proyAnterior.copy( camara.projectionMatrix );
+		quietos = cambia ? 0 : quietos + 1;
+		diagnostico = { orbitando, cam: cam.animando, est: est.animando, conf: conf.animando, mat: ! matAnterior.equals( camara.matrixWorld ), exposicion, expObjetivo, desplazamiento, objetivo, piscinaT, quietos };
+		if ( quietos > FOTOGRAMAS_ESTABLES ) return; // imagen estable: no se vuelve a pintar
 		pipeline.render();
 		etiquetas.render( escena, camara );
 
 	} );
 
-	Object.assign( window, { __vivienda: { irModo, irEstado: ( n: number ) => irModo( n === 1 ? 'plano' : 'vivienda' ), cam, estados, renderer, camara, ctrl, pausar: ( p: boolean ) => ( pausado = p ) } } );
-	// arranque: la vivienda se construye desde el plano y se muestra la vista general
+	// ---------------------------------------------------------------- arranque
+	cargarGeometriaTipologia();
+	cargarVivienda( fichaVivienda );
 	cam.ir( 'aerea', true );
 	marcarVista( 'aerea' );
 	irModo( 'vivienda' );
 	document.body.classList.add( 'listo' );
+	if ( comprador ) avisar( `Bienvenido. Estás viendo tu vivienda ${ comprador.ref }. Pulsa Personalizar para elegir tus acabados.` );
+
+	Object.assign( window, { __vivienda: { irModo, irEstado: ( n: number ) => irModo( n === 1 ? 'plano' : 'vivienda' ), cam, estados: est, renderer, camara, ctrl, pausar: ( p: boolean ) => ( pausado = p ), diagnostico: () => diagnostico } } );
 
 }
 
@@ -565,3 +788,4 @@ iniciar().catch( ( err ) => {
 	$( '#carga' ).textContent = 'No se ha podido iniciar el visor 3D en este navegador.';
 
 } );
+

@@ -19,9 +19,15 @@ export interface PanelCallbacks {
 	elegir( categoria: string, opcion: string ): void;
 	/** Se ha desplegado una categoría (para enseñar la estancia afectada). */
 	abrir( categoria: string ): void;
+	/** Quitar una mejora desde el resumen: vuelve a la opción incluida. */
+	quitar( categoria: string ): void;
+	/** Quitar todas las mejoras (tras confirmación). */
+	restablecer(): void;
 	cerrar(): void;
-	guardar(): void;
+	generar(): void;
 }
+
+const PAPELERA = '<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
 
 export class Panel {
 
@@ -34,6 +40,7 @@ export class Panel {
 
 		this.raiz = document.querySelector( '#configurador' ) as HTMLElement;
 		const cuerpo = this.raiz.querySelector( '.opciones' ) as HTMLElement;
+		cuerpo.replaceChildren();
 		for ( const c of conf.datos.categorias ) {
 
 			const idCuerpo = `cat-${ c.id }`;
@@ -70,17 +77,32 @@ export class Panel {
 
 		}
 
-		this.raiz.querySelector( '.cerrar' )!.addEventListener( 'click', () => this.cb.cerrar() );
-		this.raiz.querySelector( '.guardar' )!.addEventListener( 'click', () => this.cb.guardar() );
-		const desglose = this.raiz.querySelector( '.ver-desglose' ) as HTMLButtonElement;
-		desglose.addEventListener( 'click', () => {
+		// los botones fijos del cajón se enlazan con onclick para poder recrear el panel
+		const boton = ( sel: string ) => this.raiz.querySelector( sel ) as HTMLButtonElement;
+		boton( '.cerrar' ).onclick = () => this.cb.cerrar();
+		boton( '.generar' ).onclick = () => this.cb.generar();
+		const confirmar = this.raiz.querySelector( '.confirmar-restablecer' ) as HTMLElement;
+		boton( '.restablecer' ).onclick = () => {
 
-			const abierto = desglose.getAttribute( 'aria-expanded' ) === 'true';
-			desglose.setAttribute( 'aria-expanded', String( ! abierto ) );
-			( this.raiz.querySelector( '.desglose' ) as HTMLElement ).hidden = abierto;
+			confirmar.hidden = false;
+			( confirmar.querySelector( '.no' ) as HTMLButtonElement ).focus();
 
-		} );
+		};
+		( confirmar.querySelector( '.no' ) as HTMLButtonElement ).onclick = () => ( confirmar.hidden = true );
+		( confirmar.querySelector( '.si' ) as HTMLButtonElement ).onclick = () => {
+
+			confirmar.hidden = true;
+			this.cb.restablecer();
+
+		};
 		this.resumen();
+
+	}
+
+	/** Vacía el panel antes de crear otro (al cargar otra vivienda). */
+	destruir() {
+
+		( this.raiz.querySelector( '.opciones' ) as HTMLElement ).replaceChildren();
 
 	}
 
@@ -135,15 +157,25 @@ export class Panel {
 
 		}
 
-		const lista = this.raiz.querySelector( '.extras' ) as HTMLElement;
-		lista.replaceChildren( ...( c.extras.length
-			? c.extras.map( ( x ) => h( 'li', {}, h( 'span', {}, `${ x.categoria.nombre }: ${ x.opcion.nombre }` ), h( 'span', {}, fmtPrecio( x.opcion.precio ) ) ) )
-			: [ h( 'li', { class: 'vacio' }, 'Sin personalizaciones: todo es lo incluido.' ) ] ) );
+		// resumen tipo carrito: cada mejora se puede quitar desde aquí
+		const carrito = this.raiz.querySelector( '.carrito' ) as HTMLElement;
+		carrito.replaceChildren( ...c.extras.map( ( x ) => {
+
+			const quitar = h( 'button', { type: 'button', class: 'quitar', 'aria-label': `Quitar ${ x.categoria.nombre.toLowerCase() }: ${ x.opcion.nombre }`, title: 'Quitar esta mejora' } );
+			quitar.innerHTML = PAPELERA;
+			quitar.onclick = () => this.cb.quitar( x.categoria.id );
+			return h( 'li', {}, h( 'span', { class: 'nombre-extra' }, h( 'span', { class: 'cat' }, x.categoria.nombre ), ` ${ x.opcion.detalle ?? x.opcion.nombre }` ),
+				h( 'span', { class: 'coste' }, `+${ fmtEuros( x.opcion.precio ) }` ), quitar );
+
+		} ) );
+		carrito.hidden = c.extras.length === 0;
 		const n = c.extras.length;
-		( this.raiz.querySelector( '.ver-desglose .cuenta' ) as HTMLElement ).textContent = n ? `${ n } ${ n === 1 ? 'mejora' : 'mejoras' } · +${ fmtEuros( c.totalExtras ) }` : 'Sin mejoras';
-		( this.raiz.querySelector( '[data-precio="base"]' ) as HTMLElement ).textContent = fmtEuros( c.datos.precioBase );
-		( this.raiz.querySelector( '[data-precio="extras"]' ) as HTMLElement ).textContent = fmtEuros( c.totalExtras );
+		( this.raiz.querySelector( '.n-mejoras' ) as HTMLElement ).textContent = n === 0 ? 'sin mejoras' : `${ n } ${ n === 1 ? 'mejora' : 'mejoras' }`;
+		( this.raiz.querySelector( '[data-precio="extras"]' ) as HTMLElement ).textContent = `+${ fmtEuros( c.totalExtras ) }`;
+		( this.raiz.querySelector( '[data-precio="base"]' ) as HTMLElement ).textContent = `Precio base ${ fmtEuros( c.precioBase ) }`;
 		( this.raiz.querySelector( '[data-precio="total"]' ) as HTMLElement ).textContent = fmtEuros( c.total );
+		( this.raiz.querySelector( '.restablecer' ) as HTMLElement ).hidden = n === 0;
+		if ( n === 0 ) ( this.raiz.querySelector( '.confirmar-restablecer' ) as HTMLElement ).hidden = true;
 		const chip = document.querySelector( '#total-ficha' ) as HTMLElement | null;
 		if ( chip ) {
 

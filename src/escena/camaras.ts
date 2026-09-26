@@ -2,31 +2,9 @@
 
 import * as THREE from 'three/webgpu';
 import type { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import type { Vista } from '../modelo/tipos';
 
-export interface Vista {
-	nombre: string;
-	pos: [ number, number, number ];
-	obj: [ number, number, number ];
-	fov: number;
-	interior?: boolean;
-}
-
-// CÁMARAS MAESTRAS. Coordenadas de mundo: x este, y altura, z sur (la vivienda
-// ocupa x 0..12.7, z -9.4..2.8). Son la referencia para imágenes comerciales
-// coherentes de la promoción: el objeto está congelado y nada las modifica en
-// tiempo de ejecución. Una vista nueva se añade aquí.
-export const VISTAS: Readonly<Record<string, Readonly<Vista>>> = Object.freeze( {
-	// solo para el modo Plano (no aparece en la barra de vistas)
-	planta: { nombre: 'Planta', pos: [ 6.35, 30, - 3.3 ], obj: [ 6.35, 0, - 3.32 ], fov: 28 },
-	aerea: { nombre: 'Vista general', pos: [ 17.5, 14.5, 9.5 ], obj: [ 6.0, 0, - 3.6 ], fov: 32 },
-	salon: { nombre: 'Salón', pos: [ 3.25, 1.45, - 5.55 ], obj: [ 0.9, 1.0, - 0.9 ], fov: 64, interior: true },
-	cocina: { nombre: 'Cocina', pos: [ 4.3, 1.5, - 5.05 ], obj: [ 5.4, 0.95, - 0.4 ], fov: 64, interior: true },
-	dormitorio: { nombre: 'Dormitorio', pos: [ 9.85, 1.45, - 5.05 ], obj: [ 11.9, 0.7, - 1.35 ], fov: 64, interior: true },
-	// baño principal desde la puerta: ducha al fondo, inodoro y doble lavabo a la derecha
-	bano: { nombre: 'Baño', pos: [ 10.08, 1.5, - 6.75 ], obj: [ 11.4, 1.0, - 8.55 ], fov: 70, interior: true },
-	// terraza desde el suroeste, por encima de la barandilla: fachada, terraza y zona de piscina
-	terraza: { nombre: 'Terraza', pos: [ - 1.9, 3.2, 5.2 ], obj: [ 4.0, 0.4, - 0.9 ], fov: 48 },
-} );
+export type { Vista };
 
 /** Altura bajo la cual dos vistas se consideran "a pie de calle": se cambia con fundido. */
 const ALTURA_OJOS = 2.9;
@@ -48,6 +26,8 @@ export class Camarografo {
 	private anim: { t0: number; dur: number; p0: THREE.Vector3; p1: THREE.Vector3; o0: THREE.Vector3; o1: THREE.Vector3; f0: number; f1: number } | null = null;
 	private vistaActual: Vista | null = null;
 	actual = 'planta';
+	/** Cámaras maestras de la tipología cargada (congeladas). */
+	vistas: Readonly<Record<string, Readonly<Vista>>> = {};
 	reducido = matchMedia( '(prefers-reduced-motion: reduce)' ).matches;
 
 	/** `velo`: capa a pantalla completa que se funde a opaco durante un corte. */
@@ -62,7 +42,7 @@ export class Camarografo {
 	 */
 	ir( vista: string | Vista, instantaneo = false ) {
 
-		const v = typeof vista === 'string' ? VISTAS[ vista ] : vista;
+		const v = typeof vista === 'string' ? this.vistas[ vista ] : vista;
 		if ( ! v ) return false;
 		const p1 = new THREE.Vector3( ...v.pos ), o1 = new THREE.Vector3( ...v.obj );
 		const f1 = fovPara( v, this.cam.aspect );
@@ -90,7 +70,9 @@ export class Camarografo {
 
 		}
 
-		const aPie = this.cam.position.y < ALTURA_OJOS && p1.y < ALTURA_OJOS;
+		// si alguno de los dos extremos está a la altura de los ojos se hace un fundido:
+		// ni se atraviesan muros ni hay vuelos verticales desde la vista aérea
+		const aPie = this.cam.position.y < ALTURA_OJOS || p1.y < ALTURA_OJOS;
 		if ( aPie && this.velo ) {
 
 			this.anim = null;

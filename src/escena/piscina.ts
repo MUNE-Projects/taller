@@ -3,13 +3,13 @@
 
 import * as THREE from 'three/webgpu';
 import { bumpMap, color, float, mx_noise_float, positionWorld, time, vec3 } from 'three/tsl';
-import type { Configuracion, Vivienda } from '../modelo/tipos';
+import type { Piscina, Vivienda } from '../modelo/tipos';
 import { puntoEnPoligono } from '../util/geo';
 import { caja, unir } from '../util/geo';
 import * as M from './materiales';
 
 /** Comprueba que la piscina cabe donde se ha previsto; devuelve los incumplimientos. */
-export function validarPiscina( c: Configuracion[ 'piscina' ], v: Vivienda ): string[] {
+export function validarPiscina( c: Piscina, v: Vivienda ): string[] {
 
 	const [ x0, y0, x1, y1 ] = c.rect;
 	const esquinas: [ number, number ][] = [ [ x0, y0 ], [ x1, y0 ], [ x1, y1 ], [ x0, y1 ] ];
@@ -23,7 +23,7 @@ export function validarPiscina( c: Configuracion[ 'piscina' ], v: Vivienda ): st
 
 }
 
-export function construirPiscina( c: Configuracion[ 'piscina' ] ) {
+export function construirPiscina( c: Piscina ) {
 
 	const [ x0, y0, x1, y1 ] = c.rect;
 	const e = c.espesor, h = c.alturaVaso, a = c.albardilla;

@@ -1,8 +1,8 @@
 // Estado de la configuración comercial: opción elegida por categoría, precios
 // y aplicación de los acabados a los uniforms de los materiales.
 //
-// Las categorías y opciones vienen de src/modelo/configuracion.json; para
-// añadir una variante basta con añadir una opción con sus parámetros.
+// Las categorías y opciones vienen del catálogo de la promoción
+// (src/datos/catalogo.json), filtrado para cada vivienda.
 
 import * as THREE from 'three/webgpu';
 import type { Categoria, Configuracion, Opcion } from '../modelo/tipos';
@@ -27,9 +27,16 @@ export class Configurador {
 	private tweens: { u: { value: unknown }; desde: THREE.Color | number; hasta: THREE.Color | number; t0: number }[] = [];
 	private readonly duracion = 450;
 
-	constructor( readonly datos: Configuracion ) {
+	constructor( readonly datos: Configuracion, readonly precioBase: number ) {
 
 		this.seleccion = Object.fromEntries( datos.categorias.map( ( c ) => [ c.id, c.opciones[ 0 ].id ] ) );
+
+	}
+
+	/** Opción incluida (la primera) de una categoría. */
+	base( categoria: string ) {
+
+		return this.categoria( categoria ).opciones[ 0 ];
 
 	}
 
@@ -41,7 +48,7 @@ export class Configurador {
 
 	opcion( categoria: string, id = this.seleccion[ categoria ] ): Opcion {
 
-		return this.categoria( categoria ).opciones.find( ( o ) => o.id === id )!;
+		return this.categoria( categoria ).opciones.find( ( o ) => o.id === id ) ?? this.base( categoria );
 
 	}
 
@@ -83,6 +90,12 @@ export class Configurador {
 
 	}
 
+	get animando() {
+
+		return this.tweens.length > 0;
+
+	}
+
 	actualizar( ahora: number ) {
 
 		this.tweens = this.tweens.filter( ( t ) => {
@@ -97,15 +110,22 @@ export class Configurador {
 
 	}
 
+	/** Categorías que no existen en esta vivienda cuentan como su opción incluida. */
+	private tiene( id: string ) {
+
+		return this.datos.categorias.some( ( c ) => c.id === id );
+
+	}
+
 	get variante() {
 
-		return this.opcion( 'distribucion' ).variante ?? null;
+		return this.tiene( 'distribucion' ) ? this.opcion( 'distribucion' ).variante ?? null : null;
 
 	}
 
 	get piscina() {
 
-		return !! this.opcion( 'exterior' ).piscina;
+		return this.tiene( 'exterior' ) && !! this.opcion( 'exterior' ).piscina;
 
 	}
 
@@ -124,7 +144,7 @@ export class Configurador {
 
 	get total() {
 
-		return this.datos.precioBase + this.totalExtras;
+		return this.precioBase + this.totalExtras;
 
 	}
 

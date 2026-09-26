@@ -124,3 +124,31 @@ La opción de baños no tiene cámara maestra propia, así que mantiene la vista
 3. **Cajón de 320 px a la derecha,** con acordeón (una categoría abierta a la vez), elección y precio en la cabecera de cada categoría, total fijo y desglose plegable. Al desplegar una categoría, la cámara va a la estancia afectada. Así, al elegir una opción la cámara ya está allí y no se mueve.
 4. **Cámara.** Se elimina el arco. Una sola transición por acción; no se mueve si ya está en la vista; fundido de unos 0,3 s entre vistas a la altura de los ojos; desplazamiento suave según la distancia en el resto.
 5. **Distribución.** Cada variante lleva su propia vista explicativa. Para la cocina abierta es una vista interior desde el salón hacia la cocina, a través del paso, que muestra la apertura, la cocina y el cambio de pavimento. Un aviso resume el cambio y ofrece "Ver en plano" como complemento.
+
+## Iteración 4: producto comercial
+
+### Cambios
+
+- **Estructura:** Promoción → Tipologías → Viviendas → Opciones. La geometría, las variantes y las cámaras maestras van por tipología. Bajo B (ejemplo) es la tipología A espejada, con otro precio base y sin piscina.
+- **Acceso sin base de datos:** enlace privado por vivienda (`#c-…`). Solo se guarda su hash. La parte pública no muestra personalización ni precios.
+- **Carrito:** quitar mejoras desde el resumen, restablecer con confirmación, y total, número de mejoras y extras siempre visibles.
+- **Documento de selección en PDF**, que sustituye a "Guardar configuración". Se genera con jsPDF en el navegador.
+- **Marca blanca** en `promocion.json`, aplicada a la interfaz y al PDF.
+- **Cámaras maestras revisadas con criterio comercial:**
+  - Baño: diagonal desde la puerta; ducha, inodoro y doble lavabo protagonistas; sin tabique en primer plano; 60°.
+  - Salón: desde la esquina noroeste hacia la balconera.
+  - Dormitorio: cama y balconera, sin armario en primer plano.
+  - Cocina: campo más cerrado.
+  - Terraza y Vista general: sin cambios.
+- **Vibración en Plano:** no venía de la cámara (posición, fov y etiquetas medidos sin variación) ni de superficies coplanares. La causaba el vaivén de subpíxel del antialiasing temporal sobre los bordes finos del poché, más el ruido temporal de la oclusión ambiental. Se corrige así:
+  - oclusión anulada en planta;
+  - plano de recorte cercano adaptado a la distancia;
+  - líneas del plano algo más separadas;
+  - render bajo demanda: con todo quieto se acumulan unos fotogramas y la imagen se congela. Verificado: 0 píxeles distintos entre fotogramas en Plano.
+- **Encuadre con el cajón abierto:** se descubrió que el antialiasing temporal reescribe `setViewOffset` en cada fotograma, así que el desplazamiento anterior no llegaba a aplicarse. Ahora se usa `filmOffset` junto con el zoom de proyección, sin mover la cámara.
+
+### Decisiones
+
+- **Marca de ejemplo ficticia** (Promotora Demo, Residencial Demo). No se usa la marca de la promotora del plano de prueba porque no tenemos su permiso. Se cambia en `promocion.json`.
+- **Tipografía del PDF:** Helvetica. Incrustar la tipografía de la promotora requiere su fichero de fuente (TTF); se puede añadir cuando la promotora lo facilite.
+- **Distribución:** al cambiarla, la cámara va a la vista explicativa de la variante (interior salón-cocina) y el aviso ofrece "Ver en plano".

@@ -12,6 +12,7 @@
     "plano": "python3 herramientas/extraer_plano.py"
   },
   "dependencies": {
+    "jspdf": "4.2.1",
     "three": "0.186.1"
   },
   "devDependencies": {

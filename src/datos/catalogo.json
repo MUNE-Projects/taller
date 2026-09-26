@@ -1,6 +1,5 @@
 {
   "moneda": "EUR",
-  "precioBase": 425000,
   "categorias": [
     {
       "id": "distribucion",
@@ -193,19 +192,5 @@
       "soloAlActivar": true
     }
   ],
-  "piscina": {
-    "origen": "propuesta (prueba de configurador)",
-    "nota": "Vaso elevado sobre el forjado (bajo la planta baja hay garaje). Se sitúa en la parte descubierta de la terraza, deja 1 m de paso frente a la fachada y no invade el porche ni la posición de la cámara maestra Terraza.",
-    "rect": [
-      0.45,
-      -2.1,
-      2.65,
-      -1.0
-    ],
-    "alturaVaso": 0.6,
-    "alturaAgua": 0.52,
-    "espesor": 0.12,
-    "albardilla": 0.06,
-    "pasoMinimoFachada": 0.95
-  }
+  "nota": "Catálogo de opciones de la promoción. Se carga una vez; cada tipología indica qué opciones admite y cada vivienda puede restringirlas."
 }

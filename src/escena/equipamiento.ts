@@ -155,8 +155,10 @@ function columna( p: Pieza, W: number, D: number, H: number, hornos: boolean ) {
 
 function encimera( p: Pieza, W: number, D: number, H: number, e: Equipamiento, cy: number ) {
 
-	// rangos de planta (y norte) -> x local (frente al oeste: x local = cy - y)
-	const rango = ( r?: [ number, number ] ): [ number, number ] | null => r ? [ cy - r[ 1 ], cy - r[ 0 ] ] : null;
+	// rangos de planta (y norte) -> x local: con el frente al oeste x local = cy - y;
+	// con el frente al este (vivienda simétrica) x local = y - cy
+	const rango = ( r?: [ number, number ] ): [ number, number ] | null => ! r ? null
+		: e.frente === 'e' ? [ r[ 0 ] - cy, r[ 1 ] - cy ] : [ cy - r[ 1 ], cy - r[ 0 ] ];
 	const placa = rango( e.placa ), freg = rango( e.fregadero ), lava = rango( e.lavavajillas );
 	const z1 = D / 2, z0 = - D / 2;
 	const yE = 0.87, yT = 0.9;

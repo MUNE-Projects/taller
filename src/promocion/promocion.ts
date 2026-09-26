@@ -1,0 +1,92 @@
+// Promoción → Tipologías → Viviendas → Opciones.
+//
+// La geometría y las cámaras maestras viven en la tipología (una por
+// geometría distinta). Cada vivienda aporta sus datos (referencia, planta,
+// superficie, orientación, precio, opciones) y, si es simétrica, se carga
+// su tipología espejada. No hay un modelo 3D por vivienda.
+
+import datosPromocion from '../datos/promocion.json';
+import datosCatalogo from '../datos/catalogo.json';
+import type { Configuracion, Promocion, Tipologia, Variante, Vivienda, ViviendaPromocion } from '../modelo/tipos';
+import { ejeSimetria, espejarTipologia, espejarVariante, espejarVivienda } from './espejo';
+
+export const PROMOCION = datosPromocion as unknown as Promocion;
+const CATALOGO = datosCatalogo as unknown as Configuracion;
+
+// datos de cada tipología (src/datos/tipologias/<id>/): una carpeta por geometría
+const ficheros = import.meta.glob( '../datos/tipologias/*/*.json', { eager: true, import: 'default' } ) as Record<string, unknown>;
+const dato = <T>( id: string, nombre: string ) => {
+
+	const f = ficheros[ `../datos/tipologias/${ id }/${ nombre }.json` ];
+	if ( ! f ) throw new Error( `Falta ${ nombre }.json en la tipología ${ id }` );
+	return f as T;
+
+};
+
+export interface Modelo {
+	tipologia: Tipologia;
+	vivienda: Vivienda;
+	variantes: Variante[];
+}
+
+/** Geometría, variantes y cámaras de una tipología, espejadas si hace falta. */
+export function cargarModelo( idTipologia: string, espejo = false ): Modelo {
+
+	const tipologia = dato<Tipologia>( idTipologia, 'tipologia' );
+	const vivienda = dato<Vivienda>( idTipologia, 'vivienda' );
+	const variantes = dato<Variante[]>( idTipologia, 'variantes' );
+	if ( ! espejo ) return { tipologia, vivienda, variantes };
+	const S = ejeSimetria( vivienda );
+	return {
+		tipologia: espejarTipologia( tipologia, S ),
+		vivienda: espejarVivienda( vivienda, S ),
+		variantes: variantes.map( ( v ) => espejarVariante( v, S ) ),
+	};
+
+}
+
+/**
+ * Catálogo que puede personalizar una vivienda: el de la promoción, filtrado
+ * por lo que admite su tipología y por las restricciones de la vivienda.
+ * Una categoría con una sola opción no se muestra (no hay nada que elegir).
+ */
+export function catalogoPara( v: ViviendaPromocion ): Configuracion {
+
+	const permitidas = PROMOCION.tipologias.find( ( t ) => t.id === v.tipologia )?.opciones ?? {};
+	const categorias = CATALOGO.categorias.map( ( c ) => {
+
+		const ids = v.opciones?.[ c.id ] ?? permitidas[ c.id ] ?? [];
+		return { ...c, opciones: c.opciones.filter( ( o ) => ids.includes( o.id ) ) };
+
+	} ).filter( ( c ) => c.opciones.length > 1 );
+	return { ...CATALOGO, categorias };
+
+}
+
+/** Vivienda que se enseña en la parte pública: la primera, sin espejar. */
+export const viviendaPublica = () => PROMOCION.viviendas.find( ( v ) => ! v.espejo ) ?? PROMOCION.viviendas[ 0 ];
+
+async function sha256( texto: string ) {
+
+	const h = await crypto.subtle.digest( 'SHA-256', new TextEncoder().encode( texto ) );
+	return [ ...new Uint8Array( h ) ].map( ( b ) => b.toString( 16 ).padStart( 2, '0' ) ).join( '' );
+
+}
+
+/** Normaliza lo que pega el comprador: el código o el enlace completo. */
+export function extraerCodigo( entrada: string ) {
+
+	const t = entrada.trim();
+	const m = t.match( /c-[a-z0-9]{8,}/i );
+	return ( m ? m[ 0 ] : t.replace( /^#/, '' ) ).toLowerCase();
+
+}
+
+/** Vivienda asociada a un código de acceso, o null. */
+export async function resolverAcceso( codigo: string ): Promise<ViviendaPromocion | null> {
+
+	if ( ! codigo || ! crypto?.subtle ) return null;
+	const h = await sha256( `${ PROMOCION.id }:${ extraerCodigo( codigo ) }` );
+	return PROMOCION.viviendas.find( ( v ) => v.acceso === h ) ?? null;
+
+}

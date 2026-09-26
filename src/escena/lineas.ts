@@ -6,7 +6,7 @@ import { color, float, uniform } from 'three/tsl';
 import type { Rect, Vivienda } from '../modelo/tipos';
 
 export const uLineas = uniform( 1 );
-const Y = 0.012;
+const Y = 0.02; // por encima del poché aplastado (1 cm) con margen para la precisión de profundidad
 
 export function construirLineas( v: Vivienda, extras: { piscina?: Rect } = {} ) {
 

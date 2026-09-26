@@ -1,0 +1,108 @@
+{
+  "id": "residencial-demo",
+  "nota": "Datos de ejemplo para la prueba: la promotora, la promoción y las viviendas B son ficticias. La geometría de la tipología A procede del plano de prueba.",
+  "urlBase": "https://claude.ai/artifact/Q3qte65irKu8fmy4AfAXiJ",
+  "marca": {
+    "promotora": "Promotora Demo",
+    "logoSvg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"120\" height=\"32\" viewBox=\"0 0 120 32\"><rect x=\"1\" y=\"1\" width=\"30\" height=\"30\" rx=\"7\" fill=\"#2f5d50\"/><path d=\"M8 22V12l8-5 8 5v10h-5v-6h-6v6z\" fill=\"#f5f3ef\"/><text x=\"38\" y=\"21\" font-family=\"Helvetica, Arial, sans-serif\" font-size=\"14\" font-weight=\"600\" fill=\"#1c1c1a\">Promotora</text><text x=\"38\" y=\"30\" font-family=\"Helvetica, Arial, sans-serif\" font-size=\"8\" letter-spacing=\"2\" fill=\"#5e5a53\">DEMO</text></svg>",
+    "colorPrincipal": "#2f5d50",
+    "colorSecundario": "#b8946a",
+    "tipografia": {
+      "familia": "Manrope",
+      "googleFonts": "Manrope:wght@400;500;600;700"
+    },
+    "favicon": null,
+    "contacto": {
+      "telefono": "900 000 000",
+      "email": "ventas@promotora-demo.example",
+      "web": "promotora-demo.example",
+      "direccion": "Oficina comercial · Calle Ejemplo 1, Guadalajara"
+    },
+    "comercial": {
+      "nombre": "Equipo comercial",
+      "telefono": "900 000 000",
+      "email": "ventas@promotora-demo.example"
+    },
+    "legal": {
+      "precios": "Precios con IVA no incluido, válidos para la fase de personalización en curso. Los importes de las mejoras se suman al precio de la vivienda y quedan sujetos a la confirmación por escrito de la promotora.",
+      "imagenes": "Imágenes generadas a partir del proyecto, meramente orientativas. Mobiliario no incluido salvo indicación expresa.",
+      "pie": "Promotora Demo S.L. · CIF B00000000 · Documento sin validez contractual hasta su aceptación por la promotora."
+    }
+  },
+  "promocion": {
+    "nombre": "Residencial Demo",
+    "ubicacion": "Alovera (Guadalajara)"
+  },
+  "tipologias": [
+    {
+      "id": "a",
+      "opciones": {
+        "distribucion": [
+          "base",
+          "alternativa"
+        ],
+        "suelo": [
+          "roble-natural",
+          "roble-claro",
+          "nogal"
+        ],
+        "cocina": [
+          "blanco",
+          "nogal",
+          "gris-antracita"
+        ],
+        "encimera": [
+          "blanca",
+          "negro-granito",
+          "piedra-clara"
+        ],
+        "banos": [
+          "claro",
+          "oscuro"
+        ],
+        "exterior": [
+          "sin-mejora",
+          "piscina"
+        ]
+      }
+    }
+  ],
+  "viviendas": [
+    {
+      "ref": "Bajo A",
+      "portal": "3",
+      "planta": "Baja",
+      "tipologia": "a",
+      "espejo": false,
+      "orientacion": "Sur",
+      "precioBase": 425000,
+      "superficies": {
+        "util": 88.18,
+        "exterior": 32.71,
+        "construida": 123.21
+      },
+      "acceso": "ad4bcd3781a31e59a2edc7b53be87ebf1c69023df797a8a318cdd68fc35aad87"
+    },
+    {
+      "ref": "Bajo B",
+      "portal": "3",
+      "planta": "Baja",
+      "tipologia": "a",
+      "espejo": true,
+      "orientacion": "Sur",
+      "precioBase": 419000,
+      "superficies": {
+        "util": 88.18,
+        "exterior": 32.71,
+        "construida": 123.21
+      },
+      "opciones": {
+        "exterior": [
+          "sin-mejora"
+        ]
+      },
+      "nota": "Ejemplo: vivienda simétrica de la tipología A, sin opción de piscina.",
+      "acceso": "b117f709f738e6f6cb7dc089e7bdf8c59ca3babd2dd3ad8f60d2233aa6a73241"
+    }
+  ]
+}

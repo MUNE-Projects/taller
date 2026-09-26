@@ -5,52 +5,74 @@ de calidad comercial partiendo solo del plano de una vivienda. Todo se genera
 por código con **Three.js + TSL**. No hay modelos 3D, texturas, HDRI ni
 librerías externas aparte de `three`.
 
-La interfaz tiene tres modos:
+La interfaz tiene dos niveles de acceso sobre una única experiencia visual:
 
-| Modo | Qué muestra |
+| Acceso | Qué ve |
 |---|---|
-| Plano | Planta en papel con estancias y superficies |
-| **Vivienda** (principal) | La vivienda terminada, navegable, con seis vistas guiadas |
-| Personalizar | La vivienda con un cajón de opciones comerciales y su precio |
-
-Internamente se conservan los estados de construcción (volúmenes y maqueta blanca). Ya no aparecen en la interfaz, pero son el paso intermedio de la animación del plano a la vivienda.
+| **Público** (web de la promotora) | Plano, Vivienda, vistas guiadas y navegación libre. Sin personalización ni precios de mejoras. Incluye el aviso "¿Ya eres comprador? Accede para personalizar tu vivienda." |
+| **Comprador** (enlace privado de su vivienda) | Lo anterior, más **Personalizar**: opciones de su vivienda, precio, resumen tipo carrito y documento de selección en PDF |
 
 | | |
 |---|---|
-| ![Vista general](docs/capturas/06-vivienda-general.png) | ![Plano](docs/capturas/06-plano.png) |
-| ![Baño](docs/capturas/06-personalizar-bano.png) | ![Cocina](docs/capturas/06-personalizar-cocina.png) |
-| ![Distribución](docs/capturas/06-personalizar-distribucion.png) | ![Terraza](docs/capturas/06-personalizar-terraza.png) |
+| ![Vista general](docs/capturas/07-publico-general.png) | ![Plano](docs/capturas/07-plano.png) |
+| ![Personalizar](docs/capturas/07-comprador-personalizar.png) | ![Documento](docs/capturas/07-documento.png) |
+
+## Estructura: Promoción → Tipologías → Viviendas → Opciones
+
+```
+src/datos/
+  promocion.json        marca blanca, promoción, tipologías (opciones admitidas) y viviendas
+  catalogo.json         catálogo de opciones de la promoción (precios, parámetros, vista asociada)
+  tipologias/a/
+    vivienda.json       geometría (generada por herramientas/extraer_plano.py)
+    variantes.json      distribuciones alternativas (parches sobre la geometría)
+    tipologia.json      cámaras maestras, vistas guiadas y extras ligados a la geometría (piscina)
+```
+
+- **Una tipología por geometría distinta,** no un modelo por vivienda. Las viviendas que comparten geometría cargan la misma tipología.
+- **Viviendas simétricas** (`"espejo": true`): se espejan los datos al cargar (muros, huecos, giros de puerta, mobiliario, variantes, cámaras y piscina) en lugar de crear otro modelo.
+- **Cada vivienda aporta sus datos:** referencia, planta, orientación, superficies, precio base y, si hace falta, restricciones de opciones. En el ejemplo, Bajo B no admite piscina.
+- **Catálogo.** Se carga una vez por promoción. La tipología indica qué opciones admite. Una categoría con una sola opción posible no se muestra.
+
+## Acceso de comprador sin base de datos
+
+- Cada vivienda tiene un código privado generado de antemano: `python3 herramientas/generar_accesos.py`.
+- En `promocion.json` solo se guarda el **hash SHA-256** de cada código, nunca el código en claro.
+- Los enlaces para entregar a cada comprador se escriben en `accesos-privados.csv`, fuera del control de versiones.
+- El enlace es `<url>#c-xxxxxxxxxxxxxxxx`. También se puede pegar el código en "Accede para personalizar tu vivienda".
+- El acceso solo identifica la vivienda: qué tipología cargar y qué opciones ofrecer. No hay usuarios, contraseñas, emails ni CRM.
+- **Limitación.** Es un acceso por enlace secreto, suficiente para separar la parte pública de la de comprador. No es autenticación fuerte: quien tenga el enlace, entra. Tampoco oculta el catálogo a alguien que inspeccione el código.
+
+## Personalizar y documento de selección
+
+- **Cajón compacto** con categorías plegables (una abierta a la vez). Al desplegar una categoría, la cámara va a la estancia afectada.
+- **Resumen tipo carrito:** *Tu selección · N mejoras · +X €* y el precio total, siempre visibles.
+  - Cada mejora se quita con su ×: vuelve a la opción incluida y el modelo y el precio se actualizan al instante.
+  - "Restablecer" pide confirmación dentro de la propia página.
+- **Documento de selección.** "Generar documento de selección" muestra el resumen y ofrece *Descargar PDF · Seguir personalizando · Cerrar*. El PDF es un documento comercial de la promotora e incluye:
+  - logo y datos de la promoción;
+  - ficha de la vivienda (tipología, superficies, orientación);
+  - imagen de la vivienda configurada, desde la cámara maestra de la vista general;
+  - vista de la distribución elegida;
+  - selección por categoría, resumen económico y aviso legal de precios;
+  - página de conformidad con nombre, DNI/NIE, fecha, firma y observaciones, e instrucción de firmarlo y enviarlo al comercial.
+- **La configuración no se guarda en ningún sistema.** El navegador del comprador recuerda su última selección solo por comodidad.
+
+## Marca blanca
+
+`promocion.json › marca` define:
+- logo (SVG), nombre de la promotora y colores principal y secundario;
+- tipografía (Google Fonts) y favicon;
+- contacto, comercial y textos legales (precios, imágenes, pie).
+
+La interfaz (colores, tipografía, logo, favicon, título) y el PDF se generan a partir de esos datos. Los datos de ejemplo son de una promotora ficticia.
 
 ## Vistas guiadas (cámaras maestras)
 
-Vista general, Salón, Cocina, Dormitorio, Baño y Terraza, más la planta del modo Plano. Están definidas y congeladas en `src/escena/camaras.ts`.
-
-**Transiciones de cámara:**
-- una sola por acción, sin arcos;
-- si la cámara ya está en la vista pedida, no se mueve;
-- entre dos vistas a la altura de los ojos, un fundido breve en lugar de atravesar muros;
-- en el resto, un desplazamiento suave.
-
-**Con el cajón de personalización abierto:** la composición maestra se encaja entera en el hueco libre (zoom de proyección y desplazamiento del centro) sin mover la cámara. Las capturas usan el encuadre maestro.
-
-## Personalizar
-
-| Categoría | Opciones | Vista al abrir o cambiar |
-|---|---|---|
-| Distribución | base / alternativa (cocina abierta al salón) | Vista interior propia de la variante (salón hacia cocina), con aviso y acceso a "Ver en plano" |
-| Suelo | roble natural / roble claro / nogal | Se mantiene |
-| Cocina | blanco / nogal / gris antracita | Cocina |
-| Encimera | blanca / negro granito / piedra clara | Cocina |
-| Baños | claro / oscuro | Baño |
-| Exterior | sin mejora / piscina rectangular pequeña | Terraza (al activarla) |
-
-- **Cajón:** 320 px, con categorías plegables y solo una abierta a la vez. Cada cabecera muestra lo elegido y su precio.
-- **Precio:** el total queda siempre visible, con el desglose plegable.
-- **Guardar configuración:** muestra el resumen y lo recuerda en este navegador.
-
-**Todo se define como datos:**
-- `src/modelo/configuracion.json`: opciones, precios, parámetros y vista.
-- `src/modelo/variantes.json`: distribuciones, con su propia vista explicativa.
+- Definidas por tipología en `tipologia.json`: Vista general, Salón, Cocina, Dormitorio, Baño y Terraza, más la planta del modo Plano.
+- Compuestas como fotografías comerciales: altura de ojos (1,5 m), campo contenido (55-60°) y la estancia como protagonista.
+- **Transiciones:** una sola por acción. Si la cámara ya está en la vista, no se mueve. Si uno de los extremos es una vista a pie de calle, hay un fundido breve (sin vuelos verticales ni atravesar muros).
+- **Render bajo demanda:** con todo quieto, la imagen se estabiliza y deja de repintarse. Así no hay temblor en ninguna vista quieta y se ahorra batería.
 
 ## Uso
 
@@ -60,7 +82,8 @@ npm run dev        # http://localhost:5173
 npm run build      # salida estática en dist/
 ```
 
-- **Modos:** barra inferior o teclas `1` (Plano), `2` (Vivienda) y `3` (Personalizar).
+- **Modos:** barra inferior o teclas `1` (Plano), `2` (Vivienda) y `3` (Personalizar, con acceso de comprador).
+- **Acceso de prueba:** los enlaces de las viviendas de ejemplo están en `accesos-privados.csv` (se generan con `python3 herramientas/generar_accesos.py`).
 - **Vistas:** barra de vistas encima de los modos. También se puede orbitar libremente con el ratón.
 - **Capturar imagen** (icono de cámara): renderiza la vista actual a ~2400 px con iluminación global de alta calidad, acumula 72 fotogramas y descarga un PNG.
 - **Motor:** WebGPU cuando el navegador lo soporta, con respaldo automático a WebGL 2. `?webgl` fuerza WebGL 2.

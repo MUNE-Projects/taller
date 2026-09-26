@@ -120,9 +120,69 @@ export interface Categoria {
 
 export interface Configuracion {
 	moneda: string;
-	precioBase: number;
 	categorias: Categoria[];
-	piscina: {
-		rect: Rect; alturaVaso: number; alturaAgua: number; espesor: number; albardilla: number; pasoMinimoFachada: number;
-	};
+}
+
+export interface Piscina {
+	rect: Rect; alturaVaso: number; alturaAgua: number; espesor: number; albardilla: number; pasoMinimoFachada: number;
+}
+
+// ------------------------------------------------------------ promoción
+
+export interface Vista {
+	nombre: string;
+	pos: [ number, number, number ];
+	obj: [ number, number, number ];
+	fov: number;
+	interior?: boolean;
+}
+
+/** Tipología: geometría, cámaras maestras y extras que dependen de la geometría. */
+export interface Tipologia {
+	id: string;
+	nombre: string;
+	resumen: string;
+	dormitorios: number;
+	banos: number;
+	vistas: Record<string, Vista>;
+	guiadas: string[];
+	piscina: Piscina;
+}
+
+export interface ViviendaPromocion {
+	ref: string;
+	portal?: string;
+	planta: string;
+	tipologia: string;
+	/** Vivienda simétrica de su tipología (se espeja la geometría al cargar). */
+	espejo: boolean;
+	orientacion: string;
+	precioBase: number;
+	superficies: { util: number; exterior: number; construida: number };
+	/** Restricciones de opciones para esta vivienda (por categoría). */
+	opciones?: Record<string, string[]>;
+	nota?: string;
+	/** SHA-256 de "<id promoción>:<código de acceso>". */
+	acceso: string;
+}
+
+export interface Marca {
+	promotora: string;
+	logoSvg: string;
+	colorPrincipal: string;
+	colorSecundario: string;
+	tipografia: { familia: string; googleFonts?: string };
+	favicon: string | null;
+	contacto: { telefono: string; email: string; web: string; direccion: string };
+	comercial?: { nombre: string; telefono: string; email: string };
+	legal: { precios: string; imagenes: string; pie: string };
+}
+
+export interface Promocion {
+	id: string;
+	urlBase: string;
+	marca: Marca;
+	promocion: { nombre: string; ubicacion: string };
+	tipologias: { id: string; opciones: Record<string, string[]> }[];
+	viviendas: ViviendaPromocion[];
 }
