@@ -1,0 +1,281 @@
+:root {
+	--papel: #f5f3ef;
+	--tinta: #1c1c1a;
+	--tinta-2: #5e5a53;
+	--tinta-3: #8b867d;
+	--linea: rgb(28 28 26 / 0.12);
+	--panel: rgb(247 246 243 / 0.78);
+	--salida: cubic-bezier(0.23, 1, 0.32, 1);
+	--fuente: "Inter", "Helvetica Neue", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+	color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+	margin: 0;
+	height: 100%;
+	overflow: hidden;
+	background: var(--papel);
+	color: var(--tinta);
+	font: 400 14px/1.4 var(--fuente);
+	-webkit-font-smoothing: antialiased;
+	font-variant-numeric: tabular-nums;
+}
+
+#lienzo, #etiquetas { position: fixed; inset: 0; }
+#lienzo canvas { display: block; touch-action: none; }
+#etiquetas { pointer-events: none; }
+
+/* ------------------------------------------------ ficha */
+.ficha {
+	position: fixed;
+	top: 24px;
+	left: 28px;
+	max-width: 340px;
+	pointer-events: none;
+}
+
+.antetitulo {
+	margin: 0 0 6px;
+	font-size: 11px;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--tinta-3);
+}
+
+.ficha h1 {
+	margin: 0;
+	font-size: 22px;
+	line-height: 1.2;
+	font-weight: 500;
+	letter-spacing: -0.015em;
+	text-wrap: balance;
+}
+
+.datos {
+	display: flex;
+	gap: 24px;
+	margin: 14px 0 0;
+}
+
+.datos div { display: grid; gap: 2px; }
+.datos dt { font-size: 11px; color: var(--tinta-3); }
+.datos dd { margin: 0; font-size: 15px; font-weight: 500; }
+
+.lema {
+	margin: 18px 0 0;
+	padding-top: 12px;
+	border-top: 1px solid var(--linea);
+	font-size: 13px;
+	color: var(--tinta-2);
+}
+
+/* ------------------------------------------------ estados */
+.estados {
+	position: fixed;
+	left: 50%;
+	bottom: 28px;
+	transform: translateX(-50%);
+	display: flex;
+	padding: 4px;
+	gap: 2px;
+	background: var(--panel);
+	backdrop-filter: blur(14px) saturate(1.2);
+	-webkit-backdrop-filter: blur(14px) saturate(1.2);
+	border: 1px solid var(--linea);
+	border-radius: 999px;
+	box-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 8px 24px rgb(0 0 0 / 0.06);
+}
+
+.estados button {
+	display: flex;
+	align-items: baseline;
+	gap: 8px;
+	padding: 10px 18px;
+	border: 0;
+	border-radius: 999px;
+	background: transparent;
+	color: var(--tinta-2);
+	font: inherit;
+	font-size: 13px;
+	cursor: pointer;
+	transition: background-color 180ms var(--salida), color 180ms var(--salida), transform 120ms var(--salida);
+}
+
+.estados .num { font-size: 11px; color: var(--tinta-3); transition: color 180ms var(--salida); }
+.estados button[aria-current="true"] { background: var(--tinta); color: var(--papel); }
+.estados button[aria-current="true"] .num { color: rgb(245 243 239 / 0.6); }
+.estados button:active { transform: scale(0.97); }
+
+@media (hover: hover) and (pointer: fine) {
+	.estados button:not([aria-current="true"]):hover { background: rgb(28 28 26 / 0.06); color: var(--tinta); }
+	.vistas button:not([aria-pressed="true"]):not(.foto):hover { color: var(--tinta); }
+	.vistas .foto:hover { background: #000; }
+}
+
+/* ------------------------------------------------ vistas */
+.vistas {
+	position: fixed;
+	top: 24px;
+	right: 28px;
+	display: grid;
+	gap: 2px;
+	width: 168px;
+	padding: 12px;
+	background: var(--panel);
+	backdrop-filter: blur(14px) saturate(1.2);
+	-webkit-backdrop-filter: blur(14px) saturate(1.2);
+	border: 1px solid var(--linea);
+	border-radius: 14px;
+}
+
+.titulo-panel {
+	margin: 0 0 6px 8px;
+	font-size: 11px;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--tinta-3);
+}
+
+.vistas button {
+	position: relative;
+	padding: 8px 8px 8px 22px;
+	border: 0;
+	border-radius: 8px;
+	background: transparent;
+	color: var(--tinta-2);
+	font: inherit;
+	font-size: 13px;
+	text-align: left;
+	cursor: pointer;
+	transition: color 160ms var(--salida), background-color 160ms var(--salida), transform 120ms var(--salida);
+}
+
+.vistas button::before {
+	content: "";
+	position: absolute;
+	left: 9px;
+	top: 50%;
+	width: 5px;
+	height: 5px;
+	margin-top: -2.5px;
+	border-radius: 50%;
+	background: var(--tinta);
+	opacity: 0;
+	transform: scale(0.4);
+	transition: opacity 160ms var(--salida), transform 200ms var(--salida);
+}
+
+.vistas button[aria-pressed="true"] { color: var(--tinta); }
+.vistas button[aria-pressed="true"]::before { opacity: 1; transform: scale(1); }
+.vistas button:active { transform: scale(0.97); }
+
+.vistas .foto {
+	margin-top: 10px;
+	padding: 10px 12px;
+	background: var(--tinta);
+	color: var(--papel);
+	text-align: center;
+}
+
+.vistas .foto::before { display: none; }
+.vistas .foto[data-ocupado] { opacity: 0.6; cursor: progress; }
+
+/* ------------------------------------------------ leyenda y pie */
+.leyenda {
+	position: fixed;
+	left: 28px;
+	bottom: 30px;
+	display: grid;
+	gap: 6px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	font-size: 12px;
+	color: var(--tinta-2);
+	opacity: 0;
+	transform: translateY(6px);
+	transition: opacity 240ms var(--salida), transform 240ms var(--salida);
+	pointer-events: none;
+}
+
+.leyenda li { display: flex; align-items: center; gap: 8px; }
+.leyenda li::before { content: ""; width: 10px; height: 10px; border-radius: 3px; background: var(--c); box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.08); }
+body[data-estado="2"] .leyenda { opacity: 1; transform: none; }
+
+.pie {
+	position: fixed;
+	right: 28px;
+	bottom: 30px;
+	display: grid;
+	justify-items: end;
+	gap: 2px;
+	font-size: 11px;
+	color: var(--tinta-3);
+	pointer-events: none;
+}
+
+/* ------------------------------------------------ etiquetas de estancias */
+.etiqueta {
+	display: grid;
+	justify-items: center;
+	gap: 1px;
+	opacity: 0;
+	transition: opacity 260ms var(--salida);
+	white-space: nowrap;
+	text-align: center;
+}
+
+.etiqueta .nombre { font-size: 11.5px; font-weight: 500; color: var(--tinta); }
+.etiqueta .sup { font-size: 10.5px; color: var(--tinta-2); }
+body.con-etiquetas .etiqueta { opacity: 1; }
+body[data-estado="2"] .etiqueta .nombre,
+body[data-estado="2"] .etiqueta .sup { text-shadow: 0 0 6px rgb(255 255 255 / 0.9); }
+
+/* ------------------------------------------------ carga */
+#carga {
+	position: fixed;
+	inset: 0;
+	display: grid;
+	place-items: center;
+	background: var(--papel);
+	color: var(--tinta-2);
+	font-size: 13px;
+	transition: opacity 400ms var(--salida), visibility 0s linear 400ms;
+}
+
+body.listo #carga { opacity: 0; visibility: hidden; }
+
+/* ------------------------------------------------ pantallas pequeñas */
+@media (max-width: 760px) {
+	.ficha { top: 16px; left: 16px; right: 16px; max-width: none; }
+	.ficha h1 { font-size: 18px; }
+	.datos, .lema { display: none; }
+	.vistas {
+		top: auto;
+		right: 16px;
+		left: 16px;
+		bottom: 84px;
+		width: auto;
+		display: flex;
+		overflow-x: auto;
+		padding: 6px;
+		border-radius: 12px;
+	}
+	.titulo-panel { display: none; }
+	.vistas button { flex: none; padding: 8px 12px; }
+	.vistas button::before { display: none; }
+	.vistas button[aria-pressed="true"] { background: rgb(28 28 26 / 0.07); }
+	.vistas .foto { margin: 0 0 0 auto; }
+	.estados { bottom: 16px; }
+	.estados button { padding: 10px 12px; }
+	.estados .num { display: none; }
+	.leyenda, .pie { display: none; }
+	.etiqueta .nombre { font-size: 10px; }
+	.etiqueta .sup { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+	*, *::before { transition-duration: 0.01ms !important; }
+}
