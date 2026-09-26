@@ -195,10 +195,14 @@ async function iniciar() {
 
 		pipeline.render();
 		const url = renderer.domElement.toDataURL( 'image/png' );
-		const a = document.createElement( 'a' );
-		a.href = url;
-		a.download = `vivienda-${ cam.actual || 'vista' }-${ Date.now() }.png`;
-		a.click();
+		const nombre = `vivienda-${ cam.actual || 'vista' }-${ Date.now() }.png`;
+		// la imagen se muestra siempre en pantalla: en visores que bloquean
+		// descargas se puede guardar con clic derecho o pulsación larga
+		$<HTMLImageElement>( '#captura img' ).src = url;
+		const enlace = $<HTMLAnchorElement>( '#captura a' );
+		enlace.href = url;
+		enlace.download = nombre;
+		$( '#captura' ).hidden = false;
 		renderer.setPixelRatio( ratio );
 		gi.sliceCount.value = 2;
 		gi.stepCount.value = 8;
@@ -208,6 +212,29 @@ async function iniciar() {
 	};
 
 	$( '#foto' ).addEventListener( 'click', foto );
+
+	// Publicado en claude.ai, las descargas pasan por el capability `downloads`
+	// (el visor bloquea los enlaces de descarga normales). En local, enlace normal.
+	type Descargas = { save( r: { filename: string; data: Blob } ): Promise<unknown> } | null;
+	const rt = ( window as unknown as { claude?: { use( n: string ): Promise<unknown> } } ).claude;
+	let descargas: Descargas = null;
+	rt?.use?.( 'downloads' ).then( ( d ) => ( descargas = d as Descargas ), () => {} );
+	$( '#captura a' ).addEventListener( 'click', async ( ev ) => {
+
+		const d = descargas;
+		if ( ! d ) return; // sin capability: el enlace normal hace la descarga
+		ev.preventDefault();
+		const a = ev.currentTarget as HTMLAnchorElement;
+		const blob = await ( await fetch( a.href ) ).blob();
+		d.save( { filename: a.download, data: blob } ).catch( () => {} );
+
+	} );
+	$( '#captura button' ).addEventListener( 'click', () => ( $( '#captura' ).hidden = true ) );
+	addEventListener( 'keydown', ( ev ) => {
+
+		if ( ev.key === 'Escape' ) $( '#captura' ).hidden = true;
+
+	} );
 
 	// ---------------------------------------------------------------- bucle
 	addEventListener( 'resize', () => {

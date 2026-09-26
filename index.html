@@ -52,6 +52,16 @@
 		<span id="motor"></span>
 	</footer>
 
+	<div id="captura" role="dialog" aria-modal="true" aria-label="Imagen capturada" hidden>
+		<figure>
+			<img alt="Imagen renderizada de la vista actual" />
+			<figcaption>
+				<span>Clic derecho o pulsación larga sobre la imagen para guardarla.</span>
+				<span class="acciones"><a download>Descargar PNG</a><button type="button">Cerrar</button></span>
+			</figcaption>
+		</figure>
+	</div>
+
 	<div id="carga" role="status">Generando la vivienda…</div>
 
 	<script type="module" src="/src/main.ts"></script>
