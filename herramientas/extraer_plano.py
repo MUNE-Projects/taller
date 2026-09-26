@@ -214,12 +214,16 @@ VARIANTES = [
                 (1047, 915), (1044, 915), (1044, 900), (1016, 900), (1016, 915), (815, 915)]),
             "cocina": dict(nombre="Cocina abierta"),
         }),
+        # vista que explica el cambio: desde el salón hacia la cocina, a través del paso
+        vista=dict(nombre="Salón hacia cocina", pos=[0.9, 1.5, -3.7], obj=[5.3, 0.95, -1.15], fov=62, interior=True),
+        resumen="El salón y la cocina quedan comunicados por un paso de 2,0 m junto a la fachada.",
     ),
 ]
 
 
 def variante_json(v):
-    out = {"id": v["id"], "nombre": v["nombre"], "descripcion": v["descripcion"], "origen": "propuesta (prueba de configurador)"}
+    out = {"id": v["id"], "nombre": v["nombre"], "descripcion": v["descripcion"], "resumen": v.get("resumen", ""),
+           "vista": v.get("vista"), "origen": "propuesta (prueba de configurador)"}
     muros = v.get("muros", {})
     out["muros"] = {
         "quitar": muros.get("quitar", []),

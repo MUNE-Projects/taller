@@ -106,3 +106,21 @@ Se sitúa en la parte descubierta de la terraza:
 ### Sin cámara maestra
 
 La opción de baños no tiene cámara maestra propia, así que mantiene la vista actual.
+
+## Iteración 3: usabilidad y claridad comercial
+
+### Problemas detectados
+
+1. **Demasiados modos.** Cuatro estados técnicos (Plano, Volúmenes, Modelo, Vivienda), más un botón aparte para personalizar. El comprador no sabía dónde estaba lo importante.
+2. **El baño no tenía vista.** Además, la vista Terraza solo enseñaba la piscina en el borde inferior.
+3. **Panel demasiado grande.** Medía 360 px, estaba en el lado izquierdo, tenía todas las opciones desplegadas y el desglose de precio ocupaba mucho. Tapaba la composición.
+4. **Cámara mareante.** Entre dos vistas interiores la cámara subía 4 m en arco y volvía a bajar. Además, repetía ese arco al elegir otra opción estando ya en la vista, porque no comprobaba si ya estaba allí.
+5. **La distribución llevaba a la planta 2D,** que no transmite el efecto espacial de abrir la cocina.
+
+### Correcciones
+
+1. **Tres modos: Plano, Vivienda y Personalizar.** Vivienda es el modo de arranque: la vivienda se construye desde el plano y se muestra la vista general.
+2. **Vistas.** Se añade la vista maestra **Baño**: desde la puerta del baño principal, con ducha, inodoro y doble lavabo en un solo encuadre. Se recoloca **Terraza**: desde el suroeste, por encima de la barandilla, con fachada, terraza y piscina. Aérea pasa a llamarse **Vista general**. Salón, Cocina y Dormitorio no cambian.
+3. **Cajón de 320 px a la derecha,** con acordeón (una categoría abierta a la vez), elección y precio en la cabecera de cada categoría, total fijo y desglose plegable. Al desplegar una categoría, la cámara va a la estancia afectada. Así, al elegir una opción la cámara ya está allí y no se mueve.
+4. **Cámara.** Se elimina el arco. Una sola transición por acción; no se mueve si ya está en la vista; fundido de unos 0,3 s entre vistas a la altura de los ojos; desplazamiento suave según la distancia en el resto.
+5. **Distribución.** Cada variante lleva su propia vista explicativa. Para la cocina abierta es una vista interior desde el salón hacia la cocina, a través del paso, que muestra la apertura, la cocina y el cambio de pavimento. Un aviso resume el cambio y ofrece "Ver en plano" como complemento.

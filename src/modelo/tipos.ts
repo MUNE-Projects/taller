@@ -86,6 +86,10 @@ export interface Variante {
 	id: string;
 	nombre: string;
 	descripcion: string;
+	/** Frase corta para el aviso al comprador. */
+	resumen: string;
+	/** Vista que explica el efecto espacial de la variante. */
+	vista: { nombre: string; pos: [ number, number, number ]; obj: [ number, number, number ]; fov: number; interior?: boolean } | null;
 	origen: string;
 	muros: { quitar: string[]; anadir: Muro[]; modificar: Record<string, Partial<Muro>> };
 	huecos: { quitar: string[]; anadir: Hueco[]; modificar: Record<string, Partial<Hueco>> };

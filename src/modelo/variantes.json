@@ -3,6 +3,22 @@
     "id": "cocina-abierta",
     "nombre": "Cocina abierta al salón",
     "descripcion": "Se abre un paso de 2,0 m en el tabique entre salón y cocina, junto a la fachada. La cocina conserva su puerta al recibidor.",
+    "resumen": "El salón y la cocina quedan comunicados por un paso de 2,0 m junto a la fachada.",
+    "vista": {
+      "nombre": "Salón hacia cocina",
+      "pos": [
+        0.9,
+        1.5,
+        -3.7
+      ],
+      "obj": [
+        5.3,
+        0.95,
+        -1.15
+      ],
+      "fov": 62,
+      "interior": true
+    },
     "origen": "propuesta (prueba de configurador)",
     "muros": {
       "quitar": [],

@@ -5,7 +5,7 @@
     {
       "id": "distribucion",
       "nombre": "Distribución",
-      "vista": "planta",
+      "vista": "variante",
       "opciones": [
         {
           "id": "base",
@@ -149,7 +149,7 @@
       "id": "banos",
       "nombre": "Baños",
       "detalle": "Alicatado y pavimento de los dos baños",
-      "vista": "mantener",
+      "vista": "bano",
       "opciones": [
         {
           "id": "claro",

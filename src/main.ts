@@ -17,8 +17,8 @@ import { construirCarpinterias } from './escena/carpinterias';
 import { construirEquipamiento } from './escena/equipamiento';
 import { construirLineas } from './escena/lineas';
 import { entorno, fondo, sol as crearSol } from './escena/luz';
-import { Camarografo, VISTAS } from './escena/camaras';
-import { ESTADOS, Estados } from './escena/estados';
+import { Camarografo, type Vista } from './escena/camaras';
+import { Estados } from './escena/estados';
 import { construirPiscina, validarPiscina } from './escena/piscina';
 import { aplicarVariante, fmtM2 } from './configurador/variantes';
 import { Configurador, fmtEuros, fmtPrecio, type Seleccion } from './configurador/configurador';
@@ -194,80 +194,73 @@ async function iniciar() {
 	pipeline.outputNode = traa( compuesto, profundidad, vel, camara );
 
 	// ---------------------------------------------------------------- estados y cámara
+	// Internamente se conservan los cuatro estados (sirven de transición: la
+	// vivienda "se construye" al pasar del plano a la vivienda), pero la
+	// interfaz solo ofrece tres modos: Plano, Vivienda y Personalizar.
 	estados = new Estados( { volumenes: c.volumenes, lineas: c.lineas, carpinterias: [ c.carpinterias, c.barandilla ], fijo: c.fijo, mobiliario: c.mobiliario, sol: luzSol, escena } );
 	reconstruir();
-	const cam = new Camarografo( camara, ctrl );
-	cam.ir( 'planta', 0 );
+	const cam = new Camarografo( camara, ctrl, $( '#velo' ) );
+	cam.reducido = estados.reducido;
+	type Modo = 'plano' | 'vivienda' | 'personalizar';
+	let modo: Modo = 'vivienda';
 
-	const botonesEstado = [ ...document.querySelectorAll<HTMLButtonElement>( '[data-estado]' ) ];
+	const botonesModo = [ ...document.querySelectorAll<HTMLButtonElement>( '[data-modo]' ) ].filter( ( b ) => b.tagName === 'BUTTON' );
 	const botonesVista = [ ...document.querySelectorAll<HTMLButtonElement>( '[data-vista]' ) ];
-	let personalizando = false;
-	// etiquetas de estancias: en Plano y Volúmenes, y al personalizar mirando la planta
-	const actualizarEtiquetas = () => document.body.classList.toggle( 'con-etiquetas',
-		ESTADOS[ estados.actual ].etiquetas || ( personalizando && cam.actual === 'planta' ) );
-	const marcarVista = ( k: string ) => {
+	const actualizarEtiquetas = () => document.body.classList.toggle( 'con-etiquetas', modo === 'plano' );
+	const marcarVista = ( k: string ) => botonesVista.forEach( ( b ) => b.setAttribute( 'aria-pressed', String( b.dataset.vista === k ) ) );
 
-		botonesVista.forEach( ( b ) => b.setAttribute( 'aria-pressed', String( b.dataset.vista === k ) ) );
-		actualizarEtiquetas();
+	/** Mueve la cámara a una vista (una sola vez; si ya está allí no hace nada). */
+	const irVista = ( v: string | Vista ) => {
+
+		cam.ir( v );
+		marcarVista( typeof v === 'string' ? v : '' );
 
 	};
-	const irEstado = ( n: number, moverCamara = true ) => {
 
-		const anterior = estados.actual;
-		estados.ir( n );
-		const o = ESTADOS[ n ];
+	const vistaDeVariante = () => ( variantes.find( ( v ) => v.id === conf.variante ) ?? variantes[ 0 ] )?.vista ?? null;
+
+	const irModo = ( m: Modo ) => {
+
+		const anterior = modo;
+		modo = m;
+		document.body.dataset.modo = m;
+		botonesModo.forEach( ( b ) => b.setAttribute( 'aria-current', String( b.dataset.modo === m ) ) );
+		const n = m === 'plano' ? 1 : 4;
+		if ( estados.actual !== n ) estados.ir( n );
 		document.body.dataset.estado = String( n );
-		if ( n !== 4 && personalizando ) cerrarPersonalizar();
+		$( '#configurador' ).hidden = m !== 'personalizar';
 		actualizarEtiquetas();
-		botonesEstado.forEach( ( b ) => b.setAttribute( 'aria-current', String( Number( b.dataset.estado ) === n ) ) );
-		$( '#lema' ).textContent = o.lema;
-		// solo cambia de vista si la actual no sirve para el estado: al entrar o salir
-		// de la planta, o si se está dentro de la vivienda en un estado sin interiores
-		const interior = VISTAS[ cam.actual ]?.interior;
-		if ( moverCamara && ( anterior === 1 || n === 1 || ( interior && n < 3 ) ) ) {
+		if ( m === 'plano' ) {
 
-			cam.ir( o.vista, estados.reducido ? 0 : 1.6 );
-			marcarVista( o.vista );
+			irVista( 'planta' );
+			return;
 
 		}
 
+		// al salir del plano se vuelve a la vista general; entre Vivienda y
+		// Personalizar la cámara no se mueve
+		if ( anterior === 'plano' ) irVista( 'aerea' );
+
 	};
 
-	botonesEstado.forEach( ( b ) => b.addEventListener( 'click', () => irEstado( Number( b.dataset.estado ) ) ) );
-	botonesVista.forEach( ( b ) => b.addEventListener( 'click', () => {
-
-		const k = b.dataset.vista!;
-		if ( VISTAS[ k ].interior && estados.actual < 3 ) irEstado( 4, false );
-		cam.ir( k, estados.reducido ? 0 : 1.6 );
-		marcarVista( k );
-
-	} ) );
+	botonesModo.forEach( ( b ) => b.addEventListener( 'click', () => irModo( b.dataset.modo as Modo ) ) );
+	botonesVista.forEach( ( b ) => b.addEventListener( 'click', () => irVista( b.dataset.vista! ) ) );
 	addEventListener( 'keydown', ( ev ) => {
 
 		const t = ev.target as HTMLElement | null;
 		if ( t instanceof HTMLInputElement || t?.closest?.( '#configurador, dialog' ) ) return;
-		const n = Number( ev.key );
-		if ( n >= 1 && n <= 4 ) irEstado( n );
-		if ( ev.key === 'ArrowRight' ) irEstado( Math.min( 4, estados.actual + 1 ) );
-		if ( ev.key === 'ArrowLeft' ) irEstado( Math.max( 1, estados.actual - 1 ) );
+		const modos: Record<string, Modo> = { 1: 'plano', 2: 'vivienda', 3: 'personalizar' };
+		if ( modos[ ev.key ] ) irModo( modos[ ev.key ] );
 
 	} );
 	ctrl.addEventListener( 'start', () => {
 
-		cam.actual = '';
+		cam.soltar();
 		marcarVista( '' );
 
 	} );
 
-	// ---------------------------------------------------------------- personalizar vivienda
-	const irVista = ( k: string ) => {
-
-		if ( ! VISTAS[ k ] ) return;
-		cam.ir( k, estados.reducido ? 0 : 1.6 );
-		marcarVista( k );
-
-	};
-
+	// ---------------------------------------------------------------- personalizar
 	const guardarLocal = () => {
 
 		try {
@@ -278,7 +271,49 @@ async function iniciar() {
 
 	};
 
+	/** Vista que corresponde a una categoría ("mantener" = ninguna). */
+	const vistaDeCategoria = ( id: string ): string | Vista | null => {
+
+		const v = conf.categoria( id ).vista;
+		if ( v === 'mantener' ) return null;
+		if ( v === 'variante' ) return vistaDeVariante() ?? 'aerea';
+		return v;
+
+	};
+
+	// aviso breve tras un cambio, con una acción opcional
+	const aviso = $( '#aviso' );
+	let temporizadorAviso = 0;
+	const avisar = ( texto: string, accion?: { etiqueta: string; hacer: () => void } ) => {
+
+		( aviso.querySelector( '.texto' ) as HTMLElement ).textContent = texto;
+		const boton = aviso.querySelector( '.accion' ) as HTMLButtonElement;
+		boton.hidden = ! accion;
+		boton.textContent = accion?.etiqueta ?? '';
+		boton.onclick = accion ? () => {
+
+			aviso.hidden = true;
+			accion.hacer();
+
+		} : null;
+		aviso.hidden = false;
+		clearTimeout( temporizadorAviso );
+		temporizadorAviso = window.setTimeout( () => ( aviso.hidden = true ), 12000 );
+
+	};
+
+	// el aviso no se cierra mientras el ratón está encima
+	aviso.addEventListener( 'pointerenter', () => clearTimeout( temporizadorAviso ) );
+	aviso.addEventListener( 'pointerleave', () => ( temporizadorAviso = window.setTimeout( () => ( aviso.hidden = true ), 4000 ) ) );
+
 	const panel = new Panel( conf, {
+		abrir( categoria ) {
+
+			// al desplegar una categoría se enseña la estancia a la que afecta
+			const v = vistaDeCategoria( categoria );
+			if ( v ) irVista( v );
+
+		},
 		elegir( categoria, opcion ) {
 
 			const cat = conf.categoria( categoria );
@@ -289,40 +324,24 @@ async function iniciar() {
 				const informe = reconstruir();
 				const variante = variantes.find( ( v ) => v.id === nueva.variante );
 				panel.informe( 'distribucion', variante ? [ variante.descripcion, ...informe ] : [] );
+				avisar( variante ? variante.resumen : 'Distribución base: salón y cocina vuelven a estar separados.', {
+					etiqueta: 'Ver en plano', hacer: () => irModo( 'plano' ),
+				} );
 
 			}
 
 			if ( categoria === 'exterior' ) construirLineasActuales();
-			const activa = nueva.precio > 0 || nueva.piscina;
-			if ( cat.vista !== 'mantener' && ( ! cat.soloAlActivar || activa ) ) irVista( cat.vista );
+			const activa = nueva.precio > 0 || !! nueva.piscina;
+			const v = vistaDeCategoria( categoria );
+			if ( v && ( ! cat.soloAlActivar || activa ) ) irVista( v );
 			panel.resumen();
 			guardarLocal();
 
 		},
-		cerrar: () => cerrarPersonalizar(),
+		cerrar: () => irModo( 'vivienda' ),
 		guardar: () => mostrarResumen(),
 	} );
-
-	const abrirPersonalizar = () => {
-
-		personalizando = true;
-		document.body.classList.add( 'personalizando' );
-		$( '#configurador' ).hidden = false;
-		actualizarEtiquetas();
-		( $( '#configurador' ).querySelector( 'input:checked' ) as HTMLInputElement | null )?.focus( { preventScroll: true } );
-
-	};
-
-	function cerrarPersonalizar() {
-
-		personalizando = false;
-		document.body.classList.remove( 'personalizando' );
-		$( '#configurador' ).hidden = true;
-		actualizarEtiquetas();
-
-	}
-
-	$( '#personalizar' ).addEventListener( 'click', abrirPersonalizar );
+	panel.desplegar( 'distribucion', false );
 
 	const dialogo = $<HTMLDialogElement>( '#resumen-configuracion' );
 	const mostrarResumen = () => {
@@ -469,9 +488,9 @@ async function iniciar() {
 
 	} );
 
-	// Con el panel abierto se desplaza el encuadre del lienzo (setViewOffset) para que
-	// la escena quede centrada en el hueco libre. La cámara maestra no cambia:
-	// misma posición, objetivo y fov; solo se recorta la imagen de otra forma.
+	// Con el cajón abierto, la composición de la cámara maestra se encaja entera en
+	// el hueco libre: se reduce la imagen (camera.zoom) y se desplaza su centro
+	// (setViewOffset). La cámara no cambia: misma posición, objetivo y fov.
 	let desplazamiento = 0;
 	const encuadrar = ( d: number ) => {
 
@@ -480,11 +499,13 @@ async function iniciar() {
 
 			camara.clearViewOffset();
 			camara.aspect = W / Hh;
+			camara.zoom = 1;
 
 		} else {
 
 			camara.aspect = ( W + d ) / Hh;
-			camara.setViewOffset( W + d, Hh, 0, 0, W, Hh );
+			camara.setViewOffset( W + d, Hh, d, 0, W, Hh );
+			camara.zoom = ( W - d ) / W;
 
 		}
 
@@ -507,7 +528,7 @@ async function iniciar() {
 		c.techos.visible = estados.valores.muros > 0.98;
 		canto.visible = bajo && c.techos.visible;
 		conf.actualizar( performance.now() );
-		const objetivo = personalizando && innerWidth > 760 ? $( '#configurador' ).getBoundingClientRect().right : 0;
+		const objetivo = modo === 'personalizar' && innerWidth > 760 ? innerWidth - $( '#configurador' ).getBoundingClientRect().left : 0;
 		if ( Math.abs( objetivo - desplazamiento ) > 0.5 || ( desplazamiento > 0 && objetivo === 0 ) ) {
 
 			desplazamiento += ( objetivo - desplazamiento ) * ( estados.reducido ? 1 : 0.2 );
@@ -529,8 +550,11 @@ async function iniciar() {
 
 	} );
 
-	Object.assign( window, { __vivienda: { irEstado, cam, estados, renderer, pausar: ( p: boolean ) => ( pausado = p ) } } );
-	irEstado( 1, false );
+	Object.assign( window, { __vivienda: { irModo, irEstado: ( n: number ) => irModo( n === 1 ? 'plano' : 'vivienda' ), cam, estados, renderer, camara, ctrl, pausar: ( p: boolean ) => ( pausado = p ) } } );
+	// arranque: la vivienda se construye desde el plano y se muestra la vista general
+	cam.ir( 'aerea', true );
+	marcarVista( 'aerea' );
+	irModo( 'vivienda' );
 	document.body.classList.add( 'listo' );
 
 }

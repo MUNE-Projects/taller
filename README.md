@@ -5,54 +5,52 @@ de calidad comercial partiendo solo del plano de una vivienda. Todo se genera
 por código con **Three.js + TSL**. No hay modelos 3D, texturas, HDRI ni
 librerías externas aparte de `three`.
 
-La visualización tiene cuatro estados, con transiciones animadas en ambos sentidos:
+La interfaz tiene tres modos:
 
-| Estado | Qué muestra |
+| Modo | Qué muestra |
 |---|---|
-| 01 Plano | Planta en papel: muros en poché, giros de puertas, carpinterías, mobiliario y superficies |
-| 02 Volúmenes | Cada estancia como un volumen coloreado según su uso |
-| 03 Modelo | Arquitectura en maqueta blanca: muros con huecos, carpinterías, barandilla y equipamiento fijo |
-| 04 Vivienda | Acabados de la memoria de calidades, mobiliario, sol y cielo |
+| Plano | Planta en papel con estancias y superficies |
+| **Vivienda** (principal) | La vivienda terminada, navegable, con seis vistas guiadas |
+| Personalizar | La vivienda con un cajón de opciones comerciales y su precio |
+
+Internamente se conservan los estados de construcción (volúmenes y maqueta blanca). Ya no aparecen en la interfaz, pero son el paso intermedio de la animación del plano a la vivienda.
 
 | | |
 |---|---|
-| ![Plano](docs/capturas/01-plano.png) | ![Volúmenes](docs/capturas/02-volumenes.png) |
-| ![Modelo](docs/capturas/03-modelo.png) | ![Vivienda](docs/capturas/04-vivienda-aerea.png) |
-| ![Salón](docs/capturas/04-vivienda-salon.png) | ![Cocina](docs/capturas/04-vivienda-cocina.png) |
+| ![Vista general](docs/capturas/06-vivienda-general.png) | ![Plano](docs/capturas/06-plano.png) |
+| ![Baño](docs/capturas/06-personalizar-bano.png) | ![Cocina](docs/capturas/06-personalizar-cocina.png) |
+| ![Distribución](docs/capturas/06-personalizar-distribucion.png) | ![Terraza](docs/capturas/06-personalizar-terraza.png) |
 
-## Personalizar vivienda (configurador)
+## Vistas guiadas (cámaras maestras)
 
-En el estado **04 Vivienda**, el botón **Personalizar vivienda** abre un panel con las opciones comerciales de la promoción, cada una con su precio:
+Vista general, Salón, Cocina, Dormitorio, Baño y Terraza, más la planta del modo Plano. Están definidas y congeladas en `src/escena/camaras.ts`.
 
-| Categoría | Opciones |
-|---|---|
-| Distribución | base / alternativa (cocina abierta al salón) |
-| Suelo | roble natural / roble claro / nogal |
-| Cocina | blanco / nogal / gris antracita |
-| Encimera | blanca / negro granito / piedra clara |
-| Baños | acabado claro / oscuro |
-| Exterior | sin mejora / piscina rectangular pequeña |
+**Transiciones de cámara:**
+- una sola por acción, sin arcos;
+- si la cámara ya está en la vista pedida, no se mueve;
+- entre dos vistas a la altura de los ojos, un fundido breve en lugar de atravesar muros;
+- en el resto, un desplazamiento suave.
 
-- **Resumen de precio:** siempre visible (base, extras elegidos, total de extras y precio total).
-- **Guardar configuración:** muestra el resumen completo y lo recuerda en este navegador.
-- **Vistas al cambiar una opción:**
-  - Cocina y encimera llevan a la vista Cocina.
-  - La piscina lleva a Terraza.
-  - La distribución lleva a Planta.
-  - Suelo y baños mantienen la vista actual.
+**Con el cajón de personalización abierto:** la composición maestra se encaja entera en el hueco libre (zoom de proyección y desplazamiento del centro) sin mover la cámara. Las capturas usan el encuadre maestro.
 
-| | |
-|---|---|
-| ![Distribución alternativa](docs/capturas/05-personalizar-distribucion.png) | ![Cocina nogal y granito](docs/capturas/05-personalizar-cocina.png) |
-| ![Vista aérea personalizada](docs/capturas/05-personalizar-aerea.png) | ![Resumen guardado](docs/capturas/05-personalizar-resumen.png) |
+## Personalizar
 
-Todo se define como datos:
-- `src/modelo/configuracion.json`: categorías, opciones, precios, parámetros de cada acabado, vista asociada y datos de la piscina.
-- `src/modelo/variantes.json`: variantes de distribución, generadas por `herramientas/extraer_plano.py`.
+| Categoría | Opciones | Vista al abrir o cambiar |
+|---|---|---|
+| Distribución | base / alternativa (cocina abierta al salón) | Vista interior propia de la variante (salón hacia cocina), con aviso y acceso a "Ver en plano" |
+| Suelo | roble natural / roble claro / nogal | Se mantiene |
+| Cocina | blanco / nogal / gris antracita | Cocina |
+| Encimera | blanca / negro granito / piedra clara | Cocina |
+| Baños | claro / oscuro | Baño |
+| Exterior | sin mejora / piscina rectangular pequeña | Terraza (al activarla) |
 
-Añadir una opción nueva es añadir una entrada.
+- **Cajón:** 320 px, con categorías plegables y solo una abierta a la vez. Cada cabecera muestra lo elegido y su precio.
+- **Precio:** el total queda siempre visible, con el desglose plegable.
+- **Guardar configuración:** muestra el resumen y lo recuerda en este navegador.
 
-Las vistas de `src/escena/camaras.ts` son **cámaras maestras**: están congeladas y el configurador no las modifica. Con el panel abierto, la imagen se desplaza lateralmente sin mover la cámara. Las capturas usan siempre el encuadre maestro.
+**Todo se define como datos:**
+- `src/modelo/configuracion.json`: opciones, precios, parámetros y vista.
+- `src/modelo/variantes.json`: distribuciones, con su propia vista explicativa.
 
 ## Uso
 
@@ -62,9 +60,9 @@ npm run dev        # http://localhost:5173
 npm run build      # salida estática en dist/
 ```
 
-- **Estados:** botones inferiores, teclas `1`–`4` o flechas `←` `→`.
-- **Vistas:** Planta, Aérea, Salón, Cocina, Dormitorio y Terraza. También se puede orbitar libremente.
-- **Capturar imagen:** renderiza la vista actual a ~2400 px con iluminación global de alta calidad, acumula 72 fotogramas y descarga un PNG.
+- **Modos:** barra inferior o teclas `1` (Plano), `2` (Vivienda) y `3` (Personalizar).
+- **Vistas:** barra de vistas encima de los modos. También se puede orbitar libremente con el ratón.
+- **Capturar imagen** (icono de cámara): renderiza la vista actual a ~2400 px con iluminación global de alta calidad, acumula 72 fotogramas y descarga un PNG.
 - **Motor:** WebGPU cuando el navegador lo soporta, con respaldo automático a WebGL 2. `?webgl` fuerza WebGL 2.
 
 ## Cómo funciona
