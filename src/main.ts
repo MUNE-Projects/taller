@@ -76,6 +76,24 @@ async function iniciar() {
 	lienzo.appendChild( renderer.domElement );
 	await renderer.init();
 	const backend = ( renderer.backend as unknown as { isWebGPUBackend?: boolean } ).isWebGPUBackend ? 'WebGPU' : 'WebGL 2';
+	// Red de seguridad: si WebGPU da un error de validación o pierde el
+	// dispositivo, se recarga en WebGL 2 (una sola vez) en vez de quedar en negro.
+	const aWebGL = ( motivo: string ) => {
+
+		console.warn( 'WebGPU no disponible, se pasa a WebGL 2:', motivo );
+		const u = new URL( location.href );
+		if ( u.searchParams.has( 'webgl' ) ) return;
+		u.searchParams.set( 'webgl', '' );
+		location.replace( u.toString() );
+
+	};
+	const dispositivo = ( renderer.backend as unknown as { device?: GPUDevice } ).device;
+	if ( backend === 'WebGPU' && dispositivo ) {
+
+		dispositivo.addEventListener( 'uncapturederror', ( e ) => aWebGL( ( e as GPUUncapturedErrorEvent ).error.message ) );
+		void dispositivo.lost.then( ( i ) => i.reason !== 'destroyed' && aWebGL( i.message ) );
+
+	}
 	$( '#motor' ).textContent = backend;
 
 	const escena = new THREE.Scene();
@@ -286,7 +304,10 @@ async function iniciar() {
 	// ---------------------------------------------------------------- posproceso
 	const pipeline = new THREE.RenderPipeline( renderer );
 	const escenaPass = pass( escena, camara );
-	escenaPass.setMRT( mrt( { output, diffuseColor, normal: packNormalToRGB( normalView ), velocity, metalrough: vec2( metalness, roughness ) } ) );
+	// WebGPU admite como máximo 32 bytes por píxel entre todas las salidas (color,
+	// difuso, normal y velocidad ya los ocupan): metalicidad y rugosidad viajan en
+	// los canales alfa libres del difuso y de la normal, sin añadir otra salida.
+	escenaPass.setMRT( mrt( { output, diffuseColor: vec4( diffuseColor.rgb, metalness ), normal: vec4( packNormalToRGB( normalView ), roughness ), velocity } ) );
 	const color = escenaPass.getTextureNode( 'output' );
 	const difuso = escenaPass.getTextureNode( 'diffuseColor' );
 	const profundidad = escenaPass.getTextureNode( 'depth' );
@@ -294,8 +315,6 @@ async function iniciar() {
 	const vel = escenaPass.getTextureNode( 'velocity' );
 	escenaPass.getTexture( 'diffuseColor' ).type = THREE.UnsignedByteType;
 	escenaPass.getTexture( 'normal' ).type = THREE.UnsignedByteType;
-	escenaPass.getTexture( 'metalrough' ).type = THREE.UnsignedByteType;
-	const metalRugosidad = escenaPass.getTextureNode( 'metalrough' );
 	const normalEscena = sample( ( uv ) => unpackRGBToNormal( normal.sample( uv ) ) );
 	const gi = ssgi( color, profundidad, normalEscena, camara );
 	gi.sliceCount.value = 2;
@@ -310,8 +329,8 @@ async function iniciar() {
 	// reflejos en espacio de pantalla: suelos, encimeras, sanitarios, cromados.
 	// La intensidad sale del brillo de cada material (metales enteros; los
 	// dieléctricos, según lo pulidos que estén), con fresnel de ángulo rasante.
-	const reflectancia = max( metalRugosidad.r, pow( float( 1 ).sub( metalRugosidad.g ), 3 ).mul( 0.6 ) );
-	const reflejos = ssr( color, profundidad, normalEscena, { metalnessNode: reflectancia, roughnessNode: metalRugosidad.g, reflectNonMetals: true, camera: camara } );
+	const reflectancia = max( difuso.a, pow( float( 1 ).sub( normal.a ), 3 ).mul( 0.6 ) );
+	const reflejos = ssr( color, profundidad, normalEscena, { metalnessNode: reflectancia, roughnessNode: normal.a, reflectNonMetals: true, camera: camara } );
 	reflejos.resolutionScale = 0.5;
 	reflejos.maxDistance.value = 5;
 	reflejos.thickness.value = 0.04;
