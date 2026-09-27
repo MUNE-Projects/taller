@@ -26,6 +26,10 @@ export class Camarografo {
 	private anim: { t0: number; dur: number; p0: THREE.Vector3; p1: THREE.Vector3; o0: THREE.Vector3; o1: THREE.Vector3; f0: number; f1: number } | null = null;
 	private vistaActual: Vista | null = null;
 	actual = 'planta';
+	/** Se llama al terminar cada transición (para configurar la navegación). */
+	alLlegar?: ( v: Readonly<Vista> ) => void;
+	/** Última vista guiada (clave), para "Recentrar vista". */
+	ultima = 'aerea';
 	/** Cámaras maestras de la tipología cargada (congeladas). */
 	vistas: Readonly<Record<string, Readonly<Vista>>> = {};
 	reducido = matchMedia( '(prefers-reduced-motion: reduce)' ).matches;
@@ -46,11 +50,25 @@ export class Camarografo {
 		if ( ! v ) return false;
 		const p1 = new THREE.Vector3( ...v.pos ), o1 = new THREE.Vector3( ...v.obj );
 		const f1 = fovPara( v, this.cam.aspect );
+		// ¿ya está (o va) ahí? Se compara posición y dirección de la mirada, no el pivote:
+		// en interior el pivote se acerca a la cámara y no coincide con el de la vista
 		const destino = this.anim ? this.anim.p1 : this.cam.position;
-		const objetivo = this.anim ? this.anim.o1 : this.ctrl.target;
+		const dirActual = this.anim ? this.anim.o1.clone().sub( this.anim.p1 ).normalize() : this.cam.getWorldDirection( new THREE.Vector3() );
+		const dirVista = o1.clone().sub( p1 ).normalize();
 		this.actual = typeof vista === 'string' ? vista : v.nombre;
+		if ( typeof vista === 'string' ) this.ultima = vista;
 		this.vistaActual = v;
-		if ( destino.distanceTo( p1 ) < 0.05 && objetivo.distanceTo( o1 ) < 0.05 ) return false;
+		if ( destino.distanceTo( p1 ) < 0.05 && dirActual.dot( dirVista ) > 0.9995 ) {
+
+			if ( ! this.anim ) this.alLlegar?.( v );
+			return false;
+
+		}
+
+		// durante una transición guiada no rigen los límites de la navegación libre
+		// (distancias y ángulos del modo anterior); se vuelven a fijar al llegar
+		const c = this.ctrl;
+		c.minDistance = 0; c.maxDistance = Infinity; c.minPolarAngle = 0; c.maxPolarAngle = Math.PI;
 
 		const colocar = () => {
 
@@ -60,6 +78,7 @@ export class Camarografo {
 			this.cam.fov = f1;
 			this.cam.updateProjectionMatrix();
 			this.ctrl.update();
+			this.alLlegar?.( v );
 
 		};
 
@@ -131,7 +150,12 @@ export class Camarografo {
 		this.ctrl.target.lerpVectors( a.o0, a.o1, k );
 		this.cam.fov = a.f0 + ( a.f1 - a.f0 ) * k;
 		this.cam.updateProjectionMatrix();
-		if ( t >= 1 ) this.anim = null;
+		if ( t >= 1 ) {
+
+			this.anim = null;
+			if ( this.vistaActual ) this.alLlegar?.( this.vistaActual );
+
+		}
 
 	}
 

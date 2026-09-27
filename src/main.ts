@@ -1,7 +1,8 @@
 import * as THREE from 'three/webgpu';
-import { add, diffuseColor, float, mix, mrt, normalView, output, packNormalToRGB, pass, sample, unpackRGBToNormal, vec4, velocity } from 'three/tsl';
+import { add, diffuseColor, float, mix, mrt, normalView, output, packNormalToRGB, pass, renderOutput, sample, unpackRGBToNormal, vec4, velocity } from 'three/tsl';
 import { ssgi } from 'three/addons/tsl/display/SSGINode.js';
 import { traa } from 'three/addons/tsl/display/TRAANode.js';
+import { fxaa } from 'three/addons/tsl/display/FXAANode.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DObject, CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
 
@@ -12,15 +13,19 @@ import { construirMuros } from './escena/muros';
 import { construirCantoPorche, construirSuelos } from './escena/suelos';
 import { construirCarpinterias } from './escena/carpinterias';
 import { construirEquipamiento } from './escena/equipamiento';
+import { obstaculos } from './biblioteca/biblioteca';
+import { construirDownlights, construirRodapies } from './escena/detalles';
+import { construirPaisaje } from './escena/paisaje';
 import { construirLineas } from './escena/lineas';
 import { entorno, fondo, sol as crearSol } from './escena/luz';
 import { Camarografo, type Vista } from './escena/camaras';
 import { Estados } from './escena/estados';
+import { Navegacion } from './escena/navegacion';
 import { construirPiscina, validarPiscina } from './escena/piscina';
 import { aplicarVariante, fmtM2 } from './configurador/variantes';
 import { Configurador, fmtEuros, fmtPrecio, type Seleccion } from './configurador/configurador';
 import { Panel } from './configurador/panel';
-import { PROMOCION, cargarModelo, catalogoPara, extraerCodigo, resolverAcceso, viviendaPublica, type Modelo } from './promocion/promocion';
+import { CATALOGO, PROMOCION, accesoStudio, cargarModelo, catalogoPara, extraerCodigo, resolverAcceso, viviendaPublica, type Modelo } from './promocion/promocion';
 import { aplicarMarca } from './promocion/marca';
 import { generarPDF } from './documento/pdf';
 import './estilos.css';
@@ -76,16 +81,13 @@ async function iniciar() {
 
 	const camara = new THREE.PerspectiveCamera( 28, innerWidth / innerHeight, 0.05, 200 );
 	const ctrl = new OrbitControls( camara, renderer.domElement );
-	ctrl.enableDamping = true;
-	ctrl.dampingFactor = 0.08;
-	ctrl.maxPolarAngle = Math.PI * 0.495;
-	ctrl.minDistance = 0.3;
-	ctrl.maxDistance = 60;
+	const nav = new Navegacion( camara, ctrl, renderer.domElement );
 
 	// ---------------------------------------------------------------- acceso
 	// Parte pública: plano, vivienda y vistas. Con el enlace privado de una
 	// vivienda (#código) se carga esa vivienda y se habilita la personalización.
-	const codigoInicial = extraerCodigo( location.hash ) || leer( CLAVE_ACCESO ) || '';
+	const pideStudio = location.hash.startsWith( '#studio' );
+	const codigoInicial = ( pideStudio ? '' : extraerCodigo( location.hash ) ) || leer( CLAVE_ACCESO ) || '';
 	let comprador: ViviendaPromocion | null = await resolverAcceso( codigoInicial );
 	if ( ! comprador && codigoInicial ) guardar( CLAVE_ACCESO, null );
 	let fichaVivienda: ViviendaPromocion = comprador ?? viviendaPublica();
@@ -178,17 +180,23 @@ async function iniciar() {
 		volcar( c.muros, muros );
 		const s = construirSuelos( vivienda, false );
 		volcar( c.suelos, s.suelos );
+		s.techos.add( construirDownlights( vivienda ) );
 		volcar( c.techos, s.techos );
 		volcar( c.volumenes, s.volumenes );
 		const k = construirCarpinterias( vivienda );
 		volcar( c.carpinterias, k.carpinterias );
 		volcar( c.barandilla, k.barandilla );
-		const e = construirEquipamiento( vivienda );
+		const e = construirEquipamiento( vivienda, modelo.ambientacion );
+		e.mobiliario.add( ...e.decoracion.children );
+		e.fijo.add( Object.assign( construirRodapies( vivienda ), { userData: { x: 6 } } ) );
+		// paisaje de zonas comunes: va con el mobiliario para que no aparezca en el plano
+		e.mobiliario.add( Object.assign( construirPaisaje( vivienda ), { userData: { x: 13 } } ) );
 		volcar( c.fijo, e.fijo );
 		volcar( c.mobiliario, e.mobiliario );
 		construirLineasActuales();
 		construirEtiquetas();
 		interiores = vivienda.estancias.filter( ( x ) => x.uso !== 'exterior' );
+		nav.actualizarObstaculos( vivienda, obstaculos( modelo.ambientacion ) );
 		actualizarFicha();
 		estados?.refrescar();
 		despertar();
@@ -232,6 +240,14 @@ async function iniciar() {
 	const compuesto = vec4( add( color.rgb.mul( ao ), difuso.rgb.mul( gi.getGINode().rgb ) ), color.a );
 	pipeline.outputNode = traa( compuesto, profundidad, vel, camara );
 
+	// Plano: cadena propia sin antialiasing temporal ni iluminación global. Ambos
+	// son temporales (varían de un fotograma a otro) y hacían "temblar" los bordes
+	// finos del plano; FXAA es espacial y determinista: la imagen queda fija.
+	const pipelinePlano = new THREE.RenderPipeline( renderer );
+	pipelinePlano.outputColorTransform = false;
+	pipelinePlano.outputNode = fxaa( renderOutput( pass( escena, camara ) ) );
+	const renderizar = () => ( modo === 'plano' ? pipelinePlano : pipeline ).render();
+
 	// ---------------------------------------------------------------- estados y cámara
 	// Internamente se conservan los estados de construcción (la vivienda "se
 	// construye" al pasar del plano a la vivienda); la interfaz ofrece tres
@@ -240,6 +256,8 @@ async function iniciar() {
 	const est = estados;
 	const cam = new Camarografo( camara, ctrl, $( '#velo' ) );
 	cam.reducido = est.reducido;
+	// al terminar cada transición se ajusta la navegación a la vista
+	cam.alLlegar = ( v ) => nav.configurar( modo === 'plano' ? 'planta' : v.interior ? 'interior' : 'exterior' );
 	type Modo = 'plano' | 'vivienda' | 'personalizar';
 	let modo: Modo = 'vivienda';
 
@@ -316,6 +334,12 @@ async function iniciar() {
 		const modos: Record<string, Modo> = { 1: 'plano', 2: 'vivienda', 3: 'personalizar' };
 		if ( modos[ ev.key ] ) irModo( modos[ ev.key ] );
 		if ( ev.key === 'Escape' ) $( '#captura' ).hidden = true;
+
+	} );
+	$( '#recentrar' ).addEventListener( 'click', () => {
+
+		cam.ir( modo === 'plano' ? 'planta' : cam.ultima );
+		marcarVista( modo === 'plano' ? '' : cam.ultima );
 
 	} );
 	ctrl.addEventListener( 'start', () => {
@@ -621,12 +645,12 @@ async function iniciar() {
 			gi.stepCount.value = 16;
 			for ( let i = 0; i < fotogramas; i ++ ) {
 
-				pipeline.render();
+				renderizar();
 				if ( i % 8 === 0 ) await new Promise( requestAnimationFrame );
 
 			}
 
-			pipeline.render();
+			renderizar();
 			return renderer.domElement.toDataURL( tipo, 0.9 );
 
 		} finally {
@@ -724,6 +748,7 @@ async function iniciar() {
 		est.actualizar( t );
 		cam.actualizar( performance.now() );
 		const orbitando = ctrl.update();
+		nav.restringir( cam.animando || capturando );
 		// plano cercano según la altura: más precisión de profundidad en vistas lejanas
 		const near = THREE.MathUtils.clamp( ( camara.position.y - 2.5 ) * 0.04, 0.05, 1.2 );
 		if ( Math.abs( camara.near - near ) > 1e-3 ) {
@@ -764,7 +789,7 @@ async function iniciar() {
 		quietos = cambia ? 0 : quietos + 1;
 		diagnostico = { orbitando, cam: cam.animando, est: est.animando, conf: conf.animando, mat: ! matAnterior.equals( camara.matrixWorld ), exposicion, expObjetivo, desplazamiento, objetivo, piscinaT, quietos };
 		if ( quietos > FOTOGRAMAS_ESTABLES ) return; // imagen estable: no se vuelve a pintar
-		pipeline.render();
+		renderizar();
 		etiquetas.render( escena, camara );
 
 	} );
@@ -778,7 +803,53 @@ async function iniciar() {
 	document.body.classList.add( 'listo' );
 	if ( comprador ) avisar( `Bienvenido. Estás viendo tu vivienda ${ comprador.ref }. Pulsa Personalizar para elegir tus acabados.` );
 
-	Object.assign( window, { __vivienda: { irModo, irEstado: ( n: number ) => irModo( n === 1 ? 'plano' : 'vivienda' ), cam, estados: est, renderer, camara, ctrl, pausar: ( p: boolean ) => ( pausado = p ), diagnostico: () => diagnostico } } );
+	// ---------------------------------------------------------------- studio (producción)
+	// Chunk aparte, solo con código: la experiencia pública y la del comprador
+	// no cargan nada del Studio.
+	const dialogoStudio = $<HTMLDialogElement>( '#acceso-studio' );
+	const abrirStudio = async () => {
+
+		const { abrirStudio: abrir } = await import( './studio/studio' );
+		await abrir( {
+			escena, camara, ctrl, lienzo: renderer.domElement, mobiliario: c.mobiliario,
+			modelo: () => modelo, espejo: () => !! fichaVivienda.espejo,
+			reconstruir: () => void reconstruir(), despertar, irVista, construirBarraVistas,
+			refrescarCatalogo: () => cargarVivienda( fichaVivienda ),
+			aplicarMarca: () => {
+
+				aplicarMarca( PROMOCION );
+				actualizarFicha();
+
+			},
+			promocion: PROMOCION, catalogo: CATALOGO, descargar, avisar: ( t ) => avisar( t ),
+		} );
+
+	};
+	const pedirStudio = async ( codigo?: string ) => {
+
+		if ( document.body.classList.contains( 'en-studio' ) ) return;
+		if ( codigo && await accesoStudio( codigo ) ) return abrirStudio();
+		$( '#acceso-studio .error' ).hidden = true;
+		$<HTMLInputElement>( '#codigo-studio' ).value = '';
+		dialogoStudio.showModal();
+
+	};
+	dialogoStudio.querySelector( '.cancelar' )!.addEventListener( 'click', () => dialogoStudio.close() );
+	dialogoStudio.querySelector( 'form' )!.addEventListener( 'submit', async ( ev ) => {
+
+		ev.preventDefault();
+		if ( await accesoStudio( $<HTMLInputElement>( '#codigo-studio' ).value ) ) {
+
+			dialogoStudio.close();
+			void abrirStudio();
+
+		} else $( '#acceso-studio .error' ).hidden = false;
+
+	} );
+	if ( pideStudio ) void pedirStudio( location.hash.replace( /^#studio-?/, '' ) );
+	addEventListener( 'hashchange', () => location.hash.startsWith( '#studio' ) && void pedirStudio( location.hash.replace( /^#studio-?/, '' ) ) );
+
+	Object.assign( window, { __vivienda: { nav, irModo, irEstado: ( n: number ) => irModo( n === 1 ? 'plano' : 'vivienda' ), cam, estados: est, renderer, camara, ctrl, pausar: ( p: boolean ) => ( pausado = p ), diagnostico: () => diagnostico } } );
 
 }
 

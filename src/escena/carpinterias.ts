@@ -7,7 +7,8 @@ import { caja, unir } from '../util/geo';
 import { alturaHueco } from './muros';
 import * as M from './materiales';
 
-export const ANGULO_PUERTA = THREE.MathUtils.degToRad( 78 );
+// puertas totalmente abiertas (contra el muro): no tapan la estancia en las vistas comerciales
+export const ANGULO_PUERTA = THREE.MathUtils.degToRad( 89.5 );
 
 let MAT: ReturnType<typeof materiales> | null = null;
 function materiales() {

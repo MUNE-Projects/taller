@@ -104,5 +104,9 @@
       "nota": "Ejemplo: vivienda simétrica de la tipología A, sin opción de piscina.",
       "acceso": "b117f709f738e6f6cb7dc089e7bdf8c59ca3babd2dd3ad8f60d2233aa6a73241"
     }
-  ]
+  ],
+  "studio": {
+    "nota": "Acceso al Studio de producción (solo equipo de la promotora): SHA-256 de \"<id de promoción>:studio:<código>\". El código no se guarda en los datos.",
+    "acceso": "46a03b02686b7ec009b28b4b0ef84b8cb19e0a84aef15766bbbdbe46c11fd3cd"
+  }
 }

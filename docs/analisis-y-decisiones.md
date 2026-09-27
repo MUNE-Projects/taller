@@ -152,3 +152,42 @@ La opción de baños no tiene cámara maestra propia, así que mantiene la vista
 - **Marca de ejemplo ficticia** (Promotora Demo, Residencial Demo). No se usa la marca de la promotora del plano de prueba porque no tenemos su permiso. Se cambia en `promocion.json`.
 - **Tipografía del PDF:** Helvetica. Incrustar la tipografía de la promotora requiere su fichero de fuente (TTF); se puede añadir cuando la promotora lo facilite.
 - **Distribución:** al cambiarla, la cámara va a la vista explicativa de la variante (interior salón-cocina) y el aviso ofrece "Ver en plano".
+
+## Iteración 5: navegación, calidad visual, ambientación y Studio
+
+### Cambios
+
+- **Vibración del Plano, corrección definitiva.**
+  - El modo Plano usa su propia cadena de render con FXAA (espacial y determinista). Ya no pasa por el antialiasing temporal (TRAA) ni por la iluminación global, que son temporales.
+  - Verificado con render continuo, sin congelar la imagen: 0 píxeles distintos entre fotogramas.
+- **Navegación libre para no expertos** (`navegacion.ts`), con tres modos:
+  - planta: solo desplazar y acercar;
+  - exterior: órbita limitada, sin entrar en la maqueta;
+  - interior: mirar alrededor con el pivote justo delante de la cámara y caminar con la rueda.
+
+  Colisiones con muros (margen de 30 cm) y con muebles y decoración (18 cm), comprobadas paso a paso contra muro, fachada, sofá, cama y tabique. Botón «Recentrar vista».
+- **Vistas guiadas:**
+  - se añade Dormitorio 2 y se revisan todas las cámaras a 1,45-1,5 m de altura de ojos con 48-58° de campo;
+  - el Baño va en diagonal desde la puerta;
+  - al llegar a una vista interior ya no hay retroceso: se liberaban tarde los límites de la órbita exterior.
+- **Puertas interiores** abiertas del todo (89,5°).
+- **Ambientación** con biblioteca de activos procedurales (54 activos, 15 categorías):
+  - salón: sofás con cojines y manta, alfombra, lámpara de arco, planta, cuadros, televisor, libros y velas;
+  - comedor: colgante de fibra y frutero;
+  - dormitorios: camas vestidas con cojines y plaid, lámparas de mesilla, cuadros, alfombras y butaca de lectura;
+  - cocina: botes, tabla y frutero;
+  - baños: toalleros, dispensadores y alfombrillas;
+  - terraza: sillones de teca, mesa baja, jardineras y olivo.
+- **Materiales nuevos (TSL):** bouclé, mármol con vetas, follaje, emisivos para luminarias y lienzos abstractos.
+- **Detalles constructivos y exterior:**
+  - rodapiés lacados (solo con muro macizo detrás; se cortan en los huecos);
+  - downlights en techo;
+  - césped con paseo, seto bajo junto a la barandilla y árboles mediterráneos.
+- **Studio de producción:** ver [`arquitectura-studio.md`](arquitectura-studio.md).
+
+### Decisiones
+
+- **Muebles del plano:** en el Studio se sustituyen, pero no se mueven. Su posición es dato del plano (lo que dibujó el arquitecto). La decoración sí se mueve libremente.
+- **IA solo en el Studio,** vía capability `sample`, con la cuenta de quien lo usa. Sin IA disponible, la misma propuesta se calcula en local. La web publicada nunca llama a la IA.
+- **Referencias de marca** (Maison du Monde, Kave Home…): son un universo de estilo interno del Studio. No se muestran al comprador, no se integra catálogo y no se reproducen productos.
+- **Luminarias:** son emisivas, sin luces reales, para no penalizar el rendimiento. La iluminación global recoge parte de su aporte.

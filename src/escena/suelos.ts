@@ -128,7 +128,8 @@ export function construirSuelos( v: Vivienda, conEntorno = true ) {
 
 	// entorno: pavimento de urbanización (zonas comunes) bajo y alrededor de la vivienda
 	const centro = new THREE.Vector3( 6.4, 0, - 3.5 );
-	const suelo = new THREE.Mesh( new THREE.CircleGeometry( 60, 96 ), M.suelo_exterior( centro ) );
+	const zCesped = - Math.min( ...v.exterior.barandilla.recorrido.map( ( q ) => q[ 1 ] ) ) + 0.12;
+	const suelo = new THREE.Mesh( new THREE.CircleGeometry( 60, 96 ), M.suelo_exterior( centro, zCesped ) );
 	suelo.rotation.x = - Math.PI / 2;
 	suelo.position.set( centro.x, - 0.035, centro.z );
 	suelo.receiveShadow = true;

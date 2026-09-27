@@ -3,6 +3,7 @@
 // vivienda correcta (normales, giros de puerta y orientación del mobiliario)
 // sin crear ni mantener un segundo modelo.
 
+import type { Ambientacion } from '../biblioteca/biblioteca';
 import type { Equipamiento, Hueco, Punto, Rect, Tipologia, Variante, Vista, Vivienda } from '../modelo/tipos';
 
 /** Eje de simetría: x' = S - x, con S = xmin + xmax de la envolvente. */
@@ -94,6 +95,17 @@ export function espejarTipologia( t: Tipologia, S: number ): Tipologia {
 		...t,
 		vistas: Object.fromEntries( Object.entries( t.vistas ).map( ( [ k, v ] ) => [ k, vista( v, S ) ] ) ),
 		piscina: { ...t.piscina, rect: rect( t.piscina.rect, S ) },
+	};
+
+}
+
+/** Decoración espejada: x -> S - x y el giro cambia de signo. */
+export function espejarAmbientacion( a: Ambientacion, S: number ): Ambientacion {
+
+	return {
+		...a,
+		sustituciones: { ...a.sustituciones },
+		decoracion: a.decoracion.map( ( d ) => ( { ...d, pos: [ r3( S - d.pos[ 0 ] ), d.pos[ 1 ] ], rot: d.rot === 0 || Math.abs( d.rot ) === 180 ? d.rot : - d.rot } ) ),
 	};
 
 }

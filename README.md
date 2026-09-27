@@ -11,11 +11,14 @@ La interfaz tiene dos niveles de acceso sobre una única experiencia visual:
 |---|---|
 | **Público** (web de la promotora) | Plano, Vivienda, vistas guiadas y navegación libre. Sin personalización ni precios de mejoras. Incluye el aviso "¿Ya eres comprador? Accede para personalizar tu vivienda." |
 | **Comprador** (enlace privado de su vivienda) | Lo anterior, más **Personalizar**: opciones de su vivienda, precio, resumen tipo carrito y documento de selección en PDF |
+| **Studio** (`#studio` + código, solo producción) | Edición de ambientación, cámaras, acabados y precios, marca, biblioteca de activos, interiorismo asistido por IA y exportación de datos. Ver [`docs/arquitectura-studio.md`](docs/arquitectura-studio.md) |
 
 | | |
 |---|---|
 | ![Vista general](docs/capturas/07-publico-general.png) | ![Plano](docs/capturas/07-plano.png) |
 | ![Personalizar](docs/capturas/07-comprador-personalizar.png) | ![Documento](docs/capturas/07-documento.png) |
+| ![Salón ambientado](docs/capturas/08-salon.png) | ![Dormitorio principal](docs/capturas/08-dormitorio.png) |
+| ![Terraza y zonas comunes](docs/capturas/08-terraza.png) | ![Studio](docs/capturas/08-studio.png) |
 
 ## Estructura: Promoción → Tipologías → Viviendas → Opciones
 
@@ -74,6 +77,20 @@ La interfaz (colores, tipografía, logo, favicon, título) y el PDF se generan a
 - **Transiciones:** una sola por acción. Si la cámara ya está en la vista, no se mueve. Si uno de los extremos es una vista a pie de calle, hay un fundido breve (sin vuelos verticales ni atravesar muros).
 - **Render bajo demanda:** con todo quieto, la imagen se estabiliza y deja de repintarse. Así no hay temblor en ninguna vista quieta y se ahorra batería.
 
+## Navegación y ambientación
+
+- **Vistas guiadas**, la navegación principal: Vista general, Salón, Cocina, Dormitorio principal, Dormitorio 2, Baño y Terraza.
+- **Navegación libre restringida** (`src/escena/navegacion.ts`):
+  - dentro se mira alrededor arrastrando y se camina con la rueda;
+  - no se atraviesan muros, puertas, armarios, muebles ni decoración;
+  - la altura de ojos se mantiene entre 1,2 y 2,0 m;
+  - fuera, la órbita tiene límites de distancia y ángulo y no deja meterse en la maqueta;
+  - «Recentrar vista» devuelve a la última vista guiada.
+- **Mobiliario y decoración** desde la biblioteca de activos (`src/datos/biblioteca.json`, `src/biblioteca/`) y la ambientación de cada tipología (`ambientacion.json`). Salón, dormitorios, cocina, baños y terraza están vestidos sin recargar.
+- **Detalles:**
+  - rodapiés lacados y downlights generados a partir de estancias y huecos;
+  - paisaje de zonas comunes (seto, césped, paseo y árboles) visible desde la terraza y las ventanas.
+
 ## Uso
 
 ```bash
@@ -106,7 +123,9 @@ plano (imagen o DWG) ──► src/modelo/vivienda.json ──► generadores �
    - `muros.ts`: trocea cada muro en macizos y dinteles y clasifica cada cara según la estancia a la que mira (pintura, alicatado de baño o fachada). Descarta las caras ocultas.
    - `suelos.ts`: suelos, umbrales, techos (visibles desde dentro e invisibles en la vista de maqueta), volúmenes y entorno.
    - `carpinterias.ts`: puertas con cerco, tapajuntas, hoja pantografiada y manillas; balconeras correderas u oscilobatientes con guías de persiana; barandilla de vidrio.
-   - `equipamiento.ts`: cocina, sanitarios, armarios y mobiliario, modelados por código.
+   - `equipamiento.ts`: cocina, sanitarios y armarios modelados por código; el mobiliario y la decoración salen de la biblioteca de activos (`src/biblioteca/`).
+   - `detalles.ts`: rodapiés y downlights. `paisaje.ts`: zonas comunes exteriores.
+   - `navegacion.ts`: navegación libre con colisiones y límites.
    - `materiales.ts`: materiales procedurales en TSL (gres con juntas, alicatado, madera con veta, cuarzo con árido, textiles, SATE, lacados) y los uniforms que gobiernan los estados.
    - `lineas.ts`: el grafismo de planta.
    - `luz.ts`: cielo, sol e iluminación de entorno.

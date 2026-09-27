@@ -185,4 +185,6 @@ export interface Promocion {
 	promocion: { nombre: string; ubicacion: string };
 	tipologias: { id: string; opciones: Record<string, string[]> }[];
 	viviendas: ViviendaPromocion[];
+	/** Acceso al Studio de producción (hash del código). */
+	studio?: { acceso: string };
 }

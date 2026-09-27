@@ -10,8 +10,43 @@ import { color } from 'three/tsl';
 import type { Equipamiento, Vivienda } from '../modelo/tipos';
 import { unir } from '../util/geo';
 import * as M from './materiales';
+import { activoPara, construirActivo, activo as buscarActivo, type Ambientacion } from '../biblioteca/biblioteca';
 
-type Clave = keyof ReturnType<typeof crearMateriales>;
+/**
+ * Clave de material: una de las fijas (`lacado`, `cuarzo`…) o una dinámica
+ * `tipo:#color` (tela, madera, metal, ceramica, marmol, emisivo, hoja,
+ * terracota, lienzo) que se crea y se reutiliza bajo demanda.
+ */
+export type Clave = string;
+const dinamicos = new Map<string, THREE.Material>();
+
+export function materialDinamico( k: string ): THREE.Material {
+
+	if ( MAT && k in MAT ) return ( MAT as Record<string, THREE.Material> )[ k ];
+	if ( dinamicos.has( k ) ) return dinamicos.get( k )!;
+	const [ tipo, tono = '#cccccc', extra ] = k.split( ':' );
+	let m: THREE.Material;
+	switch ( tipo ) {
+
+		case 'tela': m = M.textil( tono, extra ? Number( extra ) : 1 ); break;
+		case 'boucle': m = M.boucle( tono ); break;
+		case 'madera': m = M.madera( tono, M.oscurecer( tono, 0.78 ), 0.55 ); break;
+		case 'metal': m = M.metalico( tono, 0.32 ); break;
+		case 'ceramica': m = M.material( { acabado: color( tono ), rugosidad: 0.28, fisico: { clearcoat: 0.5, clearcoatRoughness: 0.15 } } ); break;
+		case 'marmol': m = M.marmol( tono ); break;
+		case 'terracota': m = M.material( { acabado: color( tono ), rugosidad: 0.85 } ); break;
+		case 'hoja': m = M.hoja( tono ); break;
+		case 'emisivo': m = M.emisivo( tono, extra ? Number( extra ) : 2 ); break;
+		case 'lienzo': m = M.lienzo( tono.split( ',' ) ); break;
+		case 'vidrio': m = M.vidrio( tono, 0.35 ); break;
+		default: m = M.material( { acabado: color( tono ), rugosidad: 0.7 } );
+
+	}
+
+	dinamicos.set( k, m );
+	return m;
+
+}
 
 function crearMateriales() {
 
@@ -40,10 +75,11 @@ function crearMateriales() {
 }
 
 let MAT: ReturnType<typeof crearMateriales> | null = null;
+export const asegurarMateriales = () => ( MAT ??= crearMateriales() );
 
 // ------------------------------------------------------------ primitivas
 
-class Pieza {
+export class Pieza {
 
 	partes = new Map<Clave, THREE.BufferGeometry[]>();
 
@@ -88,10 +124,11 @@ class Pieza {
 		g.name = nombre;
 		for ( const [ k, gs ] of this.partes ) {
 
-			const m = new THREE.Mesh( unir( gs )!, MAT![ k ] );
-			m.castShadow = k !== 'vidrio' && k !== 'espejo';
+			const m = new THREE.Mesh( unir( gs )!, materialDinamico( k ) );
+			const transparente = k === 'vidrio' || k.startsWith( 'vidrio:' );
+			m.castShadow = ! transparente && k !== 'espejo' && ! k.startsWith( 'emisivo' );
 			m.receiveShadow = true;
-			if ( k === 'vidrio' ) m.renderOrder = 2;
+			if ( transparente ) m.renderOrder = 2;
 			g.add( m );
 
 		}
@@ -469,14 +506,15 @@ function mesilla( p: Pieza, W: number, D: number ) {
 
 // ------------------------------------------------------------ montaje
 
-const GIRO: Record<string, number> = { s: 0, n: Math.PI, e: Math.PI / 2, o: - Math.PI / 2 };
+export const GIRO: Record<string, number> = { s: 0, n: Math.PI, e: Math.PI / 2, o: - Math.PI / 2 };
 
-export function construirEquipamiento( v: Vivienda ) {
+export function construirEquipamiento( v: Vivienda, amb?: Ambientacion | null ) {
 
 	MAT ??= crearMateriales();
 	const H = v.alturas.libre.valor;
 	const fijo = new THREE.Group(); fijo.name = 'equipamiento-fijo';
 	const mobiliario = new THREE.Group(); mobiliario.name = 'mobiliario';
+	const decoracion = new THREE.Group(); decoracion.name = 'decoracion';
 
 	for ( const e of v.equipamiento ) {
 
@@ -487,38 +525,66 @@ export function construirEquipamiento( v: Vivienda ) {
 		const D = girado ? x1 - x0 : y1 - y0;
 		const p = new Pieza();
 
-		switch ( e.tipo ) {
+		// el mobiliario (no fijo) sale de la biblioteca de activos
+		const a = e.fijo ? undefined : activoPara( e.id, e.tipo, amb );
+		let g: THREE.Group;
+		if ( a ) g = construirActivo( a, W, D, a.dims[ 2 ], { techo: H, elev: 0, semilla: e.id } );
+		else {
 
-			case 'armario': armario( p, W, D, H ); break;
-			case 'columna-frigorifico': columna( p, W, D, H, false ); break;
-			case 'columna-hornos': columna( p, W, D, H, true ); break;
-			case 'encimera': encimera( p, W, D, H, e, cy ); break;
-			case 'banera': banera( p, W, D ); break;
-			case 'ducha': ducha( p, W, D ); break;
-			case 'inodoro': inodoro( p, W, D ); break;
-			case 'lavabo': lavabo( p, W, D, false ); break;
-			case 'lavabo-doble': lavabo( p, W, D, true ); break;
-			case 'lavadora': lavadora( p, W, D ); break;
-			case 'mesa-comedor': mesaComedor( p, W, D ); break;
-			case 'silla': silla( p, W, D ); break;
-			case 'sofa': sofa( p, W, D ); break;
-			case 'mesa-centro': mesaCentro( p, W, D ); break;
-			case 'mesa-auxiliar': mesaAuxiliar( p, W ); break;
-			case 'mueble-tv': muebleTV( p, W, D ); break;
-			case 'cama': cama( p, W, D, W > 1.2 ); break;
-			case 'mesilla': mesilla( p, W, D ); break;
-			default: console.warn( 'Equipamiento sin modelo:', e.tipo );
+			switch ( e.tipo ) {
+
+				case 'armario': armario( p, W, D, H ); break;
+				case 'columna-frigorifico': columna( p, W, D, H, false ); break;
+				case 'columna-hornos': columna( p, W, D, H, true ); break;
+				case 'encimera': encimera( p, W, D, H, e, cy ); break;
+				case 'banera': banera( p, W, D ); break;
+				case 'ducha': ducha( p, W, D ); break;
+				case 'inodoro': inodoro( p, W, D ); break;
+				case 'lavabo': lavabo( p, W, D, false ); break;
+				case 'lavabo-doble': lavabo( p, W, D, true ); break;
+				case 'lavadora': lavadora( p, W, D ); break;
+				case 'mesa-comedor': mesaComedor( p, W, D ); break;
+				case 'silla': silla( p, W, D ); break;
+				case 'sofa': sofa( p, W, D ); break;
+				case 'mesa-centro': mesaCentro( p, W, D ); break;
+				case 'mesa-auxiliar': mesaAuxiliar( p, W ); break;
+				case 'mueble-tv': muebleTV( p, W, D ); break;
+				case 'cama': cama( p, W, D, W > 1.2 ); break;
+				case 'mesilla': mesilla( p, W, D ); break;
+				default: console.warn( 'Equipamiento sin modelo:', e.tipo );
+
+			}
+
+			g = p.malla( e.id );
 
 		}
 
-		const g = p.malla( e.id );
 		g.rotation.y = GIRO[ e.frente ];
 		g.position.set( cx, 0, - cy );
-		g.userData = { fijo: e.fijo, x: cx };
+		g.userData = { fijo: e.fijo, x: cx, equipo: e.id, tipo: e.tipo, activo: a?.id ?? null };
 		( e.fijo ? fijo : mobiliario ).add( g );
 
 	}
 
-	return { fijo, mobiliario };
+	for ( const d of amb?.decoracion ?? [] ) {
+
+		const a = buscarActivo( d.activo );
+		if ( ! a ) {
+
+			console.warn( 'Decoración con activo desconocido:', d.activo );
+			continue;
+
+		}
+
+		const [ W, D, Ha ] = d.dims ?? a.dims;
+		const g = construirActivo( a, W, D, Ha, { techo: H, elev: d.elev, semilla: d.id } );
+		g.rotation.y = THREE.MathUtils.degToRad( d.rot );
+		g.position.set( d.pos[ 0 ], d.elev, - d.pos[ 1 ] );
+		g.userData = { fijo: false, x: d.pos[ 0 ], decoracion: d.id, activo: a.id };
+		decoracion.add( g );
+
+	}
+
+	return { fijo, mobiliario, decoracion };
 
 }

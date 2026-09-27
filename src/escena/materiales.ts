@@ -330,6 +330,92 @@ export function textil( tono: string, escala = 1 ) {
 
 }
 
+/** Oscurece un color hexadecimal (f < 1) o lo aclara (f > 1). */
+export function oscurecer( hex: string, f: number ) {
+
+	const c = new THREE.Color( hex );
+	c.r = Math.min( 1, c.r * f ); c.g = Math.min( 1, c.g * f ); c.b = Math.min( 1, c.b * f );
+	return `#${ c.getHexString() }`;
+
+}
+
+/** Bouclé: tejido de rizo, relieve granulado y brillo suave. */
+export function boucle( tono: string ) {
+
+	const rizo = mx_cell_noise_float( positionWorld.mul( 260 ) );
+	const grano = mx_noise_float( positionWorld.mul( 120 ) ).mul( 0.5 ).add( 0.5 );
+	return material( {
+		acabado: color( tono ).mul( float( 0.9 ).add( rizo.mul( 0.08 ) ).add( grano.mul( 0.06 ) ) ),
+		rugosidad: 0.97,
+		relieve: rizo.mul( 0.6 ).add( grano.mul( 0.4 ) ),
+		relieveEscala: 0.12,
+		fisico: { sheen: 0.8, sheenColor: '#ffffff' },
+	} );
+
+}
+
+/** Mármol pulido con vetas. */
+export function marmol( tono = '#eeebe6' ) {
+
+	const p = positionWorld;
+	const turb = mx_fractal_noise_float( p.mul( 3.2 ), 4, 2.0, 0.5 );
+	const veta = abs( sin( p.x.mul( 4 ).add( p.z.mul( 2.5 ) ).add( turb.mul( 6 ) ) ) );
+	const linea = float( 1 ).sub( smoothstep( 0.0, 0.08, veta ) );
+	const nube = mx_noise_float( p.mul( 1.5 ) ).mul( 0.5 ).add( 0.5 );
+	const base = color( tono ).mul( float( 0.95 ).add( nube.mul( 0.05 ) ) );
+	return material( {
+		acabado: mix( base, color( oscurecer( tono, 0.62 ) ), linea.mul( 0.7 ) ),
+		rugosidad: 0.12,
+		fisico: { clearcoat: 0.6, clearcoatRoughness: 0.06 },
+	} );
+
+}
+
+/** Follaje: variación de tono por hoja y translucidez aparente. */
+export function hoja( tono = '#4d6b3c' ) {
+
+	const celda = mx_cell_noise_float( positionWorld.mul( 28 ) );
+	const ruido = mx_noise_float( positionWorld.mul( 9 ) ).mul( 0.5 ).add( 0.5 );
+	const m = material( {
+		acabado: mix( color( oscurecer( tono, 0.7 ) ), color( oscurecer( tono, 1.25 ) ), celda.mul( 0.6 ).add( ruido.mul( 0.4 ) ) ),
+		rugosidad: 0.6,
+		relieve: celda,
+		relieveEscala: 0.15,
+	} );
+	m.side = THREE.DoubleSide;
+	return m;
+
+}
+
+/** Emisor (difusor de luminaria, pantalla de lámpara encendida). */
+export function emisivo( tono = '#fff4e0', intensidad = 2 ) {
+
+	const m = material( { acabado: color( tono ), rugosidad: 0.8, planoColor: PALETA.papel } );
+	const plano = color( PALETA.papel ).mul( 1.12 );
+	m.emissiveNode = mix( color( tono ).mul( float( intensidad ).mul( U.acabado ) ), plano, U.plano );
+	return m;
+
+}
+
+/** Lienzo abstracto: manchas de color con bordes pintados (no reproduce obra alguna). */
+export function lienzo( tonos: string[] ) {
+
+	const [ a = '#d9cfc0', b = '#b86f4c', c = '#39475a' ] = tonos;
+	const p = positionLocal;
+	const n1 = mx_fractal_noise_float( p.mul( 2.2 ), 3, 2.0, 0.5 ).mul( 0.5 ).add( 0.5 );
+	const n2 = mx_fractal_noise_float( p.mul( 3.1 ).add( 7.3 ), 3, 2.0, 0.5 ).mul( 0.5 ).add( 0.5 );
+	const pincel = mx_noise_float( vec3( p.x.mul( 60 ), p.y.mul( 8 ), p.z.mul( 60 ) ) ).mul( 0.04 );
+	const t1 = smoothstep( 0.52, 0.56, n1.add( pincel ) ), t2 = smoothstep( 0.6, 0.64, n2.add( pincel ) );
+	return material( {
+		acabado: mix( mix( color( a ), color( b ), t1 ), color( c ), t2 ),
+		rugosidad: 0.75,
+		relieve: pincel.mul( 10 ),
+		relieveEscala: 0.05,
+		barridoLocal: false,
+	} );
+
+}
+
 export const metalico = ( tono: string, rug: number ) => material( { acabado: color( tono ), rugosidad: rug, metal: 1 } );
 
 export const ceramica = () => material( { acabado: color( '#f6f5f2' ), rugosidad: 0.1, fisico: { clearcoat: 0.8, clearcoatRoughness: 0.05 } } );
@@ -355,15 +441,32 @@ export function espejo() {
 }
 
 /** Exterior: suelo de urbanización que se funde con el fondo a distancia. */
-export function suelo_exterior( centro: THREE.Vector3 ) {
+export function suelo_exterior( centro: THREE.Vector3, zCesped = Infinity ) {
 
 	const p = vec2( positionWorld.x, positionWorld.z );
 	const d = p.sub( vec2( centro.x, centro.z ) ).length();
-	const lejos = smoothstep( 9, 30, d );
+	const lejos = smoothstep( 14, 42, d );
 	const [ enJunta ] = baldosas( p, vec2( 0.6, 0.6 ), 0.004 );
 	const pav = mix( color( '#dcd8d0' ), color( '#c9c4bb' ), enJunta.mul( 0.8 ) ).mul( float( 0.97 ).add( ruidoSuave( vec3( p.x, p.y, 0 ), 0.6 ).mul( 0.05 ) ) );
-	const m = material( { acabado: mix( pav, color( '#e9e6e0' ), lejos ), rugosidad: 0.85, planoColor: PALETA.papel } );
-	return m;
+	if ( ! Number.isFinite( zCesped ) ) return material( { acabado: mix( pav, color( '#e9e6e0' ), lejos ), rugosidad: 0.85, planoColor: PALETA.papel } );
+	// zonas comunes al sur de la terraza: césped con un paseo de losas
+	const manchas = ruidoSuave( vec3( p.x, p.y, 0 ), 0.35 ).mul( 0.5 ).add( 0.5 );
+	const brizna = mx_noise_float( vec3( p.x.mul( 60 ), p.y.mul( 60 ), 0 ) ).mul( 0.5 ).add( 0.5 );
+	const cesped = mix( color( '#6f8a4a' ), color( '#93a262' ), manchas.mul( 0.7 ).add( brizna.mul( 0.3 ) ) );
+	const zc = float( zCesped );
+	const esCesped = smoothstep( zc, zc.add( 0.08 ), p.y );
+	const paseo = smoothstep( zc.add( 2.5 ), zc.add( 2.55 ), p.y ).mul( smoothstep( zc.add( 3.75 ), zc.add( 3.7 ), p.y ) );
+	const [ juntaPaseo ] = baldosas( p, vec2( 0.9, 0.45 ), 0.012, 0.5 );
+	const losas = mix( color( '#d8d0c2' ), color( '#a9a193' ), juntaPaseo.mul( 0.9 ) );
+	const verde = mix( cesped, losas, paseo );
+	const acabado = mix( mix( pav, verde, esCesped ), color( '#dfe0d3' ), lejos );
+	return material( {
+		acabado,
+		rugosidad: mix( float( 0.85 ), float( 0.95 ), esCesped ),
+		relieve: brizna.mul( esCesped ).mul( float( 1 ).sub( paseo ) ),
+		relieveEscala: 0.2,
+		planoColor: PALETA.papel,
+	} );
 
 }
 

@@ -8,10 +8,11 @@
 import datosPromocion from '../datos/promocion.json';
 import datosCatalogo from '../datos/catalogo.json';
 import type { Configuracion, Promocion, Tipologia, Variante, Vivienda, ViviendaPromocion } from '../modelo/tipos';
-import { ejeSimetria, espejarTipologia, espejarVariante, espejarVivienda } from './espejo';
+import { ejeSimetria, espejarAmbientacion, espejarTipologia, espejarVariante, espejarVivienda } from './espejo';
+import type { Ambientacion } from '../biblioteca/biblioteca';
 
 export const PROMOCION = datosPromocion as unknown as Promocion;
-const CATALOGO = datosCatalogo as unknown as Configuracion;
+export const CATALOGO = datosCatalogo as unknown as Configuracion;
 
 // datos de cada tipología (src/datos/tipologias/<id>/): una carpeta por geometría
 const ficheros = import.meta.glob( '../datos/tipologias/*/*.json', { eager: true, import: 'default' } ) as Record<string, unknown>;
@@ -27,6 +28,8 @@ export interface Modelo {
 	tipologia: Tipologia;
 	vivienda: Vivienda;
 	variantes: Variante[];
+	/** Mobiliario y decoración (opcional: sin él se usan los activos predeterminados). */
+	ambientacion: Ambientacion | null;
 }
 
 /** Geometría, variantes y cámaras de una tipología, espejadas si hace falta. */
@@ -35,12 +38,14 @@ export function cargarModelo( idTipologia: string, espejo = false ): Modelo {
 	const tipologia = dato<Tipologia>( idTipologia, 'tipologia' );
 	const vivienda = dato<Vivienda>( idTipologia, 'vivienda' );
 	const variantes = dato<Variante[]>( idTipologia, 'variantes' );
-	if ( ! espejo ) return { tipologia, vivienda, variantes };
+	const ambientacion = ( ficheros[ `../datos/tipologias/${ idTipologia }/ambientacion.json` ] as Ambientacion | undefined ) ?? null;
+	if ( ! espejo ) return { tipologia, vivienda, variantes, ambientacion: ambientacion && structuredClone( ambientacion ) };
 	const S = ejeSimetria( vivienda );
 	return {
 		tipologia: espejarTipologia( tipologia, S ),
 		vivienda: espejarVivienda( vivienda, S ),
 		variantes: variantes.map( ( v ) => espejarVariante( v, S ) ),
+		ambientacion: ambientacion && espejarAmbientacion( ambientacion, S ),
 	};
 
 }
@@ -79,6 +84,14 @@ export function extraerCodigo( entrada: string ) {
 	const t = entrada.trim();
 	const m = t.match( /c-[a-z0-9]{8,}/i );
 	return ( m ? m[ 0 ] : t.replace( /^#/, '' ) ).toLowerCase();
+
+}
+
+/** ¿Es válido el código del Studio de producción? */
+export async function accesoStudio( codigo: string ) {
+
+	if ( ! codigo || ! crypto?.subtle || ! PROMOCION.studio ) return false;
+	return ( await sha256( `${ PROMOCION.id }:studio:${ codigo.trim() }` ) ) === PROMOCION.studio.acceso;
 
 }
 

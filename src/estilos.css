@@ -116,9 +116,10 @@ body[data-modo="personalizar"] .dock { left: calc((100% - var(--cajon) - 16px) /
 }
 .vistas button[aria-pressed="true"] { background: rgb(28 28 26 / 0.08); color: var(--tinta); }
 .vistas .separador { width: 1px; height: 18px; margin: 0 4px; background: var(--linea); }
-.vistas .foto { display: grid; place-items: center; width: 32px; height: 32px; padding: 0; }
+.vistas .foto, .vistas .icono { display: grid; place-items: center; width: 32px; height: 32px; padding: 0; }
+body[data-modo="plano"] .vistas { display: flex; }
+body[data-modo="plano"] .vistas [data-vista], body[data-modo="plano"] .vistas .separador { display: none; }
 .vistas .foto[data-ocupado] { opacity: 0.5; cursor: progress; }
-body[data-modo="plano"] .vistas { display: none; }
 
 .modos button {
 	min-width: 96px;
@@ -382,10 +383,10 @@ body.con-etiquetas .etiqueta { opacity: 1; }
 #resumen-configuracion .acciones { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 16px; }
 #resumen-configuracion .acciones .cerrar-dialogo { margin-right: auto; }
 #resumen-configuracion .acciones button { padding: 9px 14px; border: 1px solid var(--linea); border-radius: 8px; background: transparent; font-size: 13px; cursor: pointer; }
-#resumen-configuracion .acciones .principal, #acceso .principal { background: var(--acento); color: #fff; border-color: var(--acento); }
+#resumen-configuracion .acciones .principal, #acceso .principal, #acceso-studio .principal { background: var(--acento); color: #fff; border-color: var(--acento); }
 
 /* acceso de comprador */
-#acceso {
+#acceso, #acceso-studio {
 	width: min(440px, calc(100% - 32px));
 	padding: 22px 24px;
 	border: 1px solid var(--linea);
@@ -394,16 +395,16 @@ body.con-etiquetas .etiqueta { opacity: 1; }
 	color: var(--tinta);
 	box-shadow: 0 24px 64px rgb(0 0 0 / 0.2);
 }
-#acceso::backdrop { background: rgb(28 28 26 / 0.45); }
-#acceso form { display: grid; gap: 10px; }
-#acceso h2 { margin: 0; font-size: 18px; font-weight: 500; }
-#acceso p { margin: 0; font-size: 13px; color: var(--tinta-2); }
-#acceso label { margin-top: 4px; font-size: 12px; color: var(--tinta-2); }
-#acceso input { padding: 10px 12px; border: 1px solid rgb(28 28 26 / 0.2); border-radius: 9px; background: #fff; font: inherit; font-size: 14px; }
-#acceso input:focus-visible { outline: 2px solid var(--acento); outline-offset: 1px; }
-#acceso .error { color: #9b2c2c; font-size: 12.5px; }
-#acceso .acciones { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
-#acceso .acciones button { padding: 9px 14px; border: 1px solid var(--linea); border-radius: 8px; background: transparent; font-size: 13px; cursor: pointer; }
+#acceso::backdrop, #acceso-studio::backdrop { background: rgb(28 28 26 / 0.45); }
+#acceso form, #acceso-studio form { display: grid; gap: 10px; }
+#acceso h2, #acceso-studio h2 { margin: 0; font-size: 18px; font-weight: 500; }
+#acceso p, #acceso-studio p { margin: 0; font-size: 13px; color: var(--tinta-2); }
+#acceso label, #acceso-studio label { margin-top: 4px; font-size: 12px; color: var(--tinta-2); }
+#acceso input, #acceso-studio input { padding: 10px 12px; border: 1px solid rgb(28 28 26 / 0.2); border-radius: 9px; background: #fff; font: inherit; font-size: 14px; }
+#acceso input:focus-visible, #acceso-studio input:focus-visible { outline: 2px solid var(--acento); outline-offset: 1px; }
+#acceso .error, #acceso-studio .error { color: #9b2c2c; font-size: 12.5px; }
+#acceso .acciones, #acceso-studio .acciones { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
+#acceso .acciones button, #acceso-studio .acciones button { padding: 9px 14px; border: 1px solid var(--linea); border-radius: 8px; background: transparent; font-size: 13px; cursor: pointer; }
 
 /* aviso mientras se renderiza una imagen o el documento */
 .preparando { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; background: var(--papel); color: var(--tinta-2); font-size: 13px; }

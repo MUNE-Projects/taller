@@ -1,0 +1,1436 @@
+{
+ "version": 1,
+ "nota": "Biblioteca de activos procedurales. \"inspiracion\" es una referencia interna de estilo para el equipo de producción: no se muestra al comprador ni reproduce productos concretos.",
+ "categorias": [
+  {
+   "id": "sofas",
+   "nombre": "Sofás"
+  },
+  {
+   "id": "sillones",
+   "nombre": "Sillones"
+  },
+  {
+   "id": "mesas",
+   "nombre": "Mesas"
+  },
+  {
+   "id": "sillas",
+   "nombre": "Sillas"
+  },
+  {
+   "id": "camas",
+   "nombre": "Camas"
+  },
+  {
+   "id": "mesillas",
+   "nombre": "Mesillas"
+  },
+  {
+   "id": "cabeceros",
+   "nombre": "Cabeceros"
+  },
+  {
+   "id": "almacenaje",
+   "nombre": "Almacenaje"
+  },
+  {
+   "id": "lamparas",
+   "nombre": "Lámparas"
+  },
+  {
+   "id": "alfombras",
+   "nombre": "Alfombras"
+  },
+  {
+   "id": "plantas",
+   "nombre": "Plantas"
+  },
+  {
+   "id": "cuadros",
+   "nombre": "Cuadros"
+  },
+  {
+   "id": "textiles",
+   "nombre": "Textiles"
+  },
+  {
+   "id": "accesorios",
+   "nombre": "Accesorios"
+  },
+  {
+   "id": "decoracion",
+   "nombre": "Decoración"
+  }
+ ],
+ "predeterminados": {
+  "sofa": "sofa-lino-arena",
+  "mesa-centro": "mesa-centro-roble",
+  "mesa-auxiliar": "mesa-auxiliar-roble",
+  "mueble-tv": "mueble-tv-roble",
+  "mesa-comedor": "mesa-comedor-roble",
+  "silla": "silla-roble-lino",
+  "cama": "cama-lino-plaid",
+  "mesilla": "mesilla-roble"
+ },
+ "activos": [
+  {
+   "id": "sofa-lino-arena",
+   "categoria": "sofas",
+   "nombre": "Sofá de lino, brazo recto",
+   "estilo": "mediterráneo contemporáneo",
+   "materiales": "lino lavado, patas de roble",
+   "color": "#d8cfc1",
+   "gama": "media",
+   "dims": [
+    2.2,
+    0.95,
+    0.8
+   ],
+   "generador": "sofa",
+   "params": {
+    "tela": "tela:#d8cfc1",
+    "patas": "madera:#8a6d52",
+    "cojines": "tela:#b8704f|tela:#ece6db|tela:#8c8f78",
+    "manta": "tela:#c9b8a0:3"
+   },
+   "inspiracion": [
+    "Kave Home",
+    "Maison du Monde"
+   ],
+   "referencia": "SOFA-LINO-ARENA",
+   "miniatura": null,
+   "sustituye": [
+    "sofa"
+   ]
+  },
+  {
+   "id": "sofa-boucle-crudo",
+   "categoria": "sofas",
+   "nombre": "Sofá curvo de bouclé",
+   "estilo": "orgánico",
+   "materiales": "bouclé, zócalo oculto",
+   "color": "#ece6db",
+   "gama": "alta",
+   "dims": [
+    2.3,
+    1.0,
+    0.78
+   ],
+   "generador": "sofa",
+   "params": {
+    "tela": "boucle:#ece6db",
+    "forma": "curvo",
+    "patas_alto": 0,
+    "cojines": "tela:#a9876a|tela:#d8cfc1"
+   },
+   "inspiracion": [
+    "Minotti",
+    "Roche Bobois"
+   ],
+   "referencia": "SOFA-BOUCLE-CRUDO",
+   "miniatura": null,
+   "sustituye": [
+    "sofa"
+   ]
+  },
+  {
+   "id": "sofa-terciopelo-salvia",
+   "categoria": "sofas",
+   "nombre": "Sofá de terciopelo verde salvia",
+   "estilo": "ecléctico cálido",
+   "materiales": "terciopelo, patas de latón",
+   "color": "#8c957c",
+   "gama": "media",
+   "dims": [
+    2.1,
+    0.92,
+    0.8
+   ],
+   "generador": "sofa",
+   "params": {
+    "tela": "tela:#8c957c:0.6",
+    "patas": "metal:#b8a07a",
+    "cojines": "tela:#e2d4bd|tela:#c9875f",
+    "manta": "tela:#e8dfd0:3"
+   },
+   "inspiracion": [
+    "Maison du Monde",
+    "Le Masie"
+   ],
+   "referencia": "SOFA-TERCIOPELO-SALVIA",
+   "miniatura": null,
+   "sustituye": [
+    "sofa"
+   ]
+  },
+  {
+   "id": "sofa-gris-esencial",
+   "categoria": "sofas",
+   "nombre": "Sofá tapizado gris claro",
+   "estilo": "esencial",
+   "materiales": "tejido técnico, patas negras",
+   "color": "#cfccc6",
+   "gama": "esencial",
+   "dims": [
+    2.1,
+    0.9,
+    0.8
+   ],
+   "generador": "sofa",
+   "params": {
+    "tela": "tela:#cfccc6",
+    "patas": "metalNegro"
+   },
+   "inspiracion": [
+    "Sklum"
+   ],
+   "referencia": "SOFA-GRIS-ESENCIAL",
+   "miniatura": null,
+   "sustituye": [
+    "sofa"
+   ]
+  },
+  {
+   "id": "sillon-boucle",
+   "categoria": "sillones",
+   "nombre": "Butaca envolvente de bouclé",
+   "estilo": "orgánico",
+   "materiales": "bouclé, patas de roble",
+   "color": "#ece6db",
+   "gama": "media",
+   "dims": [
+    0.8,
+    0.8,
+    0.78
+   ],
+   "generador": "sillon",
+   "params": {
+    "tela": "boucle:#ece6db",
+    "cojin": "tela:#b8704f"
+   },
+   "inspiracion": [
+    "Kave Home",
+    "Kenay Home"
+   ],
+   "referencia": "SILLON-BOUCLE",
+   "miniatura": null,
+   "sustituye": [
+    "sillon"
+   ]
+  },
+  {
+   "id": "sillon-exterior-teca",
+   "categoria": "sillones",
+   "nombre": "Sillón de exterior en teca",
+   "estilo": "exterior mediterráneo",
+   "materiales": "teca, tejido exterior",
+   "color": "#e8e3d8",
+   "gama": "media",
+   "dims": [
+    0.72,
+    0.8,
+    0.7
+   ],
+   "generador": "sillon-exterior",
+   "params": {
+    "estructura": "madera:#9b7652",
+    "tela": "tela:#e8e3d8"
+   },
+   "inspiracion": [
+    "Kave Home"
+   ],
+   "referencia": "SILLON-EXTERIOR-TECA",
+   "miniatura": null,
+   "sustituye": [
+    "sillon-exterior"
+   ]
+  },
+  {
+   "id": "mesa-centro-roble",
+   "categoria": "mesas",
+   "nombre": "Mesa de centro de roble",
+   "estilo": "nórdico cálido",
+   "materiales": "roble macizo, hierro negro",
+   "color": "#b89574",
+   "gama": "media",
+   "dims": [
+    0.9,
+    0.9,
+    0.36
+   ],
+   "generador": "mesa-centro",
+   "params": {
+    "tapa": "madera:#b89574",
+    "pie": "metalNegro"
+   },
+   "inspiracion": [
+    "Kave Home",
+    "Sklum"
+   ],
+   "referencia": "MESA-CENTRO-ROBLE",
+   "miniatura": null,
+   "sustituye": [
+    "mesa-centro"
+   ]
+  },
+  {
+   "id": "mesa-centro-marmol",
+   "categoria": "mesas",
+   "nombre": "Mesas nido de mármol",
+   "estilo": "contemporáneo",
+   "materiales": "mármol blanco, base de piedra",
+   "color": "#eeebe6",
+   "gama": "alta",
+   "dims": [
+    0.9,
+    0.9,
+    0.36
+   ],
+   "generador": "mesa-centro",
+   "params": {
+    "tapa": "marmol:#eeebe6",
+    "pie": "marmol:#e2ddd4",
+    "forma": "redonda"
+   },
+   "inspiracion": [
+    "Roche Bobois",
+    "Minotti"
+   ],
+   "referencia": "MESA-CENTRO-MARMOL",
+   "miniatura": null,
+   "sustituye": [
+    "mesa-centro"
+   ]
+  },
+  {
+   "id": "mesa-comedor-roble",
+   "categoria": "mesas",
+   "nombre": "Mesa de comedor de roble",
+   "estilo": "nórdico cálido",
+   "materiales": "roble macizo",
+   "color": "#b89574",
+   "gama": "media",
+   "dims": [
+    1.3,
+    0.9,
+    0.75
+   ],
+   "generador": "mesa-comedor",
+   "params": {
+    "tapa": "madera:#b89574"
+   },
+   "inspiracion": [
+    "Kave Home"
+   ],
+   "referencia": "MESA-COMEDOR-ROBLE",
+   "miniatura": null,
+   "sustituye": [
+    "mesa-comedor"
+   ]
+  },
+  {
+   "id": "mesa-comedor-marmol",
+   "categoria": "mesas",
+   "nombre": "Mesa de comedor de mármol con pie torneado",
+   "estilo": "contemporáneo",
+   "materiales": "mármol, madera torneada",
+   "color": "#eeebe6",
+   "gama": "alta",
+   "dims": [
+    1.3,
+    0.9,
+    0.75
+   ],
+   "generador": "mesa-comedor",
+   "params": {
+    "tapa": "marmol:#eeebe6",
+    "pie": "madera:#8a6d52",
+    "forma": "pedestal"
+   },
+   "inspiracion": [
+    "Le Masie",
+    "Roche Bobois"
+   ],
+   "referencia": "MESA-COMEDOR-MARMOL",
+   "miniatura": null,
+   "sustituye": [
+    "mesa-comedor"
+   ]
+  },
+  {
+   "id": "mesa-auxiliar-roble",
+   "categoria": "mesas",
+   "nombre": "Mesa auxiliar redonda",
+   "estilo": "nórdico cálido",
+   "materiales": "roble, acero negro",
+   "color": "#b89574",
+   "gama": "esencial",
+   "dims": [
+    0.5,
+    0.5,
+    0.52
+   ],
+   "generador": "mesa-auxiliar",
+   "params": {
+    "tapa": "madera:#b89574"
+   },
+   "inspiracion": [
+    "Sklum"
+   ],
+   "referencia": "MESA-AUXILIAR-ROBLE",
+   "miniatura": null,
+   "sustituye": [
+    "mesa-auxiliar"
+   ]
+  },
+  {
+   "id": "mesa-auxiliar-travertino",
+   "categoria": "mesas",
+   "nombre": "Mesa auxiliar de travertino",
+   "estilo": "mediterráneo",
+   "materiales": "travertino",
+   "color": "#d9c8ae",
+   "gama": "alta",
+   "dims": [
+    0.5,
+    0.5,
+    0.5
+   ],
+   "generador": "mesa-auxiliar",
+   "params": {
+    "tapa": "marmol:#d9c8ae",
+    "pie": "marmol:#d9c8ae"
+   },
+   "inspiracion": [
+    "Kenay Home"
+   ],
+   "referencia": "MESA-AUXILIAR-TRAVERTINO",
+   "miniatura": null,
+   "sustituye": [
+    "mesa-auxiliar"
+   ]
+  },
+  {
+   "id": "mesa-exterior-teca",
+   "categoria": "mesas",
+   "nombre": "Mesa baja de exterior",
+   "estilo": "exterior mediterráneo",
+   "materiales": "teca",
+   "color": "#9b7652",
+   "gama": "media",
+   "dims": [
+    0.6,
+    0.6,
+    0.42
+   ],
+   "generador": "mesa-exterior",
+   "params": {
+    "tapa": "madera:#9b7652"
+   },
+   "inspiracion": [
+    "Kave Home"
+   ],
+   "referencia": "MESA-EXTERIOR-TECA",
+   "miniatura": null
+  },
+  {
+   "id": "silla-roble-lino",
+   "categoria": "sillas",
+   "nombre": "Silla de roble con asiento de lino",
+   "estilo": "nórdico cálido",
+   "materiales": "roble, lino",
+   "color": "#e2dcd1",
+   "gama": "media",
+   "dims": [
+    0.46,
+    0.48,
+    0.84
+   ],
+   "generador": "silla",
+   "params": {
+    "tela": "tela:#e2dcd1",
+    "madera": "madera:#b08d69"
+   },
+   "inspiracion": [
+    "Kave Home",
+    "Maison du Monde"
+   ],
+   "referencia": "SILLA-ROBLE-LINO",
+   "miniatura": null,
+   "sustituye": [
+    "silla"
+   ]
+  },
+  {
+   "id": "silla-nogal-terracota",
+   "categoria": "sillas",
+   "nombre": "Silla de nogal con asiento terracota",
+   "estilo": "ecléctico cálido",
+   "materiales": "nogal, tejido",
+   "color": "#b8704f",
+   "gama": "media",
+   "dims": [
+    0.46,
+    0.48,
+    0.84
+   ],
+   "generador": "silla",
+   "params": {
+    "tela": "tela:#b8704f",
+    "madera": "madera:#6e5040"
+   },
+   "inspiracion": [
+    "Le Masie"
+   ],
+   "referencia": "SILLA-NOGAL-TERRACOTA",
+   "miniatura": null,
+   "sustituye": [
+    "silla"
+   ]
+  },
+  {
+   "id": "cama-lino-plaid",
+   "categoria": "camas",
+   "nombre": "Cama tapizada en lino con plaid",
+   "estilo": "mediterráneo contemporáneo",
+   "materiales": "lino, algodón lavado, plaid de lana",
+   "color": "#c9bfb0",
+   "gama": "media",
+   "dims": [
+    1.6,
+    2.1,
+    1.15
+   ],
+   "generador": "cama",
+   "params": {
+    "base": "tela:#c9bfb0",
+    "ropa": "tela:#f4f2ed:0.8",
+    "cojines": "tela:#b8704f|tela:#e8e0d2|tela:#8c8f78",
+    "plaid": "tela:#a9876a:3"
+   },
+   "inspiracion": [
+    "Maison du Monde",
+    "Kave Home"
+   ],
+   "referencia": "CAMA-LINO-PLAID",
+   "miniatura": null,
+   "sustituye": [
+    "cama"
+   ]
+  },
+  {
+   "id": "cama-capitone-arena",
+   "categoria": "camas",
+   "nombre": "Cama con cabecero capitoné",
+   "estilo": "clásico renovado",
+   "materiales": "terciopelo, percal",
+   "color": "#d6c9b5",
+   "gama": "alta",
+   "dims": [
+    1.6,
+    2.1,
+    1.3
+   ],
+   "generador": "cama",
+   "params": {
+    "base": "tela:#d6c9b5:0.6",
+    "cabecero_tipo": "capitone",
+    "cabecero_alto": 1.3,
+    "ropa": "tela:#f6f4ef:0.8",
+    "cojines": "tela:#8c957c|tela:#ece6db|tela:#8c957c",
+    "plaid": "tela:#e2d4bd:3"
+   },
+   "inspiracion": [
+    "Roche Bobois",
+    "Le Masie"
+   ],
+   "referencia": "CAMA-CAPITONE-ARENA",
+   "miniatura": null,
+   "sustituye": [
+    "cama"
+   ]
+  },
+  {
+   "id": "cama-roble-listones",
+   "categoria": "camas",
+   "nombre": "Cama de roble con cabecero de listones",
+   "estilo": "nórdico cálido",
+   "materiales": "roble, lino",
+   "color": "#b89574",
+   "gama": "media",
+   "dims": [
+    1.6,
+    2.1,
+    1.1
+   ],
+   "generador": "cama",
+   "params": {
+    "base": "madera:#b89574",
+    "cabecero": "madera:#b89574",
+    "cabecero_tipo": "listones",
+    "ropa": "tela:#eeeae3:0.8",
+    "cojines": "tela:#c9875f|tela:#dfd6c7",
+    "plaid": "tela:#56616b:3"
+   },
+   "inspiracion": [
+    "Kave Home",
+    "Sklum"
+   ],
+   "referencia": "CAMA-ROBLE-LISTONES",
+   "miniatura": null,
+   "sustituye": [
+    "cama"
+   ]
+  },
+  {
+   "id": "cama-individual-lino",
+   "categoria": "camas",
+   "nombre": "Cama individual tapizada",
+   "estilo": "mediterráneo contemporáneo",
+   "materiales": "lino, algodón",
+   "color": "#c9bfb0",
+   "gama": "media",
+   "dims": [
+    0.9,
+    2.0,
+    1.0
+   ],
+   "generador": "cama",
+   "params": {
+    "base": "tela:#c9bfb0",
+    "ropa": "tela:#f4f2ed:0.8",
+    "cojines": "tela:#8c8f78",
+    "plaid": "tela:#d8cfc1:3",
+    "cabecero_alto": 1.0
+   },
+   "inspiracion": [
+    "Kave Home"
+   ],
+   "referencia": "CAMA-INDIVIDUAL-LINO",
+   "miniatura": null,
+   "sustituye": [
+    "cama"
+   ]
+  },
+  {
+   "id": "mesilla-roble",
+   "categoria": "mesillas",
+   "nombre": "Mesilla de roble con cajón",
+   "estilo": "nórdico cálido",
+   "materiales": "roble, latón",
+   "color": "#b89574",
+   "gama": "media",
+   "dims": [
+    0.45,
+    0.4,
+    0.5
+   ],
+   "generador": "mesilla",
+   "params": {
+    "material": "madera:#b89574"
+   },
+   "inspiracion": [
+    "Kave Home"
+   ],
+   "referencia": "MESILLA-ROBLE",
+   "miniatura": null,
+   "sustituye": [
+    "mesilla"
+   ]
+  },
+  {
+   "id": "mesilla-redonda-lacada",
+   "categoria": "mesillas",
+   "nombre": "Mesilla cilíndrica lacada",
+   "estilo": "contemporáneo",
+   "materiales": "lacado mate",
+   "color": "#e8e2d8",
+   "gama": "media",
+   "dims": [
+    0.42,
+    0.42,
+    0.5
+   ],
+   "generador": "mesilla",
+   "params": {
+    "material": "ceramica:#e8e2d8",
+    "forma": "redonda"
+   },
+   "inspiracion": [
+    "Sklum",
+    "Kenay Home"
+   ],
+   "referencia": "MESILLA-REDONDA-LACADA",
+   "miniatura": null,
+   "sustituye": [
+    "mesilla"
+   ]
+  },
+  {
+   "id": "cabecero-panel-lino",
+   "categoria": "cabeceros",
+   "nombre": "Panel tapizado de pared",
+   "estilo": "mediterráneo contemporáneo",
+   "materiales": "lino",
+   "color": "#c9bfb0",
+   "gama": "esencial",
+   "dims": [
+    1.8,
+    0.06,
+    0.9
+   ],
+   "generador": "cabecero-panel",
+   "params": {
+    "tela": "tela:#c9bfb0"
+   },
+   "inspiracion": [
+    "Maison du Monde"
+   ],
+   "referencia": "CABECERO-PANEL-LINO",
+   "miniatura": null
+  },
+  {
+   "id": "mueble-tv-roble",
+   "categoria": "almacenaje",
+   "nombre": "Mueble TV de roble acanalado",
+   "estilo": "nórdico cálido",
+   "materiales": "roble",
+   "color": "#b89574",
+   "gama": "media",
+   "dims": [
+    1.8,
+    0.4,
+    0.48
+   ],
+   "generador": "mueble-bajo",
+   "params": {
+    "material": "madera:#b89574",
+    "acanalado": true,
+    "alto": 0.48
+   },
+   "inspiracion": [
+    "Kave Home",
+    "Kenay Home"
+   ],
+   "referencia": "MUEBLE-TV-ROBLE",
+   "miniatura": null,
+   "sustituye": [
+    "mueble-tv"
+   ]
+  },
+  {
+   "id": "mueble-tv-lacado",
+   "categoria": "almacenaje",
+   "nombre": "Mueble TV lacado",
+   "estilo": "esencial",
+   "materiales": "lacado blanco roto",
+   "color": "#ece8e0",
+   "gama": "esencial",
+   "dims": [
+    1.8,
+    0.4,
+    0.46
+   ],
+   "generador": "mueble-bajo",
+   "params": {
+    "material": "lacado",
+    "alto": 0.46
+   },
+   "inspiracion": [
+    "Sklum"
+   ],
+   "referencia": "MUEBLE-TV-LACADO",
+   "miniatura": null,
+   "sustituye": [
+    "mueble-tv"
+   ]
+  },
+  {
+   "id": "aparador-nogal",
+   "categoria": "almacenaje",
+   "nombre": "Aparador de nogal con patas",
+   "estilo": "ecléctico cálido",
+   "materiales": "nogal",
+   "color": "#6e5040",
+   "gama": "alta",
+   "dims": [
+    1.6,
+    0.45,
+    0.78
+   ],
+   "generador": "mueble-bajo",
+   "params": {
+    "material": "madera:#6e5040",
+    "alto": 0.78,
+    "patas": true,
+    "zocalo": 0.16
+   },
+   "inspiracion": [
+    "Le Masie",
+    "Roche Bobois"
+   ],
+   "referencia": "APARADOR-NOGAL",
+   "miniatura": null,
+   "sustituye": [
+    "mueble-tv"
+   ]
+  },
+  {
+   "id": "lampara-pie-arco",
+   "categoria": "lamparas",
+   "nombre": "Lámpara de pie en arco",
+   "estilo": "contemporáneo",
+   "materiales": "mármol, latón",
+   "color": "#b8a07a",
+   "gama": "alta",
+   "dims": [
+    0.35,
+    1.6,
+    1.95
+   ],
+   "generador": "lampara-pie-arco",
+   "params": {
+    "alcance": 1.35
+   },
+   "inspiracion": [
+    "Kave Home",
+    "Maison du Monde"
+   ],
+   "referencia": "LAMPARA-PIE-ARCO",
+   "miniatura": null
+  },
+  {
+   "id": "lampara-colgante-globo",
+   "categoria": "lamparas",
+   "nombre": "Colgante de globo opal",
+   "estilo": "contemporáneo",
+   "materiales": "vidrio opal, latón",
+   "color": "#fff1dc",
+   "gama": "media",
+   "dims": [
+    0.4,
+    0.4,
+    0.36
+   ],
+   "generador": "lampara-colgante",
+   "params": {},
+   "inspiracion": [
+    "Sklum"
+   ],
+   "referencia": "LAMPARA-COLGANTE-GLOBO",
+   "miniatura": null
+  },
+  {
+   "id": "lampara-colgante-cesta",
+   "categoria": "lamparas",
+   "nombre": "Colgante de fibra natural",
+   "estilo": "mediterráneo",
+   "materiales": "ratán",
+   "color": "#b69468",
+   "gama": "esencial",
+   "dims": [
+    0.55,
+    0.55,
+    0.3
+   ],
+   "generador": "lampara-colgante",
+   "params": {
+    "forma": "cesta"
+   },
+   "inspiracion": [
+    "Kenay Home",
+    "Maison du Monde"
+   ],
+   "referencia": "LAMPARA-COLGANTE-CESTA",
+   "miniatura": null
+  },
+  {
+   "id": "lampara-mesa-ceramica",
+   "categoria": "lamparas",
+   "nombre": "Lámpara de mesa cerámica",
+   "estilo": "mediterráneo",
+   "materiales": "cerámica, lino",
+   "color": "#d9cdb8",
+   "gama": "media",
+   "dims": [
+    0.3,
+    0.3,
+    0.48
+   ],
+   "generador": "lampara-mesa",
+   "params": {},
+   "inspiracion": [
+    "Kave Home",
+    "Le Masie"
+   ],
+   "referencia": "LAMPARA-MESA-CERAMICA",
+   "miniatura": null
+  },
+  {
+   "id": "alfombra-lana-crudo",
+   "categoria": "alfombras",
+   "nombre": "Alfombra de lana crudo",
+   "estilo": "nórdico cálido",
+   "materiales": "lana",
+   "color": "#e4ddd0",
+   "gama": "media",
+   "dims": [
+    2.4,
+    1.7,
+    0.012
+   ],
+   "generador": "alfombra",
+   "params": {
+    "material": "tela:#e4ddd0:0.4",
+    "borde": "tela:#c9b8a0:0.4"
+   },
+   "inspiracion": [
+    "Kave Home"
+   ],
+   "referencia": "ALFOMBRA-LANA-CRUDO",
+   "miniatura": null
+  },
+  {
+   "id": "alfombra-yute",
+   "categoria": "alfombras",
+   "nombre": "Alfombra de yute",
+   "estilo": "mediterráneo",
+   "materiales": "yute",
+   "color": "#c9ad84",
+   "gama": "esencial",
+   "dims": [
+    2.0,
+    1.4,
+    0.012
+   ],
+   "generador": "alfombra",
+   "params": {
+    "material": "tela:#c9ad84:2.5"
+   },
+   "inspiracion": [
+    "Maison du Monde",
+    "Kenay Home"
+   ],
+   "referencia": "ALFOMBRA-YUTE",
+   "miniatura": null
+  },
+  {
+   "id": "alfombra-redonda",
+   "categoria": "alfombras",
+   "nombre": "Alfombra redonda de lana",
+   "estilo": "orgánico",
+   "materiales": "lana",
+   "color": "#ddd3c3",
+   "gama": "media",
+   "dims": [
+    1.6,
+    1.6,
+    0.012
+   ],
+   "generador": "alfombra",
+   "params": {
+    "material": "tela:#ddd3c3:0.4",
+    "forma": "redonda"
+   },
+   "inspiracion": [
+    "Sklum"
+   ],
+   "referencia": "ALFOMBRA-REDONDA",
+   "miniatura": null
+  },
+  {
+   "id": "alfombrilla-bano",
+   "categoria": "alfombras",
+   "nombre": "Alfombrilla de baño de algodón",
+   "estilo": "esencial",
+   "materiales": "algodón",
+   "color": "#ece7de",
+   "gama": "esencial",
+   "dims": [
+    0.8,
+    0.5,
+    0.01
+   ],
+   "generador": "alfombra",
+   "params": {
+    "material": "tela:#ece7de:2"
+   },
+   "inspiracion": [
+    "Maison du Monde"
+   ],
+   "referencia": "ALFOMBRILLA-BANO",
+   "miniatura": null
+  },
+  {
+   "id": "planta-grande-ficus",
+   "categoria": "plantas",
+   "nombre": "Planta de hoja grande",
+   "estilo": "orgánico",
+   "materiales": "maceta de terracota",
+   "color": "#4d6b3c",
+   "gama": "media",
+   "dims": [
+    0.8,
+    0.8,
+    1.6
+   ],
+   "generador": "planta",
+   "params": {
+    "maceta": "terracota:#b8704f",
+    "hojas": 34
+   },
+   "inspiracion": [
+    "Kenay Home"
+   ],
+   "referencia": "PLANTA-GRANDE-FICUS",
+   "miniatura": null
+  },
+  {
+   "id": "planta-olivo",
+   "categoria": "plantas",
+   "nombre": "Olivo en maceta",
+   "estilo": "mediterráneo",
+   "materiales": "maceta cerámica",
+   "color": "#6b7a4f",
+   "gama": "alta",
+   "dims": [
+    0.7,
+    0.7,
+    1.7
+   ],
+   "generador": "planta",
+   "params": {
+    "tipo": "arbol",
+    "maceta": "ceramica:#e6ded0",
+    "hoja": "hoja:#7d8a62"
+   },
+   "inspiracion": [
+    "Le Masie"
+   ],
+   "referencia": "PLANTA-OLIVO",
+   "miniatura": null
+  },
+  {
+   "id": "planta-pequena",
+   "categoria": "plantas",
+   "nombre": "Planta pequeña",
+   "estilo": "orgánico",
+   "materiales": "maceta cerámica",
+   "color": "#4d6b3c",
+   "gama": "esencial",
+   "dims": [
+    0.26,
+    0.26,
+    0.4
+   ],
+   "generador": "planta",
+   "params": {
+    "maceta": "ceramica:#e6ded0",
+    "hojas": 14,
+    "maceta_alto": 0.12
+   },
+   "inspiracion": [
+    "Sklum"
+   ],
+   "referencia": "PLANTA-PEQUENA",
+   "miniatura": null
+  },
+  {
+   "id": "jarron-ramas",
+   "categoria": "plantas",
+   "nombre": "Jarrón con ramas de olivo",
+   "estilo": "mediterráneo",
+   "materiales": "cerámica, ramas",
+   "color": "#d8cbb6",
+   "gama": "media",
+   "dims": [
+    0.2,
+    0.2,
+    0.75
+   ],
+   "generador": "jarron-ramas",
+   "params": {},
+   "inspiracion": [
+    "Kave Home",
+    "Le Masie"
+   ],
+   "referencia": "JARRON-RAMAS",
+   "miniatura": null
+  },
+  {
+   "id": "jardinera-exterior",
+   "categoria": "plantas",
+   "nombre": "Jardinera con arbustos",
+   "estilo": "exterior mediterráneo",
+   "materiales": "fibrocemento",
+   "color": "#8d8a84",
+   "gama": "media",
+   "dims": [
+    1.2,
+    0.4,
+    0.8
+   ],
+   "generador": "jardinera",
+   "params": {
+    "gramineas": true
+   },
+   "inspiracion": [
+    "Kave Home"
+   ],
+   "referencia": "JARDINERA-EXTERIOR",
+   "miniatura": null
+  },
+  {
+   "id": "cuadro-abstracto-tierra",
+   "categoria": "cuadros",
+   "nombre": "Lienzo abstracto en tierras",
+   "estilo": "mediterráneo contemporáneo",
+   "materiales": "lienzo, marco de roble",
+   "color": "#b8704f",
+   "gama": "media",
+   "dims": [
+    0.9,
+    0.03,
+    1.2
+   ],
+   "generador": "cuadro",
+   "params": {
+    "lienzo": "lienzo:#e2d6c4,#b8704f,#3d4a5c"
+   },
+   "inspiracion": [
+    "Maison du Monde"
+   ],
+   "referencia": "CUADRO-ABSTRACTO-TIERRA",
+   "miniatura": null
+  },
+  {
+   "id": "cuadro-abstracto-salvia",
+   "categoria": "cuadros",
+   "nombre": "Lienzo abstracto en verdes",
+   "estilo": "orgánico",
+   "materiales": "lienzo, marco natural",
+   "color": "#8c957c",
+   "gama": "media",
+   "dims": [
+    1.2,
+    0.03,
+    0.8
+   ],
+   "generador": "cuadro",
+   "params": {
+    "lienzo": "lienzo:#ece6db,#8c957c,#c9b58f"
+   },
+   "inspiracion": [
+    "Kave Home"
+   ],
+   "referencia": "CUADRO-ABSTRACTO-SALVIA",
+   "miniatura": null
+  },
+  {
+   "id": "lamina-paspartu",
+   "categoria": "cuadros",
+   "nombre": "Lámina con paspartú",
+   "estilo": "nórdico cálido",
+   "materiales": "papel, marco negro",
+   "color": "#56616b",
+   "gama": "esencial",
+   "dims": [
+    0.5,
+    0.03,
+    0.7
+   ],
+   "generador": "cuadro",
+   "params": {
+    "marco": "metalNegro",
+    "paspartu": 0.07,
+    "lienzo": "lienzo:#f1ece2,#56616b,#c9875f"
+   },
+   "inspiracion": [
+    "Sklum"
+   ],
+   "referencia": "LAMINA-PASPARTU",
+   "miniatura": null
+  },
+  {
+   "id": "toallas-dobladas",
+   "categoria": "textiles",
+   "nombre": "Toallas dobladas",
+   "estilo": "esencial",
+   "materiales": "algodón",
+   "color": "#f4f1ea",
+   "gama": "esencial",
+   "dims": [
+    0.3,
+    0.22,
+    0.12
+   ],
+   "generador": "toallas",
+   "params": {},
+   "inspiracion": [
+    "Maison du Monde"
+   ],
+   "referencia": "TOALLAS-DOBLADAS",
+   "miniatura": null
+  },
+  {
+   "id": "toallero-toalla",
+   "categoria": "textiles",
+   "nombre": "Toallero con toalla",
+   "estilo": "esencial",
+   "materiales": "cromo, algodón",
+   "color": "#f4f1ea",
+   "gama": "esencial",
+   "dims": [
+    0.6,
+    0.08,
+    0.55
+   ],
+   "generador": "toallero",
+   "params": {},
+   "inspiracion": [
+    "Kave Home"
+   ],
+   "referencia": "TOALLERO-TOALLA",
+   "miniatura": null
+  },
+  {
+   "id": "cesta-mantas",
+   "categoria": "textiles",
+   "nombre": "Cesta con manta",
+   "estilo": "mediterráneo",
+   "materiales": "fibra natural, lana",
+   "color": "#b69468",
+   "gama": "esencial",
+   "dims": [
+    0.4,
+    0.4,
+    0.42
+   ],
+   "generador": "cesta",
+   "params": {
+    "manta": "tela:#e2d4bd:3"
+   },
+   "inspiracion": [
+    "Kenay Home"
+   ],
+   "referencia": "CESTA-MANTAS",
+   "miniatura": null
+  },
+  {
+   "id": "libros-apilados",
+   "categoria": "accesorios",
+   "nombre": "Libros apilados",
+   "estilo": "ecléctico",
+   "materiales": "papel, tela",
+   "color": "#b8704f",
+   "gama": "esencial",
+   "dims": [
+    0.28,
+    0.21,
+    0.1
+   ],
+   "generador": "libros",
+   "params": {},
+   "inspiracion": [
+    "—"
+   ],
+   "referencia": "LIBROS-APILADOS",
+   "miniatura": null
+  },
+  {
+   "id": "libros-objeto",
+   "categoria": "accesorios",
+   "nombre": "Libros con objeto",
+   "estilo": "ecléctico",
+   "materiales": "papel, cerámica",
+   "color": "#56616b",
+   "gama": "esencial",
+   "dims": [
+    0.28,
+    0.21,
+    0.18
+   ],
+   "generador": "libros",
+   "params": {
+    "objeto": "ceramica:#1f1f1f",
+    "cantidad": 2
+   },
+   "inspiracion": [
+    "—"
+   ],
+   "referencia": "LIBROS-OBJETO",
+   "miniatura": null
+  },
+  {
+   "id": "frutero",
+   "categoria": "accesorios",
+   "nombre": "Frutero con fruta",
+   "estilo": "mediterráneo",
+   "materiales": "cerámica",
+   "color": "#efe9df",
+   "gama": "esencial",
+   "dims": [
+    0.32,
+    0.32,
+    0.14
+   ],
+   "generador": "frutero",
+   "params": {},
+   "inspiracion": [
+    "—"
+   ],
+   "referencia": "FRUTERO",
+   "miniatura": null
+  },
+  {
+   "id": "tabla-cortar",
+   "categoria": "accesorios",
+   "nombre": "Tabla de cortar",
+   "estilo": "esencial",
+   "materiales": "madera de olivo",
+   "color": "#c4a07a",
+   "gama": "esencial",
+   "dims": [
+    0.3,
+    0.02,
+    0.42
+   ],
+   "generador": "tabla-cortar",
+   "params": {},
+   "inspiracion": [
+    "—"
+   ],
+   "referencia": "TABLA-CORTAR",
+   "miniatura": null
+  },
+  {
+   "id": "botes-cocina",
+   "categoria": "accesorios",
+   "nombre": "Botes de cocina",
+   "estilo": "esencial",
+   "materiales": "cerámica, madera",
+   "color": "#ebe5da",
+   "gama": "esencial",
+   "dims": [
+    0.3,
+    0.1,
+    0.22
+   ],
+   "generador": "botes",
+   "params": {},
+   "inspiracion": [
+    "—"
+   ],
+   "referencia": "BOTES-COCINA",
+   "miniatura": null
+  },
+  {
+   "id": "dispensador-jabon",
+   "categoria": "accesorios",
+   "nombre": "Dispensador de jabón",
+   "estilo": "esencial",
+   "materiales": "cerámica",
+   "color": "#d8cfc1",
+   "gama": "esencial",
+   "dims": [
+    0.07,
+    0.07,
+    0.18
+   ],
+   "generador": "dispensador",
+   "params": {},
+   "inspiracion": [
+    "—"
+   ],
+   "referencia": "DISPENSADOR-JABON",
+   "miniatura": null
+  },
+  {
+   "id": "televisor-55",
+   "categoria": "accesorios",
+   "nombre": "Televisor 55\"",
+   "estilo": "esencial",
+   "materiales": "—",
+   "color": "#111111",
+   "gama": "esencial",
+   "dims": [
+    1.23,
+    0.08,
+    0.78
+   ],
+   "generador": "televisor",
+   "params": {},
+   "inspiracion": [
+    "—"
+   ],
+   "referencia": "TELEVISOR-55",
+   "miniatura": null
+  },
+  {
+   "id": "jarron-ceramica",
+   "categoria": "decoracion",
+   "nombre": "Jarrón cerámico",
+   "estilo": "mediterráneo",
+   "materiales": "cerámica esmaltada",
+   "color": "#e6ded0",
+   "gama": "esencial",
+   "dims": [
+    0.18,
+    0.18,
+    0.3
+   ],
+   "generador": "jarron",
+   "params": {},
+   "inspiracion": [
+    "Kave Home"
+   ],
+   "referencia": "JARRON-CERAMICA",
+   "miniatura": null
+  },
+  {
+   "id": "jarron-terracota",
+   "categoria": "decoracion",
+   "nombre": "Jarrón de terracota",
+   "estilo": "mediterráneo",
+   "materiales": "terracota",
+   "color": "#b8704f",
+   "gama": "esencial",
+   "dims": [
+    0.22,
+    0.22,
+    0.36
+   ],
+   "generador": "jarron",
+   "params": {
+    "material": "terracota:#b8704f"
+   },
+   "inspiracion": [
+    "Le Masie"
+   ],
+   "referencia": "JARRON-TERRACOTA",
+   "miniatura": null
+  },
+  {
+   "id": "velas",
+   "categoria": "decoracion",
+   "nombre": "Velas",
+   "estilo": "esencial",
+   "materiales": "cera",
+   "color": "#f3efe6",
+   "gama": "esencial",
+   "dims": [
+    0.15,
+    0.08,
+    0.18
+   ],
+   "generador": "velas",
+   "params": {},
+   "inspiracion": [
+    "—"
+   ],
+   "referencia": "VELAS",
+   "miniatura": null
+  }
+ ]
+}

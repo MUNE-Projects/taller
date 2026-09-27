@@ -65,7 +65,7 @@
       "interior": true
     },
     "dormitorio": {
-      "nombre": "Dormitorio",
+      "nombre": "Dormitorio principal",
       "pos": [
         9.8,
         1.5,
@@ -79,19 +79,34 @@
       "fov": 56,
       "interior": true
     },
+    "dormitorio2": {
+      "nombre": "Dormitorio 2",
+      "pos": [
+        8.9,
+        1.45,
+        -4.3
+      ],
+      "obj": [
+        6.8,
+        0.95,
+        -1.2
+      ],
+      "fov": 56,
+      "interior": true
+    },
     "bano": {
       "nombre": "Baño",
       "pos": [
-        10.2,
-        1.55,
-        -6.55
+        10.3,
+        1.5,
+        -6.62
       ],
       "obj": [
-        11.3,
+        11.45,
         1.05,
-        -8.9
+        -8.8
       ],
-      "fov": 60,
+      "fov": 58,
       "interior": true
     },
     "terraza": {
@@ -114,6 +129,7 @@
     "salon",
     "cocina",
     "dormitorio",
+    "dormitorio2",
     "bano",
     "terraza"
   ],
