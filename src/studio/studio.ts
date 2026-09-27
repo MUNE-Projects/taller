@@ -15,6 +15,7 @@ import { ejeSimetria, espejarAmbientacion, espejarTipologia } from '../promocion
 import { BIBLIOTECA, activo, alternativas, huella, type Activo, type Ambientacion, type Decoracion } from '../biblioteca/biblioteca';
 import { GENERADORES } from '../biblioteca/generadores';
 import { puntoEnPoligono } from '../util/geo';
+import { revisarVistas } from '../escena/vistas';
 import { extraerPaleta, propuestaLocal, type Propuesta } from './interiorismo';
 import './studio.css';
 
@@ -452,7 +453,7 @@ export async function abrirStudio( api: ApiStudio ) {
 		const p = api.camara.position, o = api.ctrl.target;
 		return {
 			nombre: '', pos: [ r3( p.x ), r3( p.y ), r3( p.z ) ], obj: [ r3( o.x ), r3( o.y ), r3( o.z ) ],
-			fov: Math.round( api.camara.fov ), interior: p.y < 2.6,
+			fov: Math.round( api.camara.fov ), interior: p.y < 2.6, estancia: estanciaEn( p.x, - p.z ), automatica: false,
 		};
 
 	};
@@ -914,7 +915,10 @@ Es una aproximación ligera; no reproduzcas un producto concreto. Responde SOLO 
 
 		const m = api.modelo();
 		const S = ejeSimetria( m.vivienda );
-		const tipologia = api.espejo() ? espejarTipologia( m.tipologia, S ) : m.tipologia;
+		const t0 = api.espejo() ? espejarTipologia( m.tipologia, S ) : m.tipologia;
+		// las vistas automáticas no se exportan: se regeneran al cargar si siguen faltando
+		const auto = Object.keys( t0.vistas ).filter( ( k ) => t0.vistas[ k ].automatica );
+		const tipologia = { ...t0, vistas: Object.fromEntries( Object.entries( t0.vistas ).filter( ( [ k ] ) => ! auto.includes( k ) ) ), guiadas: t0.guiadas.filter( ( k ) => ! auto.includes( k ) ) };
 		const ambientacion = m.ambientacion && ( api.espejo() ? espejarAmbientacion( m.ambientacion, S ) : m.ambientacion );
 		return {
 			version: 1, generado: new Date().toISOString(),
@@ -938,7 +942,7 @@ Es una aproximación ligera; no reproduzcas un producto concreto. Responde SOLO 
 
 		}
 
-		if ( m.tipologia.guiadas.length < 3 ) avisos.push( 'Hay menos de tres vistas guiadas.' );
+		avisos.push( ...revisarVistas( m.tipologia, m.vivienda ) );
 		for ( const c of api.catalogo.categorias ) if ( c.opciones[ 0 ]?.precio ) avisos.push( `La opción incluida de «${ c.nombre }» tiene precio.` );
 		return avisos;
 

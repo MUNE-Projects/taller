@@ -200,12 +200,14 @@ export function alicatado( tono: string | N, creceConMuros = false ) {
 export function pintura( tono: string, conCorte = false, creceConMuros = false ) {
 
 	const p = positionWorld;
-	const v = ruidoSuave( p, 3.0 ).mul( 0.006 );
+	// pintura plástica mate: leves nubes de rodillo y grano fino que atrapan la luz rasante
+	const nube = ruidoSuave( p, 1.4 ).mul( 0.5 ).add( 0.5 );
+	const grano = mx_noise_float( p.mul( 260 ) ).mul( 0.5 ).add( 0.5 );
 	return material( {
-		acabado: color( tono ).add( v ),
-		rugosidad: 0.88,
-		relieve: mx_noise_float( p.mul( 220 ) ).mul( 0.15 ),
-		relieveEscala: 0.05,
+		acabado: color( tono ).mul( float( 0.985 ).add( nube.mul( 0.02 ) ).add( grano.mul( 0.006 ) ) ),
+		rugosidad: float( 0.84 ).add( nube.mul( 0.08 ) ),
+		relieve: grano.mul( 0.5 ).add( nube.mul( 0.2 ) ),
+		relieveEscala: 0.06,
 		corte: conCorte,
 		creceConMuros,
 	} );
@@ -447,7 +449,7 @@ export function suelo_exterior( centro: THREE.Vector3, zCesped = Infinity ) {
 	const d = p.sub( vec2( centro.x, centro.z ) ).length();
 	const lejos = smoothstep( 14, 42, d );
 	const [ enJunta ] = baldosas( p, vec2( 0.6, 0.6 ), 0.004 );
-	const pav = mix( color( '#dcd8d0' ), color( '#c9c4bb' ), enJunta.mul( 0.8 ) ).mul( float( 0.97 ).add( ruidoSuave( vec3( p.x, p.y, 0 ), 0.6 ).mul( 0.05 ) ) );
+	const pav = mix( color( '#c4bfb6' ), color( '#aaa59c' ), enJunta.mul( 0.8 ) ).mul( float( 0.97 ).add( ruidoSuave( vec3( p.x, p.y, 0 ), 0.6 ).mul( 0.05 ) ) );
 	if ( ! Number.isFinite( zCesped ) ) return material( { acabado: mix( pav, color( '#e9e6e0' ), lejos ), rugosidad: 0.85, planoColor: PALETA.papel } );
 	// zonas comunes al sur de la terraza: césped con un paseo de losas
 	const manchas = ruidoSuave( vec3( p.x, p.y, 0 ), 0.35 ).mul( 0.5 ).add( 0.5 );

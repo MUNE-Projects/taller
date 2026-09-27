@@ -10,6 +10,7 @@ import datosCatalogo from '../datos/catalogo.json';
 import type { Configuracion, Promocion, Tipologia, Variante, Vivienda, ViviendaPromocion } from '../modelo/tipos';
 import { ejeSimetria, espejarAmbientacion, espejarTipologia, espejarVariante, espejarVivienda } from './espejo';
 import type { Ambientacion } from '../biblioteca/biblioteca';
+import { completarVistas } from '../escena/vistas';
 
 export const PROMOCION = datosPromocion as unknown as Promocion;
 export const CATALOGO = datosCatalogo as unknown as Configuracion;
@@ -39,11 +40,21 @@ export function cargarModelo( idTipologia: string, espejo = false ): Modelo {
 	const vivienda = dato<Vivienda>( idTipologia, 'vivienda' );
 	const variantes = dato<Variante[]>( idTipologia, 'variantes' );
 	const ambientacion = ( ficheros[ `../datos/tipologias/${ idTipologia }/ambientacion.json` ] as Ambientacion | undefined ) ?? null;
-	if ( ! espejo ) return { tipologia, vivienda, variantes, ambientacion: ambientacion && structuredClone( ambientacion ) };
+	if ( ! espejo ) {
+
+		const t = structuredClone( tipologia );
+		completarVistas( t, vivienda );
+		return { tipologia: t, vivienda, variantes, ambientacion: ambientacion && structuredClone( ambientacion ) };
+
+	}
+
 	const S = ejeSimetria( vivienda );
+	const vEsp = espejarVivienda( vivienda, S );
+	const tEsp = espejarTipologia( tipologia, S );
+	completarVistas( tEsp, vEsp );
 	return {
-		tipologia: espejarTipologia( tipologia, S ),
-		vivienda: espejarVivienda( vivienda, S ),
+		tipologia: tEsp,
+		vivienda: vEsp,
 		variantes: variantes.map( ( v ) => espejarVariante( v, S ) ),
 		ambientacion: ambientacion && espejarAmbientacion( ambientacion, S ),
 	};

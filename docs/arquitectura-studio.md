@@ -5,14 +5,18 @@ independiente de la experiencia pública y de la del comprador:
 
 | | Público | Comprador | Studio |
 |---|---|---|---|
-| Acceso | web abierta | enlace privado `#c-…` | `#studio` + código |
+| Acceso | web abierta | enlace privado `#c-…` | botón **Studio** (abajo a la derecha) + código |
 | Qué hace | ver la vivienda | personalizar y generar PDF | preparar los datos de la promoción |
 | IA | nunca | nunca | opcional, solo aquí |
 | Código cargado | bundle principal | bundle principal | + chunk `studio` (bajo demanda) |
 
-El código del Studio no se guarda en los datos: `promocion.json` solo contiene
-`studio.acceso`, el SHA-256 de `"<id de promoción>:studio:<código>"`. Código de
-la demo: `estudio-7q4m2x` (entrar con `#studio` o `#studio-estudio-7q4m2x`).
+**Cómo entrar:**
+- Pulsa **Studio** (abajo a la derecha) e introduce el código. Código de la demo: `estudio-7q4m2x`.
+- Ese navegador recuerda el acceso: la próxima vez, el botón abre el Studio directamente.
+- También se entra con `#studio`, o de una vez con `#studio-estudio-7q4m2x` al final de la URL.
+
+El código no se guarda en los datos: `promocion.json` solo contiene
+`studio.acceso`, el SHA-256 de `"<id de promoción>:studio:<código>"`.
 Es un control de acceso de comodidad, no de seguridad: los datos de la
 promoción son públicos de todos modos, porque los necesita el visor. Lo que
 el Studio edita no se publica hasta que se exporta y se reconstruye la web.
@@ -51,7 +55,7 @@ documentación de la promoción ──► datos (JSON) ──► Studio (edició
   - *Decoración*: se mueve en pasos de 5 cm, se gira de 15° en 15°, se sube o se baja, se duplica, se elimina (tecla Supr) o se sustituye por otra pieza de la misma categoría.
 
   Cambiar una pieza reconstruye solo el mobiliario, no la estancia.
-- **Cámaras.** Las vistas maestras de la tipología:
+- **Cámaras.** Las vistas maestras de la tipología. La revisión de Publicación avisa si alguna estancia principal no tiene vista compuesta, o si una grande tiene solo una.
   - «Guardar encuadre actual» sobre una existente;
   - «Nueva vista» a partir del encuadre actual;
   - la casilla decide si la vista aparece en la barra de vistas guiadas.

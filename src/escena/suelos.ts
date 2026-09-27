@@ -11,7 +11,7 @@ const MAT_SUELO: Record<string, () => THREE.Material> = {
 	'porcelanico-cocina': () => M.porcelanico( '#ddd5c8', 0.9 ),
 	'porcelanico-bano': () => M.porcelanico( M.P.banos.suelo, 0.6, 0.002, 0.28 ),
 	'ceramico': () => M.porcelanico( '#cfcac1', 0.33, 0.003, 0.5 ),
-	'exterior': () => M.porcelanico( '#cfcac2', 0.6, 0.004, 0.72 ),
+	'exterior': () => M.porcelanico( '#b8b1a6', 0.6, 0.004, 0.72 ),
 };
 
 // Materiales compartidos entre reconstrucciones (cambiar de distribución no recompila shaders).

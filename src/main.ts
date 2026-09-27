@@ -1,13 +1,16 @@
 import * as THREE from 'three/webgpu';
-import { add, diffuseColor, float, mix, mrt, normalView, output, packNormalToRGB, pass, renderOutput, sample, unpackRGBToNormal, vec4, velocity } from 'three/tsl';
+import { add, diffuseColor, float, luminance, max, metalness, mix, mrt, normalView, output, packNormalToRGB, pass, pow, renderOutput, roughness, sample, smoothstep, unpackRGBToNormal, uv, vec2, vec3, vec4, velocity } from 'three/tsl';
+import { ssr } from 'three/addons/tsl/display/SSRNode.js';
+import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 import { ssgi } from 'three/addons/tsl/display/SSGINode.js';
 import { traa } from 'three/addons/tsl/display/TRAANode.js';
 import { fxaa } from 'three/addons/tsl/display/FXAANode.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DObject, CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
 
-import type { Vivienda, ViviendaPromocion } from './modelo/tipos';
-import { centroide, puntoEnPoligono } from './util/geo';
+import type { Rect, Vivienda, ViviendaPromocion } from './modelo/tipos';
+import { colocarRotulo } from './escena/rotulos';
+import { puntoEnPoligono } from './util/geo';
 import * as M from './escena/materiales';
 import { construirMuros } from './escena/muros';
 import { construirCantoPorche, construirSuelos } from './escena/suelos';
@@ -18,7 +21,7 @@ import { construirDownlights, construirRodapies } from './escena/detalles';
 import { construirPaisaje } from './escena/paisaje';
 import { construirLineas } from './escena/lineas';
 import { entorno, fondo, sol as crearSol } from './escena/luz';
-import { Camarografo, type Vista } from './escena/camaras';
+import { Camarografo, fovPara, type Vista } from './escena/camaras';
 import { Estados } from './escena/estados';
 import { Navegacion } from './escena/navegacion';
 import { construirPiscina, validarPiscina } from './escena/piscina';
@@ -67,7 +70,7 @@ async function iniciar() {
 	renderer.setPixelRatio( Math.min( devicePixelRatio, 1.5 ) );
 	renderer.setSize( innerWidth, innerHeight );
 	renderer.toneMapping = THREE.NeutralToneMapping;
-	renderer.toneMappingExposure = 1.08;
+	renderer.toneMappingExposure = 0.95;
 	renderer.shadowMap.enabled = true;
 	renderer.shadowMap.type = THREE.PCFShadowMap;
 	lienzo.appendChild( renderer.domElement );
@@ -139,20 +142,84 @@ async function iniciar() {
 	etiquetas.setSize( innerWidth, innerHeight );
 	const grupoEtiquetas = new THREE.Group();
 	escena.add( grupoEtiquetas );
+	// escala del plano en pantalla (px por metro): la fija el encuadre de la planta
+	let pxPorMetro = 40;
 	const construirEtiquetas = () => {
 
 		for ( const o of [ ...grupoEtiquetas.children ] ) grupoEtiquetas.remove( o );
-		for ( const e of vivienda.estancias ) {
+		const extra: Rect[] = conf?.piscina ? [ modelo.tipologia.piscina.rect ] : [];
+		const ocupados: Rect[] = [];
+		// primero las estancias pequeñas: son las que menos sitio tienen
+		for ( const e of [ ...vivienda.estancias ].sort( ( a, b ) => a.superficie - b.superficie ) ) {
 
+			const sup = `${ e.superficie.toLocaleString( 'es-ES', { minimumFractionDigits: 2 } ) } m²`;
+			const r = colocarRotulo( e, vivienda, pxPorMetro, sup, extra, ocupados );
+			ocupados.push( r.caja );
 			const div = document.createElement( 'div' );
-			div.className = 'etiqueta';
-			div.innerHTML = `<span class="nombre">${ e.nombre }</span><span class="sup">${ e.superficie.toLocaleString( 'es-ES', { minimumFractionDigits: 2 } ) } m²</span>`;
-			const [ x, y ] = centroide( e.poligono );
+			div.className = `etiqueta ${ r.formato === 'solo-nombre-2' ? 'solo-nombre' : r.formato }`;
+			const nombre = document.createElement( 'span' );
+			nombre.className = 'nombre';
+			r.lineas.forEach( ( l, i ) => {
+
+				if ( i ) nombre.append( document.createElement( 'br' ) );
+				nombre.append( l );
+
+			} );
+			div.title = `${ e.nombre } · ${ sup }`;
+			div.append( nombre );
+			if ( ! r.formato.startsWith( 'solo' ) ) {
+
+				const s = document.createElement( 'span' );
+				s.className = 'sup';
+				s.textContent = sup;
+				div.append( s );
+
+			}
 			const o = new CSS2DObject( div );
-			o.position.set( x, 0.05, - y );
+			o.position.set( r.x, 0.05, - r.y );
 			grupoEtiquetas.add( o );
 
 		}
+
+	};
+
+	/**
+	 * Encuadre de la planta: el plano completo (con terraza) en el hueco libre de
+	 * la pantalla, sin quedar debajo de la ficha ni de la barra inferior.
+	 */
+	const encajePlanta = (): Vista => {
+
+		const v = vivienda;
+		const xs = [ ...v.muros.flatMap( ( m ) => [ m.rect[ 0 ], m.rect[ 2 ] ] ), ...v.exterior.barandilla.recorrido.map( ( p ) => p[ 0 ] ) ];
+		const ys = [ ...v.muros.flatMap( ( m ) => [ m.rect[ 1 ], m.rect[ 3 ] ] ), ...v.exterior.barandilla.recorrido.map( ( p ) => p[ 1 ] ) ];
+		const b = [ Math.min( ...xs ) - 0.3, Math.min( ...ys ) - 0.3, Math.max( ...xs ) + 0.3, Math.max( ...ys ) + 0.3 ];
+		const bw = b[ 2 ] - b[ 0 ], bh = b[ 3 ] - b[ 1 ];
+		const W = innerWidth, H = innerHeight, margen = 24;
+		const ficha = $( '.ficha' ).getBoundingClientRect(), dock = $( '.dock' ).getBoundingClientRect();
+		const abajo = ( dock.height ? dock.top : H ) - margen;
+		const huecos = [ { l: margen, t: margen, r: W - margen, b: abajo } ];
+		if ( ficha.width ) huecos.push( { l: ficha.right + margen, t: margen, r: W - margen, b: abajo }, { l: margen, t: ficha.bottom + margen, r: W - margen, b: abajo } );
+		// sin ficha visible vale toda la pantalla; con ficha, el mejor de los dos huecos libres
+		const candidatos = ficha.width ? huecos.slice( 1 ) : huecos;
+		let mejor = candidatos[ 0 ], s = 0;
+		for ( const h of candidatos ) {
+
+			const e = Math.min( ( h.r - h.l ) / bw, ( h.b - h.t ) / bh );
+			if ( e > s ) {
+
+				s = e; mejor = h;
+
+			}
+
+		}
+
+		const base: Vista = { nombre: 'Planta', pos: [ 0, 0, 0 ], obj: [ 0, 0, 0 ], fov: 28 };
+		const f = THREE.MathUtils.degToRad( fovPara( base, W / H ) );
+		const alto = H / ( s * 2 * Math.tan( f / 2 ) );
+		const dx = ( mejor.l + mejor.r ) / 2 - W / 2, dy = ( mejor.t + mejor.b ) / 2 - H / 2;
+		const cx = ( b[ 0 ] + b[ 2 ] ) / 2 - dx / s, cz = - ( b[ 1 ] + b[ 3 ] ) / 2 - dy / s;
+		pxPorMetro = s;
+		return { ...base, pos: [ cx, alto, cz ], obj: [ cx, 0, cz - 0.02 ] };
 
 	};
 
@@ -219,7 +286,7 @@ async function iniciar() {
 	// ---------------------------------------------------------------- posproceso
 	const pipeline = new THREE.RenderPipeline( renderer );
 	const escenaPass = pass( escena, camara );
-	escenaPass.setMRT( mrt( { output, diffuseColor, normal: packNormalToRGB( normalView ), velocity } ) );
+	escenaPass.setMRT( mrt( { output, diffuseColor, normal: packNormalToRGB( normalView ), velocity, metalrough: vec2( metalness, roughness ) } ) );
 	const color = escenaPass.getTextureNode( 'output' );
 	const difuso = escenaPass.getTextureNode( 'diffuseColor' );
 	const profundidad = escenaPass.getTextureNode( 'depth' );
@@ -227,6 +294,8 @@ async function iniciar() {
 	const vel = escenaPass.getTextureNode( 'velocity' );
 	escenaPass.getTexture( 'diffuseColor' ).type = THREE.UnsignedByteType;
 	escenaPass.getTexture( 'normal' ).type = THREE.UnsignedByteType;
+	escenaPass.getTexture( 'metalrough' ).type = THREE.UnsignedByteType;
+	const metalRugosidad = escenaPass.getTextureNode( 'metalrough' );
 	const normalEscena = sample( ( uv ) => unpackRGBToNormal( normal.sample( uv ) ) );
 	const gi = ssgi( color, profundidad, normalEscena, camara );
 	gi.sliceCount.value = 2;
@@ -238,7 +307,26 @@ async function iniciar() {
 	// en planta no hay oclusión: el papel queda limpio y sin ruido temporal
 	const ao = mix( gi.getAONode(), float( 1 ), M.U.plano );
 	const compuesto = vec4( add( color.rgb.mul( ao ), difuso.rgb.mul( gi.getGINode().rgb ) ), color.a );
-	pipeline.outputNode = traa( compuesto, profundidad, vel, camara );
+	// reflejos en espacio de pantalla: suelos, encimeras, sanitarios, cromados.
+	// La intensidad sale del brillo de cada material (metales enteros; los
+	// dieléctricos, según lo pulidos que estén), con fresnel de ángulo rasante.
+	const reflectancia = max( metalRugosidad.r, pow( float( 1 ).sub( metalRugosidad.g ), 3 ).mul( 0.6 ) );
+	const reflejos = ssr( color, profundidad, normalEscena, { metalnessNode: reflectancia, roughnessNode: metalRugosidad.g, reflectNonMetals: true, camera: camara } );
+	reflejos.resolutionScale = 0.5;
+	reflejos.maxDistance.value = 5;
+	reflejos.thickness.value = 0.04;
+	reflejos.quality.value = 0.45;
+	reflejos.intensity.value = 0.85;
+	const conReflejos = vec4( compuesto.rgb.add( reflejos.rgb.mul( M.U.plano.oneMinus() ) ), compuesto.a );
+	const antialias = traa( conReflejos, profundidad, vel, camara );
+	// resplandor suave de ventanas y luminarias, y gradación fotográfica
+	const halo = bloom( antialias, 0.09, 0.35, 1.0 );
+	const conHalo = antialias.rgb.add( halo.rgb );
+	const lum = luminance( conHalo );
+	const graduado = mix( vec3( lum ), conHalo, 1.05 ).mul( vec3( 1.004, 1.0, 0.99 ) );
+	const r = uv().sub( 0.5 ).mul( vec2( 1.0, 0.8 ) ).length();
+	const vineta = float( 1 ).sub( smoothstep( 0.38, 0.85, r ).mul( 0.16 ) );
+	pipeline.outputNode = vec4( graduado.mul( vineta ), 1 );
 
 	// Plano: cadena propia sin antialiasing temporal ni iluminación global. Ambos
 	// son temporales (varían de un fotograma a otro) y hacían "temblar" los bordes
@@ -265,7 +353,13 @@ async function iniciar() {
 	const barraVistas = $( '.vistas' );
 	let botonesVista: HTMLButtonElement[] = [];
 	const actualizarEtiquetas = () => document.body.classList.toggle( 'con-etiquetas', modo === 'plano' );
-	const marcarVista = ( k: string ) => botonesVista.forEach( ( b ) => b.setAttribute( 'aria-pressed', String( b.dataset.vista === k ) ) );
+	const marcarVista = ( k: string ) => botonesVista.forEach( ( b ) => {
+
+		b.setAttribute( 'aria-pressed', String( b.dataset.vista === k ) );
+		// con muchas vistas la barra se desplaza: la elegida queda a la vista
+		if ( b.dataset.vista === k ) b.scrollIntoView( { block: 'nearest', inline: 'nearest', behavior: est.reducido ? 'auto' : 'smooth' } );
+
+	} );
 
 	/** Mueve la cámara a una vista (una sola vez; si ya está allí no hace nada). */
 	const irVista = ( v: string | Vista ) => {
@@ -315,6 +409,8 @@ async function iniciar() {
 		actualizarEtiquetas();
 		if ( m === 'plano' ) {
 
+			( modelo.tipologia.vistas as Record<string, Vista> ).planta = encajePlanta();
+			construirEtiquetas();
 			irVista( 'planta' );
 			return;
 
@@ -700,7 +796,13 @@ async function iniciar() {
 
 		camara.aspect = innerWidth / innerHeight;
 		camara.updateProjectionMatrix();
-		cam.reencuadrar();
+		if ( modo === 'plano' ) {
+
+			( modelo.tipologia.vistas as Record<string, Vista> ).planta = encajePlanta();
+			construirEtiquetas();
+			cam.ir( 'planta', true );
+
+		} else cam.reencuadrar();
 		renderer.setSize( innerWidth, innerHeight );
 		etiquetas.setSize( innerWidth, innerHeight );
 
@@ -776,12 +878,12 @@ async function iniciar() {
 		c.piscina.scale.y = Math.max( 0.001, ep );
 		// exposición automática: dentro de la vivienda se abre el "diafragma"
 		const dentro = bajo && interiores.some( ( e ) => puntoEnPoligono( camara.position.x, - camara.position.z, e.poligono ) );
-		const expObjetivo = dentro ? 1.5 : 1.08;
+		const expObjetivo = dentro ? 1.45 : 0.95;
 		exposicion = Math.abs( expObjetivo - exposicion ) < 0.001 ? expObjetivo : exposicion + ( expObjetivo - exposicion ) * 0.06;
 		renderer.toneMappingExposure = exposicion;
 
 		camara.updateMatrixWorld();
-		const cambia = orbitando || cam.animando || est.animando || conf.animando
+		const cambia = orbitando || nav.activo || cam.animando || est.animando || conf.animando
 			|| ! matAnterior.equals( camara.matrixWorld ) || ! proyAnterior.equals( camara.projectionMatrix )
 			|| exposicion !== expObjetivo || desplazamiento !== objetivo || ( piscinaT !== 0 && piscinaT !== 1 );
 		matAnterior.copy( camara.matrixWorld );
@@ -825,10 +927,18 @@ async function iniciar() {
 		} );
 
 	};
+	// en este navegador se recuerda el acceso (solo el código ya validado)
+	const CLAVE_STUDIO = 'inmobiliarias:studio';
 	const pedirStudio = async ( codigo?: string ) => {
 
 		if ( document.body.classList.contains( 'en-studio' ) ) return;
-		if ( codigo && await accesoStudio( codigo ) ) return abrirStudio();
+		codigo ||= leer( CLAVE_STUDIO ) ?? '';
+		if ( codigo && await accesoStudio( codigo ) ) {
+
+			guardar( CLAVE_STUDIO, codigo );
+			return abrirStudio();
+
+		}
 		$( '#acceso-studio .error' ).hidden = true;
 		$<HTMLInputElement>( '#codigo-studio' ).value = '';
 		dialogoStudio.showModal();
@@ -838,14 +948,17 @@ async function iniciar() {
 	dialogoStudio.querySelector( 'form' )!.addEventListener( 'submit', async ( ev ) => {
 
 		ev.preventDefault();
-		if ( await accesoStudio( $<HTMLInputElement>( '#codigo-studio' ).value ) ) {
+		const codigo = $<HTMLInputElement>( '#codigo-studio' ).value.trim();
+		if ( await accesoStudio( codigo ) ) {
 
+			guardar( CLAVE_STUDIO, codigo );
 			dialogoStudio.close();
 			void abrirStudio();
 
 		} else $( '#acceso-studio .error' ).hidden = false;
 
 	} );
+	$( '#abrir-studio' ).addEventListener( 'click', () => void pedirStudio() );
 	if ( pideStudio ) void pedirStudio( location.hash.replace( /^#studio-?/, '' ) );
 	addEventListener( 'hashchange', () => location.hash.startsWith( '#studio' ) && void pedirStudio( location.hash.replace( /^#studio-?/, '' ) ) );
 

@@ -27,9 +27,9 @@
    "activo": "lampara-pie-arco",
    "pos": [
     1.07,
-    1.07
+    3.45
    ],
-   "rot": 135,
+   "rot": 45,
    "elev": 0,
    "estancia": "salon"
   },
@@ -37,8 +37,8 @@
    "id": "salon-planta",
    "activo": "planta-grande-ficus",
    "pos": [
-    3.2,
-    4.5
+    0.68,
+    7.0
    ],
    "rot": 20,
    "elev": 0,
@@ -135,17 +135,6 @@
    ],
    "rot": 0,
    "elev": 0.48,
-   "estancia": "salon"
-  },
-  {
-   "id": "salon-cesta",
-   "activo": "cesta-mantas",
-   "pos": [
-    2.98,
-    3.95
-   ],
-   "rot": 0,
-   "elev": 0,
    "estancia": "salon"
   },
   {
@@ -283,8 +272,8 @@
    "id": "dormp-sillon",
    "activo": "sillon-boucle",
    "pos": [
-    9.95,
-    0.9
+    10.1,
+    1.02
    ],
    "rot": 40,
    "elev": 0,
@@ -494,6 +483,17 @@
     0.7,
     1.8
    ]
+  },
+  {
+   "id": "salon-cesta",
+   "activo": "cesta-mantas",
+   "pos": [
+    0.62,
+    0.66
+   ],
+   "rot": 0,
+   "elev": 0,
+   "estancia": "salon"
   }
  ]
 }

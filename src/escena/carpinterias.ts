@@ -28,7 +28,7 @@ function materiales() {
 		hoja,
 		lacado: M.lacado( '#f2f0eb', 0.42 ),
 		cromo: M.metalico( '#c4c6c7', 0.32 ),
-		aluminio: M.material( { acabado: color( '#34383b' ), rugosidad: 0.42, metal: float( 0.55 ) } ),
+		aluminio: M.material( { acabado: color( '#3a3d3f' ), rugosidad: 0.34, metal: float( 0.8 ), fisico: { clearcoat: 0.3, clearcoatRoughness: 0.25 } } ),
 		vidrio: M.vidrio(),
 		sate: M.sate( '#f1efea', false ),
 	};
@@ -109,7 +109,8 @@ function puerta( h: Hueco, v: Vivienda, m: NonNullable<typeof MAT> ) {
 	manillas.castShadow = true;
 	pivote.add( manillas );
 
-	const giro = ANGULO_PUERTA;
+	// las puertas interiores se muestran abiertas; la de entrada, cerrada
+	const giro = h.tipo === 'entrada' ? 0 : ANGULO_PUERTA;
 	pivote.rotation.y = enX ? giro * s * ( abrePositivo ? 1 : - 1 ) : giro * - s * ( abrePositivo ? 1 : - 1 );
 	pivote.position.copy( enX ? new THREE.Vector3( uPivote, 0, - wPivote ) : new THREE.Vector3( wPivote, 0, - uPivote ) );
 	g.add( pivote );

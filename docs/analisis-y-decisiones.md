@@ -191,3 +191,32 @@ La opción de baños no tiene cámara maestra propia, así que mantiene la vista
 - **IA solo en el Studio,** vía capability `sample`, con la cuenta de quien lo usa. Sin IA disponible, la misma propuesta se calcula en local. La web publicada nunca llama a la IA.
 - **Referencias de marca** (Maison du Monde, Kave Home…): son un universo de estilo interno del Studio. No se muestran al comprador, no se integra catálogo y no se reproducen productos.
 - **Luminarias:** son emisivas, sin luces reales, para no penalizar el rendimiento. La iluminación global recoge parte de su aporte.
+
+## Iteración 6: navegación, vistas por estancia, render y plano
+
+### Cambios
+
+- **Giro en interior:**
+  - *Antes:* la cámara orbitaba un punto 30 cm por delante, así que al girar se desplazaba. Junto a una pared ese desplazamiento se rechazaba y solo se podía mirar en algunas direcciones (el caso del Dormitorio 2).
+  - *Ahora:* gira sobre sí misma y se puede mirar en cualquier dirección. Verificado: 360° sin mover la posición en la vista del Dormitorio 2.
+- **Caminar:**
+  - contra un muro, la cámara se desliza a lo largo de él;
+  - las puertas interiores abiertas se pueden cruzar (verificado: del Dormitorio 2 al pasillo);
+  - la puerta de entrada queda cerrada y actúa como muro;
+  - también se camina con las flechas del teclado y con el pellizco.
+- **Vistas por estancia:**
+  - nuevas: Recibidor y Baño secundario;
+  - el salón-comedor (24,8 m²) pasa a dos vistas, Salón · Estar y Comedor;
+  - la regla de vistas obligatorias y las vistas automáticas de reserva están en `src/escena/vistas.ts`.
+- **Render:**
+  - reflejos en pantalla ponderados por el brillo de cada material;
+  - sol de tarde más bajo, que entra bajo el porche;
+  - nubes y perfil lejano de colinas;
+  - resplandor suave y gradación con viñeteado;
+  - pintura con leve textura de rodillo, aluminio anodizado y pavimentos exteriores con más contraste;
+  - exposición exterior ajustada.
+- **Plano:**
+  - encuadre automático en el hueco libre de la pantalla;
+  - rótulos editoriales con halo, colocados por búsqueda dentro de cada estancia para no pisar muros, muebles ni otros rótulos;
+  - formatos compactos y abreviados para pantallas pequeñas.
+- **Studio:** botón visible («Studio», abajo a la derecha), que recuerda el acceso en ese navegador.

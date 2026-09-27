@@ -11,12 +11,13 @@ La interfaz tiene dos niveles de acceso sobre una única experiencia visual:
 |---|---|
 | **Público** (web de la promotora) | Plano, Vivienda, vistas guiadas y navegación libre. Sin personalización ni precios de mejoras. Incluye el aviso "¿Ya eres comprador? Accede para personalizar tu vivienda." |
 | **Comprador** (enlace privado de su vivienda) | Lo anterior, más **Personalizar**: opciones de su vivienda, precio, resumen tipo carrito y documento de selección en PDF |
-| **Studio** (`#studio` + código, solo producción) | Edición de ambientación, cámaras, acabados y precios, marca, biblioteca de activos, interiorismo asistido por IA y exportación de datos. Ver [`docs/arquitectura-studio.md`](docs/arquitectura-studio.md) |
+| **Studio** (botón «Studio» abajo a la derecha + código, solo producción) | Edición de ambientación, cámaras, acabados y precios, marca, biblioteca de activos, interiorismo asistido por IA y exportación de datos. Ver [`docs/arquitectura-studio.md`](docs/arquitectura-studio.md) |
 
 | | |
 |---|---|
 | ![Vista general](docs/capturas/07-publico-general.png) | ![Plano](docs/capturas/07-plano.png) |
 | ![Personalizar](docs/capturas/07-comprador-personalizar.png) | ![Documento](docs/capturas/07-documento.png) |
+| ![Plano con rótulos](docs/capturas/09-plano.png) | ![Comedor](docs/capturas/09-comedor.png) |
 | ![Salón ambientado](docs/capturas/08-salon.png) | ![Dormitorio principal](docs/capturas/08-dormitorio.png) |
 | ![Terraza y zonas comunes](docs/capturas/08-terraza.png) | ![Studio](docs/capturas/08-studio.png) |
 
@@ -79,17 +80,23 @@ La interfaz (colores, tipografía, logo, favicon, título) y el PDF se generan a
 
 ## Navegación y ambientación
 
-- **Vistas guiadas**, la navegación principal: Vista general, Salón, Cocina, Dormitorio principal, Dormitorio 2, Baño y Terraza.
+- **Vistas guiadas** (navegación principal): Vista general, Salón · Estar, Comedor, Cocina, Recibidor, Dormitorio principal, Dormitorio 2, Baño principal, Baño secundario y Terraza.
+  - **Regla** (`src/escena/vistas.ts`): toda estancia principal (vivideras, baños, recibidor y exterior) tiene al menos una vista guiada. Las estancias de 25 m² o más, o con varias zonas, tienen al menos dos.
+  - Si falta alguna, se genera una automática desde la puerta de la estancia y el Studio avisa para sustituirla por una compuesta.
 - **Navegación libre restringida** (`src/escena/navegacion.ts`):
-  - dentro se mira alrededor arrastrando y se camina con la rueda;
-  - no se atraviesan muros, puertas, armarios, muebles ni decoración;
-  - la altura de ojos se mantiene entre 1,2 y 2,0 m;
-  - fuera, la órbita tiene límites de distancia y ángulo y no deja meterse en la maqueta;
+  - dentro, arrastrar gira la cámara **sobre sí misma**: se puede mirar en cualquier dirección aunque esté junto a una pared;
+  - se camina con la rueda, las flechas o el pellizco, y contra un muro la cámara se desliza a lo largo de él;
+  - se cruzan las puertas interiores abiertas, pero no los muros, la puerta de entrada, los armarios, los muebles ni la decoración;
+  - fuera, la órbita tiene límites y no deja meterse en la maqueta;
   - «Recentrar vista» devuelve a la última vista guiada.
-- **Mobiliario y decoración** desde la biblioteca de activos (`src/datos/biblioteca.json`, `src/biblioteca/`) y la ambientación de cada tipología (`ambientacion.json`). Salón, dormitorios, cocina, baños y terraza están vestidos sin recargar.
-- **Detalles:**
-  - rodapiés lacados y downlights generados a partir de estancias y huecos;
-  - paisaje de zonas comunes (seto, césped, paseo y árboles) visible desde la terraza y las ventanas.
+- **Mobiliario y decoración** desde la biblioteca de activos (`src/datos/biblioteca.json`, `src/biblioteca/`) y la ambientación de cada tipología (`ambientacion.json`).
+- **Render:**
+  - iluminación global en pantalla, reflejos en pantalla ponderados por el brillo de cada material, sol de tarde que entra en las estancias, cielo con nubes y horizonte, resplandor suave y gradación con viñeteado;
+  - detalles: rodapiés, downlights y paisaje de zonas comunes.
+- **Plano:**
+  - encuadre automático en el hueco libre de la pantalla, fuera de la ficha y de la barra;
+  - rótulos editoriales con halo, colocados donde no pisan muros, muebles ni otros rótulos;
+  - en pantallas pequeñas pasan a un formato compacto o abreviado.
 
 ## Uso
 

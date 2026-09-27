@@ -9,7 +9,8 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "plano": "python3 herramientas/extraer_plano.py"
+    "plano": "python3 herramientas/extraer_plano.py",
+    "artefacto": "npm run build && python3 herramientas/empaquetar_artefacto.py"
   },
   "dependencies": {
     "jspdf": "4.2.1",

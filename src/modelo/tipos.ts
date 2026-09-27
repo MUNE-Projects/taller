@@ -135,6 +135,10 @@ export interface Vista {
 	obj: [ number, number, number ];
 	fov: number;
 	interior?: boolean;
+	/** Estancia que enseña (para la regla de vistas obligatorias). */
+	estancia?: string;
+	/** Generada automáticamente porque faltaba una vista de la estancia. */
+	automatica?: boolean;
 }
 
 /** Tipología: geometría, cámaras maestras y extras que dependen de la geometría. */
