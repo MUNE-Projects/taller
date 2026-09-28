@@ -79,3 +79,14 @@ body.en-studio .ficha, body.en-studio #configurador { display: none; }
 @media (min-width: 761px) {
 	body.en-studio .dock { left: calc(50% + 206px); }
 }
+
+.st-cambios, .st-hallazgos, .st-lista { margin: 4px 0 0; padding: 0; list-style: none; display: grid; gap: 4px; font-size: 12px; }
+.st-cambios li { padding: 3px 0; color: var(--tinta-2); overflow-wrap: anywhere; }
+.st-cambios li.nuevo strong { color: var(--acento); }
+.st-cambios li.eliminado strong { color: #a03a2c; }
+.st-hallazgos li { display: grid; grid-template-columns: 64px 1fr; gap: 8px; padding: 7px 8px; border-radius: 8px; background: #fff; border: 1px solid var(--linea); color: var(--tinta-2); }
+.st-nivel { font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.st-hallazgos li.error .st-nivel { color: #a03a2c; }
+.st-hallazgos li.aviso .st-nivel { color: #9a6b2f; }
+.st-hallazgos li.ok .st-nivel { color: var(--acento); }
+.st-lista { padding-left: 16px; list-style: disc; color: var(--tinta-2); }

@@ -33,6 +33,17 @@ export interface Modelo {
 	ambientacion: Ambientacion | null;
 }
 
+// versiones anteriores de la geometría (src/datos/tipologias/<id>/versiones/*.json)
+const versiones = import.meta.glob( '../datos/tipologias/*/versiones/*.json', { eager: true, import: 'default' } ) as Record<string, Vivienda>;
+
+/** Versiones guardadas de la geometría de una tipología (para comparar al actualizar planos). */
+export function versionesDe( idTipologia: string ) {
+
+	const pre = `../datos/tipologias/${ idTipologia }/versiones/`;
+	return Object.entries( versiones ).filter( ( [ k ] ) => k.startsWith( pre ) ).map( ( [ k, v ] ) => ( { nombre: k.slice( pre.length ).replace( /\.json$/, '' ), vivienda: v } ) ).sort( ( a, b ) => a.nombre.localeCompare( b.nombre ) );
+
+}
+
 /** Geometría, variantes y cámaras de una tipología, espejadas si hace falta. */
 export function cargarModelo( idTipologia: string, espejo = false ): Modelo {
 

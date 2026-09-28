@@ -6,6 +6,7 @@
 
 import * as THREE from 'three/webgpu';
 import type { Categoria, Configuracion, Opcion } from '../modelo/tipos';
+import type { PackVivienda } from './packs';
 import { P } from '../escena/materiales';
 
 export type Seleccion = Record<string, string>;
@@ -27,9 +28,43 @@ export class Configurador {
 	private tweens: { u: { value: unknown }; desde: THREE.Color | number; hasta: THREE.Color | number; t0: number }[] = [];
 	private readonly duracion = 450;
 
-	constructor( readonly datos: Configuracion, readonly precioBase: number ) {
+	constructor( readonly datos: Configuracion, readonly precioBase: number, readonly packs: PackVivienda[] = [] ) {
 
 		this.seleccion = Object.fromEntries( datos.categorias.map( ( c ) => [ c.id, c.opciones[ 0 ].id ] ) );
+		// packs cerrados: lo formalizado (finalizado) o lo incluido (próximamente)
+		for ( const p of packs ) if ( p.estado === 'finalizado' && p.formalizada ) {
+
+			for ( const [ cat, op ] of Object.entries( p.formalizada.opciones ) ) if ( this.tiene( cat ) && this.categoria( cat ).opciones.some( ( o ) => o.id === op ) ) this.seleccion[ cat ] = op;
+
+		}
+
+	}
+
+	/** Pack al que pertenece una categoría. */
+	packDe( categoria: string ) {
+
+		return this.packs.find( ( p ) => p.categorias.some( ( c ) => c.id === categoria ) ) ?? null;
+
+	}
+
+	/** ¿Se puede cambiar la categoría ahora? (solo en packs disponibles) */
+	editable( categoria: string ) {
+
+		const p = this.packDe( categoria );
+		return ! p || p.estado === 'disponible';
+
+	}
+
+	/** Mejoras con coste de un pack. */
+	extrasDe( packId: string ) {
+
+		return this.extras.filter( ( x ) => this.packDe( x.categoria.id )?.pack.id === packId );
+
+	}
+
+	totalPack( packId: string ) {
+
+		return this.extrasDe( packId ).reduce( ( s, x ) => s + x.opcion.precio, 0 );
 
 	}
 
@@ -56,6 +91,7 @@ export class Configurador {
 	elegir( categoria: string, id: string, instantaneo = false ) {
 
 		const anterior = this.opcion( categoria );
+		if ( ! this.editable( categoria ) ) return anterior;
 		this.seleccion[ categoria ] = id;
 		this.aplicarParametros( categoria, instantaneo );
 		return anterior;
@@ -111,7 +147,7 @@ export class Configurador {
 	}
 
 	/** Categorías que no existen en esta vivienda cuentan como su opción incluida. */
-	private tiene( id: string ) {
+	tiene( id: string ) {
 
 		return this.datos.categorias.some( ( c ) => c.id === id );
 
@@ -151,7 +187,7 @@ export class Configurador {
 	/** Restaura una selección guardada, ignorando opciones que ya no existan. */
 	restaurar( s: Seleccion ) {
 
-		for ( const c of this.datos.categorias ) if ( s[ c.id ] && c.opciones.some( ( o ) => o.id === s[ c.id ] ) ) this.elegir( c.id, s[ c.id ], true );
+		for ( const c of this.datos.categorias ) if ( this.editable( c.id ) && s[ c.id ] && c.opciones.some( ( o ) => o.id === s[ c.id ] ) ) this.elegir( c.id, s[ c.id ], true );
 
 	}
 

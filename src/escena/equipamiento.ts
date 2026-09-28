@@ -94,7 +94,9 @@ export class Pieza {
 	/** Caja por límites (x0..x1, y0..y1 altura, z0..z1 fondo). */
 	caja( k: Clave, x0: number, y0: number, z0: number, x1: number, y1: number, z1: number ) {
 
-		const g = new THREE.BoxGeometry( x1 - x0, y1 - y0, z1 - z0 );
+		// canto biselado (2-6 mm): las aristas captan la luz como un mueble real
+		const w = x1 - x0, h = y1 - y0, d = z1 - z0, min = Math.min( w, h, d );
+		const g = min >= 0.012 ? new RoundedBoxGeometry( w, h, d, 2, Math.min( 0.006, min * 0.2 ) ) : new THREE.BoxGeometry( w, h, d );
 		g.translate( ( x0 + x1 ) / 2, ( y0 + y1 ) / 2, ( z0 + z1 ) / 2 );
 		return this.add( k, g );
 

@@ -151,6 +151,10 @@ export interface Tipologia {
 	vistas: Record<string, Vista>;
 	guiadas: string[];
 	piscina: Piscina;
+	/** Orientación: ángulo (grados, sentido horario) del norte respecto al eje y+ del plano. */
+	norte?: { angulo: number; origen: string; nota?: string };
+	/** Revisión del proyecto de la que sale la geometría (para planos y documentos). */
+	revision?: { fase: string; version: string; fecha: string; fuente?: string };
 }
 
 export interface ViviendaPromocion {
@@ -168,6 +172,40 @@ export interface ViviendaPromocion {
 	nota?: string;
 	/** SHA-256 de "<id promoción>:<código de acceso>". */
 	acceso: string;
+	/**
+	 * Selecciones ya formalizadas por el comprador (las registra la promotora al
+	 * recibir el documento firmado y el pago). Se muestran como histórico en los
+	 * packs cuyo periodo ha finalizado.
+	 */
+	selecciones?: Record<string, { fecha: string; opciones: Record<string, string> }>;
+}
+
+export type EstadoPack = 'disponible' | 'proximamente' | 'finalizado';
+
+/** Pack de personalización: un conjunto de categorías que se abre durante un periodo. */
+export interface Pack {
+	id: string;
+	titulo: string;
+	descripcion: string;
+	/** Periodo de selección (fechas ISO, ambas incluidas). */
+	desde: string;
+	hasta: string;
+	categorias: string[];
+	/** Fuerza el estado (si no, se deduce de las fechas). */
+	estado?: EstadoPack;
+}
+
+/** Datos para el pago por transferencia de las mejoras. */
+export interface Pagos {
+	titular: string;
+	banco: string;
+	iban: string;
+	bic?: string;
+	/** Concepto de la transferencia; admite {ref}, {pack}, {promocion}. */
+	concepto: string;
+	/** Días para realizar la transferencia desde la firma. */
+	plazoDias?: number;
+	instrucciones?: string;
 }
 
 export interface Marca {
@@ -179,16 +217,19 @@ export interface Marca {
 	favicon: string | null;
 	contacto: { telefono: string; email: string; web: string; direccion: string };
 	comercial?: { nombre: string; telefono: string; email: string };
-	legal: { precios: string; imagenes: string; pie: string };
+	legal: { precios: string; imagenes: string; pie: string; plano?: string };
 }
 
 export interface Promocion {
 	id: string;
 	urlBase: string;
 	marca: Marca;
-	promocion: { nombre: string; ubicacion: string };
+	promocion: { nombre: string; ubicacion: string; logoSvg?: string };
 	tipologias: { id: string; opciones: Record<string, string[]> }[];
 	viviendas: ViviendaPromocion[];
 	/** Acceso al Studio de producción (hash del código). */
 	studio?: { acceso: string };
+	/** Packs de personalización, en el orden en que se ofrecen. */
+	packs?: Pack[];
+	pagos?: Pagos;
 }

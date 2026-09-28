@@ -308,6 +308,8 @@ export function tarima() {
 		rugosidad: s.rugosidad.add( fibra.mul( 0.1 ) ),
 		relieve: enJunta.oneMinus().mul( 0.7 ).add( fibra.mul( 0.3 ) ),
 		relieveEscala: 0.25,
+		// barniz satinado: brillo especular al contraluz de la ventana
+		fisico: { clearcoat: 0.18, clearcoatRoughness: 0.35 },
 	} );
 
 }

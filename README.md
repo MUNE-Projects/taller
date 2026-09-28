@@ -18,6 +18,8 @@ La interfaz tiene dos niveles de acceso sobre una única experiencia visual:
 | ![Vista general](docs/capturas/07-publico-general.png) | ![Plano](docs/capturas/07-plano.png) |
 | ![Personalizar](docs/capturas/07-comprador-personalizar.png) | ![Documento](docs/capturas/07-documento.png) |
 | ![Plano con rótulos](docs/capturas/09-plano.png) | ![Comedor](docs/capturas/09-comedor.png) |
+| ![Plano comercial](docs/capturas/10-plano-comercial.png) | ![Render HD](docs/capturas/10-render-hd.jpg) |
+| ![Packs](docs/capturas/10-packs.png) | ![Documento de pack](docs/capturas/10-documento-pack.png) |
 | ![Salón ambientado](docs/capturas/08-salon.png) | ![Dormitorio principal](docs/capturas/08-dormitorio.png) |
 | ![Terraza y zonas comunes](docs/capturas/08-terraza.png) | ![Studio](docs/capturas/08-studio.png) |
 
@@ -97,6 +99,28 @@ La interfaz (colores, tipografía, logo, favicon, título) y el PDF se generan a
   - encuadre automático en el hueco libre de la pantalla, fuera de la ficha y de la barra;
   - rótulos editoriales con halo, colocados donde no pisan muros, muebles ni otros rótulos;
   - en pantallas pequeñas pasan a un formato compacto o abreviado.
+
+## Entregables
+
+Todos salen de la misma base digital de la tipología (geometría, cámaras, ambientación y catálogo). Ver también [`docs/actualizacion-de-planos.md`](docs/actualizacion-de-planos.md).
+
+- **Visor interactivo:** optimizado para fluidez.
+  - Iluminación global y reflejos a calidad media, antialiasing temporal y render bajo demanda.
+  - Luz de ventana con sombras, que no se cuela entre estancias.
+  - Respaldo automático a WebGL 2 si WebGPU falla.
+- **Render HD** (botón «Render HD»): la vista actual sin interfaz, con una cadena de render aparte.
+  - Iluminación global con más muestras, reflejos a resolución completa y sombras a 8K.
+  - Supermuestreo por desplazamiento de subpíxel y render por mosaicos.
+  - Resoluciones: Web (1920 px), Alta (3840 px) e Impresión (6000 px), en 16:9 o 3:2. Formato JPEG.
+- **Plano comercial** (modo Plano → «Plano comercial»): se genera desde los datos.
+  - PDF A3 vectorial e imagen PNG a 300 ppp.
+  - Logos, tipología, plano a escala normalizada (1:50) con rótulos sin solapes, tabla de superficies, leyenda, escala gráfica, norte, aviso legal y revisión del proyecto.
+- **Personalización por packs** (`promocion.json → packs`): cada pack tiene título, descripción, periodo, categorías y estado.
+  - *Disponible:* se puede elegir.
+  - *Próximamente:* visible y bloqueado.
+  - *Periodo finalizado:* histórico en gris con lo formalizado.
+  - Para revisar otro momento de la promoción: `?fecha=AAAA-MM-DD`.
+- **Documento por pack** (PDF): opciones e importes, total del pack, datos y DNI/NIE del comprador, firma, datos bancarios configurables (`promocion.json → pagos`) y el procedimiento: descargar → firmar → transferencia → enviar al comercial.
 
 ## Uso
 

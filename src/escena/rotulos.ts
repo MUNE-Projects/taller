@@ -62,7 +62,10 @@ function partir( nombre: string ) {
  * @param pxPorMetro escala del plano en pantalla
  * @param supTexto texto de la superficie (p. ej. "24,77 m²")
  */
-export function colocarRotulo( e: Estancia, v: Vivienda, pxPorMetro: number, supTexto: string, extra: Rect[] = [], ocupados: Rect[] = [] ): Rotulo & { caja: Rect } {
+/** Medida real de un rótulo en "px" (si el medio de salida puede medir su tipografía). */
+export type Medida = ( formato: Formato, lineas: string[], sup: string ) => { ancho: number; alto: number };
+
+export function colocarRotulo( e: Estancia, v: Vivienda, pxPorMetro: number, supTexto: string, extra: Rect[] = [], ocupados: Rect[] = [], medida?: Medida ): Rotulo & { caja: Rect } {
 
 	const pol = e.poligono;
 	const xs = pol.map( ( p ) => p[ 0 ] ), ys = pol.map( ( p ) => p[ 1 ] );
@@ -77,8 +80,10 @@ export function colocarRotulo( e: Estancia, v: Vivienda, pxPorMetro: number, sup
 		const lineas = formato === 'dos-lineas' ? partir( e.nombre ) : formato === 'solo-nombre-2' ? partir( abreviar( e.nombre ) )
 			: formato === 'minima' || formato === 'solo-nombre' ? [ abreviar( e.nombre ) ] : [ e.nombre ];
 		const sup = formato.startsWith( 'solo' ) ? '' : supTexto;
-		const anchoPx = Math.max( ...lineas.map( ( l ) => l.length * m.nombre ), sup.length * m.sup ) + m.pad;
-		const hw = anchoPx / pxPorMetro / 2 + 0.04, hh = m.alto / pxPorMetro / 2 + 0.03;
+		const real = medida?.( formato, lineas, sup );
+		const anchoPx = real ? real.ancho : Math.max( ...lineas.map( ( l ) => l.length * m.nombre ), sup.length * m.sup ) + m.pad;
+		const altoPx = real ? real.alto : m.alto;
+		const hw = anchoPx / pxPorMetro / 2 + 0.04, hh = altoPx / pxPorMetro / 2 + 0.03;
 		const paso = Math.max( 0.06, Math.min( x1 - x0, y1 - y0 ) / 30 );
 		for ( let x = x0 + hw; x <= x1 - hw + 1e-6; x += paso ) for ( let y = y0 + hh; y <= y1 - hh + 1e-6; y += paso ) {
 

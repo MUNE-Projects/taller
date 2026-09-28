@@ -135,3 +135,50 @@ export function construirDownlights( v: Vivienda ) {
 	return g;
 
 }
+
+let matMecanismo: THREE.Material | null = null;
+let matTecla: THREE.Material | null = null;
+
+/** Interruptores junto a las puertas, en la cara hacia la que abre la hoja (lado libre). */
+export function construirMecanismos( v: Vivienda ) {
+
+	matMecanismo ??= M.lacado( '#f6f5f2', 0.35 );
+	matTecla ??= M.material( { acabado: color( '#e4e2dd' ), rugosidad: 0.4 } );
+	const placas: THREE.BufferGeometry[] = [], teclas: THREE.BufferGeometry[] = [];
+	for ( const h of v.huecos.filter( ( x ) => x.tipo !== 'balconera' ) ) {
+
+		const [ x0, y0, x1, y1 ] = v.muros.find( ( m ) => m.id === h.muro )!.rect;
+		const enX = h.eje === 'x';
+		const pos = h.abre === 'n' || h.abre === 'e';
+		const cara = enX ? ( pos ? y1 : y0 ) : ( pos ? x1 : x0 );
+		const u = h.bisagra === 'inicio' ? h.hasta + 0.16 : h.desde - 0.16;
+		const w = cara + ( pos ? 0.005 : - 0.005 );
+		// debe haber muro macizo detrás
+		const [ px, py ] = enX ? [ u, cara + ( pos ? - 0.03 : 0.03 ) ] : [ cara + ( pos ? - 0.03 : 0.03 ), u ];
+		if ( ! muroMacizo( v, px, py ) ) continue;
+		const g = new THREE.BoxGeometry( 0.082, 0.082, 0.01 );
+		const t = new THREE.BoxGeometry( 0.05, 0.05, 0.004 );
+		if ( ! enX ) {
+
+			g.rotateY( Math.PI / 2 );
+			t.rotateY( Math.PI / 2 );
+
+		}
+
+		const c = enX ? new THREE.Vector3( u, 1.05, - w ) : new THREE.Vector3( w, 1.05, - u );
+		g.translate( c.x, c.y, c.z );
+		const dt = ( pos ? 1 : - 1 ) * 0.007;
+		t.translate( c.x + ( enX ? 0 : dt ), c.y, c.z - ( enX ? dt : 0 ) );
+		placas.push( g );
+		teclas.push( t );
+
+	}
+
+	const grupo = new THREE.Group();
+	grupo.name = 'mecanismos';
+	const gp = unir( placas ), gt = unir( teclas );
+	if ( gp ) grupo.add( new THREE.Mesh( gp, matMecanismo ) );
+	if ( gt ) grupo.add( new THREE.Mesh( gt, matTecla ) );
+	return grupo;
+
+}

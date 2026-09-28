@@ -204,5 +204,16 @@
     "espesor": 0.12,
     "albardilla": 0.06,
     "pasoMinimoFachada": 0.95
+  },
+  "norte": {
+    "angulo": 0,
+    "origen": "supuesto",
+    "nota": "Norte hacia arriba del plano (y+). Confirmar con el plano de situación."
+  },
+  "revision": {
+    "fase": "Anteproyecto",
+    "version": "1",
+    "fecha": "2026-03-15",
+    "fuente": "Plano comercial V.00 (marzo 2026)"
   }
 }

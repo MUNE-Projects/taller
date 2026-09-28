@@ -26,12 +26,14 @@
     "legal": {
       "precios": "Precios con IVA no incluido, válidos para la fase de personalización en curso. Los importes de las mejoras se suman al precio de la vivienda y quedan sujetos a la confirmación por escrito de la promotora.",
       "imagenes": "Imágenes generadas a partir del proyecto, meramente orientativas. Mobiliario no incluido salvo indicación expresa.",
-      "pie": "Promotora Demo S.L. · CIF B00000000 · Documento sin validez contractual hasta su aceptación por la promotora."
+      "pie": "Promotora Demo S.L. · CIF B00000000 · Documento sin validez contractual hasta su aceptación por la promotora.",
+      "plano": "Plano comercial orientativo y sin valor contractual. Las superficies útiles son aproximadas y podrán sufrir variaciones por exigencias técnicas, jurídicas o administrativas durante la ejecución de la obra. El mobiliario y la decoración se representan a título orientativo y no están incluidos salvo que se indique en la memoria de calidades."
     }
   },
   "promocion": {
     "nombre": "Residencial Demo",
-    "ubicacion": "Alovera (Guadalajara)"
+    "ubicacion": "Alovera (Guadalajara)",
+    "logoSvg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"200\" height=\"56\" viewBox=\"0 0 200 56\"><g fill=\"none\" stroke=\"#b8946a\" stroke-width=\"2\"><path d=\"M6 44V20l14-10 14 10v24\"/><path d=\"M14 44V28h12v16\"/></g><text x=\"46\" y=\"27\" font-family=\"Georgia, 'Times New Roman', serif\" font-size=\"19\" letter-spacing=\"1\" fill=\"#1c1c1a\">Residencial</text><text x=\"47\" y=\"46\" font-family=\"Helvetica, Arial, sans-serif\" font-size=\"11\" font-weight=\"600\" letter-spacing=\"6.5\" fill=\"#2f5d50\">DEMO</text></svg>"
   },
   "tipologias": [
     {
@@ -81,7 +83,15 @@
         "exterior": 32.71,
         "construida": 123.21
       },
-      "acceso": "ad4bcd3781a31e59a2edc7b53be87ebf1c69023df797a8a318cdd68fc35aad87"
+      "acceso": "ad4bcd3781a31e59a2edc7b53be87ebf1c69023df797a8a318cdd68fc35aad87",
+      "selecciones": {
+        "distribuciones": {
+          "fecha": "2026-07-21",
+          "opciones": {
+            "distribucion": "alternativa"
+          }
+        }
+      }
     },
     {
       "ref": "Bajo B",
@@ -108,5 +118,50 @@
   "studio": {
     "nota": "Acceso al Studio de producción (solo equipo de la promotora): SHA-256 de \"<id de promoción>:studio:<código>\". El código no se guarda en los datos.",
     "acceso": "46a03b02686b7ec009b28b4b0ef84b8cb19e0a84aef15766bbbdbe46c11fd3cd"
+  },
+  "packs": [
+    {
+      "id": "distribuciones",
+      "titulo": "Pack 1 · Distribuciones",
+      "descripcion": "Cambios de distribución interior que afectan a tabiquería e instalaciones. Deben decidirse antes del inicio de la tabiquería.",
+      "desde": "2026-05-04",
+      "hasta": "2026-09-15",
+      "categorias": [
+        "distribucion"
+      ]
+    },
+    {
+      "id": "acabados",
+      "titulo": "Pack 2 · Acabados",
+      "descripcion": "Suelos, mobiliario de cocina, encimera y revestimientos de baños.",
+      "desde": "2026-09-16",
+      "hasta": "2026-12-18",
+      "categorias": [
+        "suelo",
+        "cocina",
+        "encimera",
+        "banos"
+      ]
+    },
+    {
+      "id": "extras",
+      "titulo": "Pack 3 · Equipamiento y extras",
+      "descripcion": "Mejoras de equipamiento y exteriores, como la piscina privada en la terraza.",
+      "desde": "2027-01-11",
+      "hasta": "2027-03-31",
+      "categorias": [
+        "exterior"
+      ]
+    }
+  ],
+  "pagos": {
+    "titular": "Promotora Demo S.L.",
+    "banco": "Banco Ejemplo",
+    "iban": "ES00 0000 0000 0000 0000 0000",
+    "bic": "EJEMESMMXXX",
+    "concepto": "{promocion} · {ref} · {pack}",
+    "plazoDias": 10,
+    "instrucciones": "La selección queda confirmada cuando el departamento comercial recibe el documento firmado y el justificante de pago. Si la transferencia no se recibe dentro del plazo, la selección de este pack quedará sin efecto.",
+    "nota": "Datos bancarios de ejemplo. La promotora los configura aquí o desde el Studio (Acabados y precios → Pagos)."
   }
 }

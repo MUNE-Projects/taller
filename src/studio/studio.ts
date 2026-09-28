@@ -16,6 +16,8 @@ import { BIBLIOTECA, activo, alternativas, huella, type Activo, type Ambientacio
 import { GENERADORES } from '../biblioteca/generadores';
 import { puntoEnPoligono } from '../util/geo';
 import { revisarVistas } from '../escena/vistas';
+import { cargarModelo, versionesDe } from '../promocion/promocion';
+import { compararViviendas, revisarPromocion } from '../promocion/revision';
 import { extraerPaleta, propuestaLocal, type Propuesta } from './interiorismo';
 import './studio.css';
 
@@ -66,7 +68,7 @@ const CLAVE_BORRADOR = 'inmobiliarias:studio:borrador';
 
 const PESTANAS = [
 	[ 'escena', 'Escena' ], [ 'camaras', 'Cámaras' ], [ 'acabados', 'Acabados y precios' ], [ 'marca', 'Marca' ],
-	[ 'ia', 'Interiorismo IA' ], [ 'biblioteca', 'Biblioteca' ], [ 'documentacion', 'Documentación' ], [ 'publicacion', 'Publicación' ],
+	[ 'ia', 'Interiorismo IA' ], [ 'biblioteca', 'Biblioteca' ], [ 'documentacion', 'Documentación' ], [ 'actualizacion', 'Actualización' ], [ 'publicacion', 'Publicación' ],
 ] as const;
 type Pestana = typeof PESTANAS[ number ][ 0 ];
 
@@ -254,7 +256,7 @@ export async function abrirStudio( api: ApiStudio ) {
 		for ( const b of nav.querySelectorAll<HTMLButtonElement>( 'button' ) ) b.setAttribute( 'aria-selected', String( b.dataset.p === pestana ) );
 		cuerpo.replaceChildren( ...( {
 			escena: pintarEscena, camaras: pintarCamaras, acabados: pintarAcabados, marca: pintarMarca,
-			ia: pintarIA, biblioteca: pintarBiblioteca, documentacion: pintarDocumentacion, publicacion: pintarPublicacion,
+			ia: pintarIA, biblioteca: pintarBiblioteca, documentacion: pintarDocumentacion, actualizacion: pintarActualizacion, publicacion: pintarPublicacion,
 		}[ pestana ] )() );
 
 	}
@@ -501,6 +503,61 @@ export async function abrirStudio( api: ApiStudio ) {
 			out.push( h( 'details', { open: '' }, h( 'summary', {}, c.nombre ), ...filas ) );
 
 		}
+
+		// packs: periodos y estado (el estado se deduce de las fechas salvo que se fuerce)
+		out.push( h( 'h3', {}, 'Packs de personalización' ), h( 'p', { class: 'st-ayuda' }, 'Cada pack agrupa categorías y se abre durante su periodo. Antes: «Próximamente» (visible y bloqueado); después: «Periodo finalizado» (histórico en gris).' ) );
+		for ( const pk of api.promocion.packs ?? [] ) {
+
+			const campo = ( etiqueta: string, valor: string, poner: ( v: string ) => void, tipo = 'text' ) => {
+
+				const i = h( 'input', { type: tipo, value: valor, 'aria-label': etiqueta } ) as HTMLInputElement;
+				i.addEventListener( 'change', () => {
+
+					poner( i.value );
+					api.refrescarCatalogo();
+					cambio( false );
+
+				} );
+				return h( 'label', { class: 'st-campo' }, h( 'span', {}, etiqueta ), i );
+
+			};
+			const estado = h( 'select', { 'aria-label': 'Estado del pack' } ) as HTMLSelectElement;
+			for ( const [ v, t ] of [ [ '', 'Según fechas' ], [ 'disponible', 'Forzar disponible' ], [ 'proximamente', 'Forzar próximamente' ], [ 'finalizado', 'Forzar finalizado' ] ] ) estado.append( h( 'option', { value: v }, t ) );
+			estado.value = pk.estado ?? '';
+			estado.addEventListener( 'change', () => {
+
+				if ( estado.value ) pk.estado = estado.value as NonNullable<typeof pk.estado>;
+				else delete pk.estado;
+				api.refrescarCatalogo();
+				cambio( false );
+
+			} );
+			out.push( h( 'details', {}, h( 'summary', {}, `${ pk.titulo } · ${ pk.categorias.join( ', ' ) }` ),
+				campo( 'Título', pk.titulo, ( v ) => ( pk.titulo = v ) ),
+				campo( 'Descripción', pk.descripcion, ( v ) => ( pk.descripcion = v ) ),
+				h( 'div', { class: 'st-tres' }, campo( 'Desde', pk.desde, ( v ) => ( pk.desde = v ), 'date' ), campo( 'Hasta', pk.hasta, ( v ) => ( pk.hasta = v ), 'date' ), h( 'label', { class: 'st-campo' }, h( 'span', {}, 'Estado' ), estado ) ),
+				campo( 'Categorías (ids separados por comas)', pk.categorias.join( ', ' ), ( v ) => ( pk.categorias = v.split( ',' ).map( ( x ) => x.trim() ).filter( Boolean ) ) ) ) );
+
+		}
+
+		// datos de pago por transferencia (aparecen en el documento de cada pack)
+		const pg = api.promocion.pagos ??= { titular: '', banco: '', iban: '', concepto: '{promocion} · {ref} · {pack}' };
+		const campoPago = ( etiqueta: string, k: 'titular' | 'banco' | 'iban' | 'bic' | 'concepto' | 'instrucciones' ) => {
+
+			const i = h( k === 'instrucciones' ? 'textarea' : 'input', k === 'instrucciones' ? { rows: '3' } : { type: 'text' } ) as HTMLInputElement;
+			i.value = String( pg[ k ] ?? '' );
+			i.addEventListener( 'change', () => {
+
+				pg[ k ] = i.value;
+				cambio( false );
+
+			} );
+			return h( 'label', { class: 'st-campo' }, h( 'span', {}, etiqueta ), i );
+
+		};
+		out.push( h( 'h3', {}, 'Pagos' ), h( 'p', { class: 'st-ayuda' }, 'Datos de la transferencia que figuran en el documento de cada pack. En el concepto se pueden usar {promocion}, {ref} y {pack}.' ),
+			campoPago( 'Beneficiario', 'titular' ), campoPago( 'Entidad', 'banco' ), campoPago( 'IBAN', 'iban' ), campoPago( 'BIC / SWIFT', 'bic' ),
+			campoPago( 'Concepto', 'concepto' ), campoPago( 'Instrucciones adicionales', 'instrucciones' ) );
 
 		out.push( h( 'h3', {}, 'Viviendas' ) );
 		for ( const v of api.promocion.viviendas ) {
@@ -905,6 +962,68 @@ Es una aproximación ligera; no reproduzcas un producto concreto. Responde SOLO 
 
 		}
 
+		return out;
+
+	}
+
+	// ------------------------------------------------------------ actualización de planos
+	let versionElegida = '';
+	function pintarActualizacion(): Node[] {
+
+		const t = api.modelo().tipologia;
+		const base = cargarModelo( t.id, false ); // siempre sobre la orientación de la tipología
+		const vs = versionesDe( t.id );
+		const rev = t.revision;
+		const out: Node[] = [
+			h( 'p', { class: 'st-ayuda' }, 'Cuando llega una nueva versión del plano (p. ej. del anteproyecto al proyecto de ejecución) se sustituye la geometría de la tipología. Visor, renders, plano comercial, superficies y documentos se regeneran solos; aquí se ve qué ha cambiado y qué hay que repasar a mano.' ),
+			h( 'p', { class: 'st-nota' }, rev ? `Versión actual: ${ rev.fase } · v${ rev.version } · ${ rev.fecha }${ rev.fuente ? ` · ${ rev.fuente }` : '' }` : 'Versión actual sin datos de revisión.' ),
+		];
+		// comparación con una versión guardada
+		out.push( h( 'h3', {}, 'Cambios respecto a una versión anterior' ) );
+		if ( ! vs.length ) out.push( h( 'p', { class: 'st-ayuda' }, 'No hay versiones anteriores guardadas en versiones/.' ) );
+		else {
+
+			versionElegida ||= vs[ vs.length - 1 ].nombre;
+			const sel = h( 'select', { 'aria-label': 'Versión con la que comparar' } ) as HTMLSelectElement;
+			for ( const x of vs ) sel.append( h( 'option', { value: x.nombre }, x.nombre ) );
+			sel.value = versionElegida;
+			sel.addEventListener( 'change', () => {
+
+				versionElegida = sel.value;
+				pintar();
+
+			} );
+			out.push( sel );
+			const anterior = vs.find( ( x ) => x.nombre === versionElegida )!.vivienda;
+			const cambios = compararViviendas( anterior, base.vivienda );
+			if ( ! cambios.length ) out.push( h( 'p', { class: 'st-ok' }, 'La geometría actual es idéntica a esa versión.' ) );
+			else {
+
+				const porAmbito = new Map<string, typeof cambios>();
+				for ( const c of cambios ) porAmbito.set( c.ambito, [ ...( porAmbito.get( c.ambito ) ?? [] ), c ] );
+				for ( const [ ambito, cs ] of porAmbito ) out.push( h( 'details', { open: '' }, h( 'summary', {}, `${ ambito } · ${ cs.length } ${ cs.length === 1 ? 'cambio' : 'cambios' }` ),
+					h( 'ul', { class: 'st-cambios' }, ...cs.map( ( c ) => h( 'li', { class: c.tipo }, h( 'strong', {}, `${ { nuevo: 'Nuevo', eliminado: 'Eliminado', modificado: 'Modificado' }[ c.tipo ] }: ` ), c.id, c.detalle ? ` — ${ c.detalle }` : '' ) ) ) ) );
+
+			}
+
+		}
+
+		// revisión de impactos
+		out.push( h( 'h3', {}, 'Revisión de lo que depende de la geometría' ) );
+		const hallazgos = revisarPromocion( base.vivienda, base.tipologia, base.variantes, base.ambientacion, api.catalogo );
+		const orden = { error: 0, aviso: 1, ok: 2 };
+		out.push( h( 'ul', { class: 'st-hallazgos' }, ...hallazgos.sort( ( a, b ) => orden[ a.nivel ] - orden[ b.nivel ] ).map( ( x ) => h( 'li', { class: x.nivel }, h( 'span', { class: 'st-nivel' }, { error: 'Corregir', aviso: 'Revisar', ok: 'Correcto' }[ x.nivel ] ), h( 'span', {}, h( 'strong', {}, `${ x.ambito }. ` ), x.mensaje ) ) ) ) );
+		out.push( h( 'h3', {}, 'Qué se regenera solo' ), h( 'ul', { class: 'st-lista' },
+			h( 'li', {}, 'Muros, carpinterías, suelos, techos, rodapiés, luces de ventana y paisaje' ),
+			h( 'li', {}, 'Superficies de la ficha, del plano comercial y de los documentos' ),
+			h( 'li', {}, 'Plano comercial (rótulos recolocados sin solapes) y renders HD' ),
+			h( 'li', {}, 'Vistas automáticas de las estancias nuevas que no tengan vista' ),
+			h( 'li', {}, 'Viviendas simétricas (se espejan de la misma geometría)' ) ),
+		h( 'h3', {}, 'Qué hay que repasar' ), h( 'ul', { class: 'st-lista' },
+			h( 'li', {}, 'Cámaras compuestas a mano (pestaña Cámaras) si la estancia cambia' ),
+			h( 'li', {}, 'Decoración colocada (pestaña Escena)' ),
+			h( 'li', {}, 'Parches de las distribuciones alternativas (variantes.json)' ),
+			h( 'li', {}, 'Opciones y precios afectados (pestaña Acabados y precios)' ) ) );
 		return out;
 
 	}

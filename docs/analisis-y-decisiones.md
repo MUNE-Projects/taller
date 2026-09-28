@@ -220,3 +220,52 @@ La opción de baños no tiene cámara maestra propia, así que mantiene la vista
   - rótulos editoriales con halo, colocados por búsqueda dentro de cada estancia para no pisar muros, muebles ni otros rótulos;
   - formatos compactos y abreviados para pantallas pequeñas.
 - **Studio:** botón visible («Studio», abajo a la derecha), que recuerda el acceso en ese navegador.
+
+## Iteración 7: entregables del producto
+
+### Qué se ha hecho
+
+- **Packs de personalización temporales:**
+  - datos en `promocion.json`, con estado deducido de las fechas;
+  - el panel se agrupa por packs;
+  - el histórico formalizado viene de `viviendas[].selecciones`, porque la promotora lo registra al recibir la firma y el pago;
+  - los packs y los datos de pago se editan desde el Studio.
+- **Documento por pack:** dos páginas.
+  - Página 1: selección e importe.
+  - Página 2: formalización y pago, con procedimiento en cuatro pasos, datos de transferencia, datos del comprador, DNI/NIE y firma.
+- **Plano comercial vectorial** (`src/documento/plano.ts`):
+  - un solo dibujo con dos salidas, jsPDF y Canvas;
+  - rótulos colocados con la tipografía real del documento, sin pisar muros, muebles, barridos de puertas ni otros rótulos.
+- **Render HD** (`src/escena/renderHD.ts`), separado del visor.
+- **Calidad del visor:**
+  - luz de ventana con sombras;
+  - cantos biselados en mobiliario;
+  - barniz en la tarima;
+  - interruptores;
+  - algo más de oclusión de contacto;
+  - reducción suave de la luz de cielo dentro de la vivienda.
+- **Actualización de planos:**
+  - versiones guardadas;
+  - comparador por ids;
+  - revisión de impactos (`src/promocion/revision.ts`) y pestaña «Actualización» del Studio;
+  - procedimiento en `docs/actualizacion-de-planos.md`.
+
+### Pruebas y hallazgos
+
+- **Tonos AgX frente a Neutral:** AgX apagaba el color y el contraste de los interiores. Se mantiene Neutral (`?tono=agx` para comparar).
+- **Menos luz de cielo en interior:** reducirla mucho no dio más contraste, sino interiores grises. La iluminación global en pantalla no aporta el rebote suficiente. Se deja en un 20 %.
+- **Render HD por mosaicos:**
+  - el bloom creaba juntas entre mosaicos (su halo depende del contenido de cada uno), así que se quitó del render HD;
+  - el primer mosaico salía sin sombras porque los mapas de sombra recién creados no estaban listos, así que se añadieron fotogramas de calentamiento.
+
+### Límites reales de la calidad
+
+La cadena actual es rasterización en tiempo real con iluminación global y reflejos en espacio de pantalla. Tiene un techo claro:
+- **Luz indirecta:** solo rebota lo que se ve en pantalla. Por eso la luz indirecta de fuera de cuadro y las esquinas no se comportan como en una fotografía.
+- **Materiales:** son procedurales (TSL), sin fotografías de texturas. Cuesta el detalle fino de telas, piedra y madera reales.
+- **Luces:** las luminarias son emisivas, sin luz real.
+
+**Para acercarse al fotorrealismo en las imágenes HD, harían falta otros enfoques técnicos:**
+1. **Trazado de rutas** (path tracing) para el render HD, por ejemplo con three-gpu-pathtracer. Es gratuito y se ejecuta en el navegador, pero trabaja con materiales estándar de Three.js. Habría que «hornear» los materiales procedurales a texturas.
+2. **Texturas PBR fotográficas** (madera, piedra, tejidos) con licencia comercial, en lugar de o junto a los materiales procedurales.
+3. **Iluminación precalculada** (lightmaps) para el visor.

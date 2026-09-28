@@ -17,7 +17,8 @@ import { construirCantoPorche, construirSuelos } from './escena/suelos';
 import { construirCarpinterias } from './escena/carpinterias';
 import { construirEquipamiento } from './escena/equipamiento';
 import { obstaculos } from './biblioteca/biblioteca';
-import { construirDownlights, construirRodapies } from './escena/detalles';
+import { construirDownlights, construirMecanismos, construirRodapies } from './escena/detalles';
+import { construirLucesVentana } from './escena/luzVentana';
 import { construirPaisaje } from './escena/paisaje';
 import { construirLineas } from './escena/lineas';
 import { entorno, fondo, sol as crearSol } from './escena/luz';
@@ -28,9 +29,12 @@ import { construirPiscina, validarPiscina } from './escena/piscina';
 import { aplicarVariante, fmtM2 } from './configurador/variantes';
 import { Configurador, fmtEuros, fmtPrecio, type Seleccion } from './configurador/configurador';
 import { Panel } from './configurador/panel';
+import { packsDeVivienda } from './configurador/packs';
 import { CATALOGO, PROMOCION, accesoStudio, cargarModelo, catalogoPara, extraerCodigo, resolverAcceso, viviendaPublica, type Modelo } from './promocion/promocion';
 import { aplicarMarca } from './promocion/marca';
 import { generarPDF } from './documento/pdf';
+import { planoPDF, planoPNG, type DatosPlano } from './documento/plano';
+import { RenderHD } from './escena/renderHD';
 import './estilos.css';
 
 const $ = <T extends HTMLElement>( s: string ) => document.querySelector( s ) as T;
@@ -69,7 +73,9 @@ async function iniciar() {
 	const renderer = new THREE.WebGPURenderer( { antialias: false, forceWebGL: forzarWebGL } );
 	renderer.setPixelRatio( Math.min( devicePixelRatio, 1.5 ) );
 	renderer.setSize( innerWidth, innerHeight );
-	renderer.toneMapping = THREE.NeutralToneMapping;
+	// Neutral (Khronos PBR): conserva los colores de los acabados. AgX se probó
+	// (?tono=agx) y apagaba el contraste y el color de los interiores.
+	renderer.toneMapping = new URLSearchParams( location.search ).get( 'tono' ) === 'agx' ? THREE.AgXToneMapping : THREE.NeutralToneMapping;
 	renderer.toneMappingExposure = 0.95;
 	renderer.shadowMap.enabled = true;
 	renderer.shadowMap.type = THREE.PCFShadowMap;
@@ -117,7 +123,15 @@ async function iniciar() {
 	// Contenedores persistentes: cambiar de distribución o de vivienda solo
 	// sustituye su contenido; estados, cámaras y render apuntan a lo mismo.
 	let modelo: Modelo = cargarModelo( fichaVivienda.tipologia, fichaVivienda.espejo );
-	let conf = new Configurador( catalogoPara( fichaVivienda ), fichaVivienda.precioBase );
+	/** Configurador de una vivienda con sus packs (el histórico formalizado solo lo ve su comprador). */
+	const crearConfigurador = ( v: ViviendaPromocion ) => {
+
+		const catalogo = catalogoPara( v );
+		const propia = comprador?.ref === v.ref;
+		return new Configurador( catalogo, v.precioBase, packsDeVivienda( PROMOCION, propia ? v : { ...v, selecciones: undefined }, catalogo.categorias ) );
+
+	};
+	let conf = crearConfigurador( fichaVivienda );
 	let vivienda: Vivienda = modelo.vivienda;
 	const H = modelo.vivienda.alturas.libre.valor;
 	M.U.altura.value = H;
@@ -140,6 +154,7 @@ async function iniciar() {
 
 				const m = o as THREE.Mesh;
 				m.geometry?.dispose();
+				( o as THREE.SpotLight ).shadow?.dispose?.();
 				if ( liberarMateriales ) ( Array.isArray( m.material ) ? m.material : [ m.material ] ).forEach( ( x ) => x?.dispose() );
 
 			} );
@@ -154,6 +169,8 @@ async function iniciar() {
 	const { entorno: suelo } = construirSuelos( modelo.vivienda );
 	const luzSol = crearSol( new THREE.Vector3( 6.35, 0, - 3.3 ) );
 	escena.add( ...Object.values( c ), suelo!, luzSol, luzSol.target );
+	const lucesVentana = new THREE.Group();
+	escena.add( lucesVentana );
 
 	// etiquetas de estancias (modo Plano)
 	const etiquetas = new CSS2DRenderer( { element: $( '#etiquetas' ) } );
@@ -274,6 +291,8 @@ async function iniciar() {
 		const e = construirEquipamiento( vivienda, modelo.ambientacion );
 		e.mobiliario.add( ...e.decoracion.children );
 		e.fijo.add( Object.assign( construirRodapies( vivienda ), { userData: { x: 6 } } ) );
+		e.fijo.add( Object.assign( construirMecanismos( vivienda ), { userData: { x: 6 } } ) );
+		volcar( lucesVentana, construirLucesVentana( vivienda ) );
 		// paisaje de zonas comunes: va con el mobiliario para que no aparezca en el plano
 		e.mobiliario.add( Object.assign( construirPaisaje( vivienda ), { userData: { x: 13 } } ) );
 		volcar( c.fijo, e.fijo );
@@ -321,7 +340,7 @@ async function iniciar() {
 	gi.stepCount.value = 8;
 	gi.radius.value = 4;
 	gi.giIntensity.value = 1.6;
-	gi.aoIntensity.value = 1.0;
+	gi.aoIntensity.value = 1.15;
 	gi.thickness.value = 0.5;
 	// en planta no hay oclusión: el papel queda limpio y sin ruido temporal
 	const ao = mix( gi.getAONode(), float( 1 ), M.U.plano );
@@ -476,7 +495,7 @@ async function iniciar() {
 	}
 
 	// ---------------------------------------------------------------- personalizar
-	const guardarSeleccion = () => comprador && guardar( claveSeleccion( comprador.ref ), JSON.stringify( conf.seleccion ) );
+	const guardarSeleccion = () => comprador && guardar( claveSeleccion( comprador.ref ), JSON.stringify( Object.fromEntries( Object.entries( conf.seleccion ).filter( ( [ k ] ) => conf.editable( k ) ) ) ) );
 
 	const vistaDeVariante = () => ( modelo.variantes.find( ( v ) => v.id === conf.variante ) ?? modelo.variantes[ 0 ] )?.vista ?? null;
 	/** Vista que corresponde a una categoría ("mantener" = ninguna). */
@@ -558,12 +577,12 @@ async function iniciar() {
 			quitar: ( categoria ) => aplicarOpcion( categoria, conf.base( categoria ).id, false ),
 			restablecer: () => {
 
-				for ( const x of conf.extras ) aplicarOpcion( x.categoria.id, conf.base( x.categoria.id ).id, false );
+				for ( const x of conf.extras ) if ( conf.editable( x.categoria.id ) ) aplicarOpcion( x.categoria.id, conf.base( x.categoria.id ).id, false );
 				panel.sincronizar();
 
 			},
 			cerrar: () => irModo( 'vivienda' ),
-			generar: () => mostrarResumen(),
+			generar: ( pack ) => mostrarResumen( pack ),
 		} );
 
 	}
@@ -582,7 +601,7 @@ async function iniciar() {
 
 		cam.vistas = modelo.tipologia.vistas;
 		construirBarraVistas();
-		conf = new Configurador( catalogoPara( v ), v.precioBase );
+		conf = crearConfigurador( v );
 		for ( const k of conf.datos.categorias ) conf.aplicarParametros( k.id, true );
 		// selección anterior de esta vivienda en este navegador (comodidad, no se envía a ningún sitio)
 		if ( comprador ) {
@@ -650,26 +669,59 @@ async function iniciar() {
 
 	// ---------------------------------------------------------------- documento de selección
 	const dialogo = $<HTMLDialogElement>( '#resumen-configuracion' );
-	const mostrarResumen = () => {
+	let packResumen = '';
+	const CLAVE_COMPRADOR = 'inmobiliarias:comprador';
+	const escapar = ( t: string ) => t.replace( /[&<>"]/g, ( c ) => ( { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' } )[ c ]! );
+	const conceptoPago = ( pack: string ) => ( PROMOCION.pagos?.concepto ?? '{ref} · {pack}' )
+		.replace( '{ref}', fichaVivienda.ref ).replace( '{pack}', pack ).replace( '{promocion}', PROMOCION.promocion.nombre );
+	const mostrarResumen = ( packId: string ) => {
 
-		const filas = conf.datos.categorias.map( ( k ) => {
+		const pv = conf.packs.find( ( p ) => p.pack.id === packId );
+		if ( ! pv ) return;
+		packResumen = packId;
+		const filas = pv.categorias.map( ( k ) => {
 
 			const o = conf.opcion( k.id );
 			return `<tr><th scope="row">${ k.nombre }</th><td>${ o.nombre }${ o.detalle ? ` <span class="detalle">(${ o.detalle })</span>` : '' }</td><td>${ fmtPrecio( o.precio ) }</td></tr>`;
 
 		} ).join( '' );
+		const total = conf.totalPack( packId );
+		const pg = PROMOCION.pagos;
+		let datos: { nombre?: string; dni?: string } = {};
+		try {
+
+			datos = JSON.parse( leer( CLAVE_COMPRADOR ) ?? '{}' );
+
+		} catch { /* sin datos guardados */ }
+
+		$( '#titulo-resumen' ).textContent = pv.pack.titulo;
 		dialogo.querySelector( '.contenido' )!.innerHTML = `
 			<p class="fecha">${ PROMOCION.promocion.nombre } · ${ fichaVivienda.ref } · ${ modelo.tipologia.nombre }</p>
 			<table>
 				<tbody>${ filas }</tbody>
-				<tfoot>
-					<tr><th scope="row">Precio base vivienda</th><td></td><td>${ fmtEuros( conf.precioBase ) }</td></tr>
-					<tr><th scope="row">Mejoras (${ conf.extras.length })</th><td></td><td>+${ fmtEuros( conf.totalExtras ) }</td></tr>
-					<tr class="total"><th scope="row">Precio total</th><td></td><td>${ fmtEuros( conf.total ) }</td></tr>
-				</tfoot>
+				<tfoot><tr class="total"><th scope="row">Total mejoras del pack</th><td></td><td>${ total ? `+${ fmtEuros( total ) }` : '0 €' }</td></tr></tfoot>
 			</table>
-			<p class="nota">El documento incluye una imagen de tu vivienda configurada y un apartado para tu firma. Descárgalo, fírmalo y envíalo a tu comercial para confirmar tu selección.</p>`;
+			<fieldset class="datos-comprador">
+				<legend>Datos del comprador <span>(opcional: también puede rellenarlos a mano en el documento)</span></legend>
+				<label>Nombre y apellidos<input name="nombre" autocomplete="name" value="${ escapar( datos.nombre ?? '' ) }"></label>
+				<label>DNI / NIE<input name="dni" autocomplete="off" value="${ escapar( datos.dni ?? '' ) }"></label>
+			</fieldset>
+			${ total && pg ? `<div class="pago">
+				<p><strong>Pago por transferencia: ${ fmtEuros( total ) }</strong></p>
+				<p>${ pg.titular } · ${ pg.iban }<br>Concepto: ${ escapar( conceptoPago( pv.pack.titulo ) ) }</p>
+			</div>` : '' }
+			<ol class="pasos"><li>Descargue el documento</li><li>Fírmelo</li>${ total ? '<li>Realice la transferencia</li>' : '' }<li>Envíe a su comercial el documento firmado${ total ? ' y el justificante de pago' : '' }</li></ol>`;
 		dialogo.showModal();
+
+	};
+
+	/** Datos del comprador escritos en el diálogo (se recuerdan solo en este navegador). */
+	const datosComprador = () => {
+
+		const f = ( n: string ) => ( dialogo.querySelector( `input[name="${ n }"]` ) as HTMLInputElement | null )?.value.trim() ?? '';
+		const d = { nombre: f( 'nombre' ), dni: f( 'dni' ).toUpperCase() };
+		guardar( CLAVE_COMPRADOR, JSON.stringify( d ) );
+		return d;
 
 	};
 
@@ -711,16 +763,17 @@ async function iniciar() {
 		b.textContent = 'Preparando documento…';
 		try {
 
-			const imagen = await renderizarVista( 'aerea', 1800, 40 );
-			const vistaVariante = conf.variante ? vistaDeVariante() : null;
-			const imagenDistribucion = vistaVariante ? await renderizarVista( vistaVariante, 1400, 32 ) : null;
+			const pv = conf.packs.find( ( p ) => p.pack.id === packResumen )!;
+			const comprador = datosComprador();
+			// imagen: la vista de la primera categoría del pack (o la general)
+			const vistaPack = pv.categorias.map( ( c ) => vistaDeCategoria( c.id ) ).find( ( x ) => x ) ?? 'aerea';
+			const imagen = await renderizarVista( vistaPack, 1800, 40 );
 			const blob = await generarPDF( {
-				promocion: PROMOCION, vivienda: fichaVivienda, tipologia: modelo.tipologia, conf,
-				superficieUtil: utilInterior(), imagen, imagenDistribucion,
-				tituloDistribucion: vistaVariante?.nombre ?? null,
+				promocion: PROMOCION, vivienda: fichaVivienda, tipologia: modelo.tipologia, conf, pack: pv,
+				superficieUtil: utilInterior(), imagen, comprador, concepto: conceptoPago( pv.pack.titulo ),
 			} );
 			const fecha = new Date().toISOString().slice( 0, 10 );
-			await descargar( `seleccion-${ fichaVivienda.ref.toLowerCase().replace( /[^a-z0-9]+/g, '-' ) }-${ fecha }.pdf`, blob );
+			await descargar( `seleccion-${ fichaVivienda.ref.toLowerCase().replace( /[^a-z0-9]+/g, '-' ) }-${ packResumen }-${ fecha }.pdf`, blob );
 
 		} catch ( e ) {
 
@@ -787,17 +840,136 @@ async function iniciar() {
 
 	}
 
-	$( '#foto' ).addEventListener( 'click', async () => {
+	// ---------------------------------------------------------------- descargas: diálogo común
+	const dialogoDescarga = $<HTMLDialogElement>( '#descarga' );
+	dialogoDescarga.querySelector( '.cerrar-descarga' )!.addEventListener( 'click', () => dialogoDescarga.close() );
+	interface OpcionDescarga { titulo: string; detalle: string; formato: string; hacer: ( progreso: ( t: string ) => void ) => Promise<void> }
+	const abrirDescarga = ( titulo: string, texto: string, opciones: OpcionDescarga[], antes?: HTMLElement ) => {
 
-		const boton = $<HTMLButtonElement>( '#foto' );
-		boton.disabled = true;
-		const url = await renderizarVista( null, 2400, 72, 'image/png' );
-		boton.disabled = false;
-		$<HTMLImageElement>( '#captura img' ).src = url;
-		const enlace = $<HTMLAnchorElement>( '#captura a' );
-		enlace.href = url;
-		enlace.download = `${ PROMOCION.promocion.nombre }-${ cam.actual || 'vista' }.png`.toLowerCase().replace( /\s+/g, '-' );
-		$( '#captura' ).hidden = false;
+		$( '#titulo-descarga' ).textContent = titulo;
+		( dialogoDescarga.querySelector( '.texto' ) as HTMLElement ).textContent = texto;
+		const progreso = dialogoDescarga.querySelector( '.progreso' ) as HTMLElement;
+		progreso.hidden = true;
+		const lista = dialogoDescarga.querySelector( '.opciones-descarga' ) as HTMLElement;
+		lista.replaceChildren( ...( antes ? [ antes ] : [] ), ...opciones.map( ( o ) => {
+
+			const b = document.createElement( 'button' );
+			b.type = 'button';
+			b.className = 'opcion-descarga';
+			b.innerHTML = `<strong></strong><span class="formato"></span><small></small>`;
+			b.querySelector( 'strong' )!.textContent = o.titulo;
+			b.querySelector( 'small' )!.textContent = o.detalle;
+			b.querySelector( '.formato' )!.textContent = o.formato;
+			b.addEventListener( 'click', async () => {
+
+				const botones = [ ...lista.querySelectorAll<HTMLButtonElement>( 'button' ) ];
+				botones.forEach( ( x ) => ( x.disabled = true ) );
+				progreso.hidden = false;
+				try {
+
+					await o.hacer( ( t ) => ( progreso.textContent = t ) );
+					progreso.textContent = 'Listo. Descarga iniciada.';
+
+				} catch ( e ) {
+
+					console.error( e );
+					progreso.textContent = 'No se ha podido generar. Inténtalo de nuevo o elige una resolución menor.';
+
+				} finally {
+
+					botones.forEach( ( x ) => ( x.disabled = false ) );
+
+				}
+
+			} );
+			return b;
+
+		} ) );
+		dialogoDescarga.showModal();
+
+	};
+
+	// ---------------------------------------------------------------- plano comercial
+	const datosPlano = (): DatosPlano => ( {
+		promocion: PROMOCION, tipologia: modelo.tipologia, vivienda, ficha: comprador ? fichaVivienda : null,
+		distribucion: conf.variante ? ( modelo.variantes.find( ( x ) => x.id === conf.variante )?.nombre ?? 'alternativa' ) : 'base',
+	} );
+	const nombreArchivo = ( base: string ) => `${ base }-${ PROMOCION.promocion.nombre }-${ modelo.tipologia.nombre }${ comprador ? `-${ fichaVivienda.ref }` : '' }`.toLowerCase().normalize( 'NFD' ).replace( /[^a-z0-9]+/g, '-' ).replace( /-$/, '' );
+	$( '#plano-comercial' ).addEventListener( 'click', () => abrirDescarga( 'Plano comercial', 'Plano a escala generado a partir del modelo de la vivienda, con superficies, leyenda, escala gráfica, orientación y la marca de la promoción.', [
+		{ titulo: 'PDF A3 vectorial', detalle: 'Para imprimir y adjuntar a la documentación comercial. Nítido a cualquier tamaño.', formato: 'PDF', hacer: async ( pr ) => {
+
+			pr( 'Dibujando el plano…' );
+			await descargar( `${ nombreArchivo( 'plano-comercial' ) }.pdf`, await planoPDF( datosPlano() ) );
+
+		} },
+		{ titulo: 'Imagen de alta resolución', detalle: 'A3 a 300 ppp (4961 × 3508 px). Para web, portales y presentaciones.', formato: 'PNG', hacer: async ( pr ) => {
+
+			pr( 'Dibujando el plano a 300 ppp…' );
+			await descargar( `${ nombreArchivo( 'plano-comercial' ) }.png`, await planoPNG( datosPlano() ) );
+
+		} },
+	] ) );
+
+	// ---------------------------------------------------------------- render HD (imagen comercial)
+	const hd = new RenderHD( renderer, escena, camara, luzSol, () => lucesVentana.children.filter( ( l ): l is THREE.SpotLight => ( l as THREE.SpotLight ).isSpotLight ) );
+	const muestrasHD = Number( new URLSearchParams( location.search ).get( 'hdmuestras' ) ) || 0;
+	let proporcion: [ number, number ] = [ 16, 9 ];
+	$( '#foto' ).addEventListener( 'click', () => {
+
+		const formatos = document.createElement( 'div' );
+		formatos.className = 'formatos-render';
+		formatos.setAttribute( 'role', 'group' );
+		formatos.setAttribute( 'aria-label', 'Proporción de la imagen' );
+		for ( const [ a, b ] of [ [ 16, 9 ], [ 3, 2 ] ] as [ number, number ][] ) {
+
+			const x = document.createElement( 'button' );
+			x.type = 'button';
+			x.textContent = `${ a }:${ b }`;
+			x.setAttribute( 'aria-pressed', String( proporcion[ 0 ] === a ) );
+			x.onclick = () => {
+
+				proporcion = [ a, b ];
+				formatos.querySelectorAll( 'button' ).forEach( ( y ) => y.setAttribute( 'aria-pressed', String( y === x ) ) );
+				actualizar();
+
+			};
+			formatos.append( x );
+
+		}
+
+		const resoluciones: [ string, string, number, number ][] = [
+			[ 'Web', 'Web, redes y portales inmobiliarios.', 1920, 16 ],
+			[ 'Alta resolución', 'Presentaciones, pantallas 4K y campañas digitales.', 3840, 12 ],
+			[ 'Impresión', 'Folletos y lonas: unos 24 MP, aprox. A3 a 300 ppp. Tarda más.', 6000, 10 ],
+		];
+		const opciones = resoluciones.map( ( [ titulo, detalle, ancho, muestras ] ) => ( {
+			titulo, detalle, formato: '',
+			hacer: async ( pr: ( t: string ) => void ) => {
+
+				const alto = Math.round( ancho * proporcion[ 1 ] / proporcion[ 0 ] );
+				capturando = true;
+				try {
+
+					const blob = await hd.generar( { ancho, alto, muestras: muestrasHD || muestras, progreso: pr } );
+					await descargar( `render-${ nombreArchivo( cam.actual || 'vista' ) }-${ ancho }x${ alto }.jpg`, blob );
+
+				} finally {
+
+					capturando = false;
+					despertar();
+
+				}
+
+			},
+		} ) );
+		abrirDescarga( 'Render HD', 'Imagen de la vista actual con más calidad que el visor (más muestras de luz, reflejos completos, sombras a 8K y antialiasing por supermuestreo), sin interfaz. Puede tardar desde unos segundos hasta un par de minutos.', opciones, formatos );
+		const actualizar = () => dialogoDescarga.querySelectorAll<HTMLElement>( '.opcion-descarga' ).forEach( ( el, i ) => {
+
+			const ancho = resoluciones[ i ][ 2 ];
+			el.querySelector( '.formato' )!.textContent = `${ ancho } × ${ Math.round( ancho * proporcion[ 1 ] / proporcion[ 0 ] ) }`;
+
+		} );
+		actualizar();
 
 	} );
 	$( '#captura a' ).addEventListener( 'click', async ( ev ) => {
@@ -862,6 +1034,7 @@ async function iniciar() {
 	let diagnostico: Record<string, unknown> = {};
 	let pausado = false;
 	let exposicion = renderer.toneMappingExposure;
+	let interiorT = 0;
 	let piscinaT = conf.piscina ? 1 : 0;
 	renderer.setAnimationLoop( ( t ) => {
 
@@ -883,6 +1056,9 @@ async function iniciar() {
 		const bajo = camara.position.y < H + 0.2;
 		for ( const tc of c.techos.children ) tc.castShadow = bajo || tc.userData.porche;
 		c.techos.visible = est.valores.muros > 0.98;
+		// luz de ventana: con el sol (no en el plano, donde no aporta y cuesta sombras)
+		lucesVentana.visible = modo !== 'plano' && est.valores.sol > 0.05;
+		for ( const l of lucesVentana.children ) if ( ( l as THREE.SpotLight ).isSpotLight ) ( l as THREE.SpotLight ).intensity = l.userData.base * est.valores.sol / 3.4;
 		c.canto.visible = bajo && c.techos.visible;
 		conf.actualizar( performance.now() );
 		const objetivo = modo === 'personalizar' && innerWidth > 760 ? innerWidth - $( '#configurador' ).getBoundingClientRect().left : 0;
@@ -897,14 +1073,19 @@ async function iniciar() {
 		c.piscina.scale.y = Math.max( 0.001, ep );
 		// exposición automática: dentro de la vivienda se abre el "diafragma"
 		const dentro = bajo && interiores.some( ( e ) => puntoEnPoligono( camara.position.x, - camara.position.z, e.poligono ) );
-		const expObjetivo = dentro ? 1.45 : 0.95;
+		const expObjetivo = dentro ? 1.5 : 0.95;
 		exposicion = Math.abs( expObjetivo - exposicion ) < 0.001 ? expObjetivo : exposicion + ( expObjetivo - exposicion ) * 0.06;
 		renderer.toneMappingExposure = exposicion;
+		// dentro, la luz del cielo solo entra por las ventanas: el entorno (que no
+		// sabe de muros) baja y domina la luz de ventana, con su degradado natural
+		interiorT += ( ( dentro ? 1 : 0 ) - interiorT ) * ( est.reducido ? 1 : 0.08 );
+		if ( Math.abs( interiorT - ( dentro ? 1 : 0 ) ) < 0.002 ) interiorT = dentro ? 1 : 0;
+		escena.environmentIntensity = est.valores.ibl * ( 1 - 0.2 * interiorT );
 
 		camara.updateMatrixWorld();
 		const cambia = orbitando || nav.activo || cam.animando || est.animando || conf.animando
 			|| ! matAnterior.equals( camara.matrixWorld ) || ! proyAnterior.equals( camara.projectionMatrix )
-			|| exposicion !== expObjetivo || desplazamiento !== objetivo || ( piscinaT !== 0 && piscinaT !== 1 );
+			|| exposicion !== expObjetivo || ( interiorT !== 0 && interiorT !== 1 ) || desplazamiento !== objetivo || ( piscinaT !== 0 && piscinaT !== 1 );
 		matAnterior.copy( camara.matrixWorld );
 		proyAnterior.copy( camara.projectionMatrix );
 		quietos = cambia ? 0 : quietos + 1;

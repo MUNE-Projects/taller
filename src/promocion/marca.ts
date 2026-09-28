@@ -54,7 +54,10 @@ export function aplicarMarca( p: Promocion ) {
 }
 
 /** Logo rasterizado (PNG) para el PDF. */
-export function logoPNG( m: Marca, alto = 96 ): Promise<{ url: string; ancho: number; alto: number }> {
+export const logoPNG = ( m: Marca, alto = 96 ) => svgPNG( m.logoSvg, alto );
+
+/** Cualquier SVG rasterizado a PNG con la altura dada. */
+export function svgPNG( svg: string, alto = 96 ): Promise<{ url: string; ancho: number; alto: number }> {
 
 	return new Promise( ( ok, mal ) => {
 
@@ -71,7 +74,7 @@ export function logoPNG( m: Marca, alto = 96 ): Promise<{ url: string; ancho: nu
 		};
 
 		img.onerror = mal;
-		img.src = logoDataUrl( m );
+		img.src = `data:image/svg+xml;charset=utf-8,${ encodeURIComponent( svg ) }`;
 
 	} );
 
