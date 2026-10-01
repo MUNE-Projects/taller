@@ -30,7 +30,7 @@ import { aplicarVariante, fmtM2 } from './configurador/variantes';
 import { Configurador, fmtEuros, fmtPrecio, type Seleccion } from './configurador/configurador';
 import { Panel } from './configurador/panel';
 import { packsDeVivienda } from './configurador/packs';
-import { CATALOGO, PROMOCION, accesoStudio, cargarModelo, catalogoPara, extraerCodigo, resolverAcceso, viviendaPublica, type Modelo } from './promocion/promocion';
+import { CATALOGO, PROMOCION, accesoProfesional, cargarModelo, catalogoPara, extraerCodigo, resolverAcceso, viviendaPublica, type Modelo } from './promocion/promocion';
 import { aplicarMarca } from './promocion/marca';
 import { generarPDF } from './documento/pdf';
 import { planoPDF, planoPNG, type DatosPlano } from './documento/plano';
@@ -113,8 +113,8 @@ async function iniciar() {
 	// ---------------------------------------------------------------- acceso
 	// Parte pública: plano, vivienda y vistas. Con el enlace privado de una
 	// vivienda (#código) se carga esa vivienda y se habilita la personalización.
-	const pideStudio = location.hash.startsWith( '#studio' );
-	const codigoInicial = ( pideStudio ? '' : extraerCodigo( location.hash ) ) || leer( CLAVE_ACCESO ) || '';
+	const pideProfesional = /^#(studio|promotora)/.test( location.hash );
+	const codigoInicial = ( pideProfesional ? '' : extraerCodigo( location.hash ) ) || leer( CLAVE_ACCESO ) || '';
 	let comprador: ViviendaPromocion | null = await resolverAcceso( codigoInicial );
 	if ( ! comprador && codigoInicial ) guardar( CLAVE_ACCESO, null );
 	let fichaVivienda: ViviendaPromocion = comprador ?? viviendaPublica();
@@ -391,13 +391,29 @@ async function iniciar() {
 	const barraVistas = $( '.vistas' );
 	let botonesVista: HTMLButtonElement[] = [];
 	const actualizarEtiquetas = () => document.body.classList.toggle( 'con-etiquetas', modo === 'plano' );
-	const marcarVista = ( k: string ) => botonesVista.forEach( ( b ) => {
+	const marcarVista = ( k: string ) => {
 
-		b.setAttribute( 'aria-pressed', String( b.dataset.vista === k ) );
+		for ( const b of botonesVista ) {
+
+			b.setAttribute( 'aria-pressed', String( b.dataset.vista === k ) );
+			b.setAttribute( 'aria-checked', String( b.dataset.vista === k ) );
+
+		}
+
+		// el grupo muestra la vista elegida dentro de él
+		const t = modelo.tipologia;
+		for ( const g of barraVistas.querySelectorAll<HTMLButtonElement>( '.grupo-vistas' ) ) {
+
+			const activo = botonesVista.some( ( b ) => b.dataset.vista === k && b.classList.contains( 'item-vista' ) && GRUPOS[ vivienda.estancias.find( ( e ) => e.id === t.vistas[ k ]?.estancia )?.uso ?? '' ] === g.dataset.grupo );
+			g.setAttribute( 'aria-pressed', String( activo ) );
+
+		}
+
 		// con muchas vistas la barra se desplaza: la elegida queda a la vista
-		if ( b.dataset.vista === k ) b.scrollIntoView( { block: 'nearest', inline: 'nearest', behavior: est.reducido ? 'auto' : 'smooth' } );
+		const visible = barraVistas.querySelector<HTMLElement>( `[data-vista="${ k }"], .grupo-vistas[aria-pressed="true"]` );
+		visible?.scrollIntoView( { block: 'nearest', inline: 'nearest', behavior: est.reducido ? 'auto' : 'smooth' } );
 
-	} );
+	};
 
 	/** Mueve la cámara a una vista (una sola vez; si ya está allí no hace nada). */
 	const irVista = ( v: string | Vista ) => {
@@ -408,22 +424,120 @@ async function iniciar() {
 	};
 
 	/** Barra de vistas guiadas de la tipología cargada. */
+	/**
+	 * Barra de vistas guiadas, agrupada para que escale a viviendas grandes:
+	 * vista general y zonas de día como botones directos; dormitorios, baños,
+	 * exteriores y otras estancias en menús desplegables (un grupo con una
+	 * sola vista se muestra como botón directo).
+	 */
+	const GRUPOS: Record<string, string> = { noche: 'Dormitorios', humedo: 'Baños', exterior: 'Exteriores', circulacion: 'Otros', servicio: 'Otros' };
+	let menuAbierto: HTMLElement | null = null;
+	const cerrarMenu = () => {
+
+		menuAbierto?.remove();
+		menuAbierto = null;
+		barraVistas.querySelectorAll( '.grupo-vistas[aria-expanded="true"]' ).forEach( ( g ) => g.setAttribute( 'aria-expanded', 'false' ) );
+
+	};
+	addEventListener( 'pointerdown', ( e ) => {
+
+		if ( menuAbierto && ! ( e.target as HTMLElement ).closest( '.menu-vistas, .grupo-vistas' ) ) cerrarMenu();
+
+	} );
+	addEventListener( 'keydown', ( e ) => e.key === 'Escape' && cerrarMenu() );
+	addEventListener( 'resize', cerrarMenu );
+	barraVistas.addEventListener( 'scroll', cerrarMenu, { passive: true } );
+
 	const construirBarraVistas = () => {
 
-		for ( const b of botonesVista ) b.remove();
+		cerrarMenu();
+		barraVistas.querySelectorAll( '[data-vista], .grupo-vistas' ).forEach( ( b ) => b.remove() );
 		const antes = barraVistas.querySelector( '.separador' );
-		botonesVista = modelo.tipologia.guiadas.map( ( k ) => {
+		const t = modelo.tipologia;
+		const usoDe = ( k: string ) => vivienda.estancias.find( ( e ) => e.id === t.vistas[ k ]?.estancia )?.uso;
+		const grupos = new Map<string, string[]>();
+		for ( const k of t.guiadas ) {
+
+			const g = GRUPOS[ usoDe( k ) ?? '' ];
+			if ( g ) grupos.set( g, [ ...( grupos.get( g ) ?? [] ), k ] );
+
+		}
+
+		const boton = ( k: string, clase = '' ) => {
 
 			const b = document.createElement( 'button' );
 			b.type = 'button';
 			b.dataset.vista = k;
-			b.textContent = modelo.tipologia.vistas[ k ].nombre;
+			if ( clase ) b.className = clase;
+			b.textContent = t.vistas[ k ].nombre;
 			b.setAttribute( 'aria-pressed', 'false' );
-			b.addEventListener( 'click', () => irVista( k ) );
-			barraVistas.insertBefore( b, antes );
+			b.addEventListener( 'click', () => {
+
+				irVista( k );
+				cerrarMenu();
+
+			} );
 			return b;
 
-		} );
+		};
+
+		botonesVista = [];
+		const puestos = new Set<string>();
+		for ( const k of t.guiadas ) {
+
+			const g = GRUPOS[ usoDe( k ) ?? '' ];
+			const miembros = g ? grupos.get( g )! : [ k ];
+			if ( ! g || miembros.length === 1 ) {
+
+				const b = boton( k );
+				botonesVista.push( b );
+				barraVistas.insertBefore( b, antes );
+				continue;
+
+			}
+
+			if ( puestos.has( g ) ) continue;
+			puestos.add( g );
+			const items = miembros.map( ( m ) => boton( m, 'item-vista' ) );
+			botonesVista.push( ...items );
+			const gb = document.createElement( 'button' );
+			gb.type = 'button';
+			gb.className = 'grupo-vistas';
+			gb.dataset.grupo = g;
+			gb.setAttribute( 'aria-haspopup', 'menu' );
+			gb.setAttribute( 'aria-expanded', 'false' );
+			gb.innerHTML = `<span></span><svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><path d="M4 10l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+			gb.querySelector( 'span' )!.textContent = g;
+			gb.addEventListener( 'click', () => {
+
+				const abierto = gb.getAttribute( 'aria-expanded' ) === 'true';
+				cerrarMenu();
+				if ( abierto ) return;
+				// el menú se cuelga del body (la barra recorta su contenido) y se abre hacia arriba
+				const menu = document.createElement( 'div' );
+				menu.className = 'menu-vistas';
+				menu.setAttribute( 'role', 'menu' );
+				menu.setAttribute( 'aria-label', g );
+				for ( const it of items ) {
+
+					it.setAttribute( 'role', 'menuitemradio' );
+					it.setAttribute( 'aria-checked', it.getAttribute( 'aria-pressed' ) ?? 'false' );
+					menu.append( it );
+
+				}
+
+				document.body.append( menu );
+				const r = gb.getBoundingClientRect();
+				menu.style.left = `${ Math.max( 8, Math.min( r.left, innerWidth - menu.offsetWidth - 8 ) ) }px`;
+				menu.style.bottom = `${ innerHeight - r.top + 8 }px`;
+				menuAbierto = menu;
+				gb.setAttribute( 'aria-expanded', 'true' );
+				( items.find( ( x ) => x.getAttribute( 'aria-pressed' ) === 'true' ) ?? items[ 0 ] ).focus();
+
+			} );
+			barraVistas.insertBefore( gb, antes );
+
+		}
 
 	};
 
@@ -841,6 +955,8 @@ async function iniciar() {
 	}
 
 	// ---------------------------------------------------------------- descargas: diálogo común
+	/** Entregables comerciales (renders, plano PNG): solo promotora y Studio. */
+	const puedeEntregables = () => document.body.classList.contains( 'perfil-promotora' ) || document.body.classList.contains( 'en-studio' );
 	const dialogoDescarga = $<HTMLDialogElement>( '#descarga' );
 	dialogoDescarga.querySelector( '.cerrar-descarga' )!.addEventListener( 'click', () => dialogoDescarga.close() );
 	interface OpcionDescarga { titulo: string; detalle: string; formato: string; hacer: ( progreso: ( t: string ) => void ) => Promise<void> }
@@ -895,7 +1011,7 @@ async function iniciar() {
 		distribucion: conf.variante ? ( modelo.variantes.find( ( x ) => x.id === conf.variante )?.nombre ?? 'alternativa' ) : 'base',
 	} );
 	const nombreArchivo = ( base: string ) => `${ base }-${ PROMOCION.promocion.nombre }-${ modelo.tipologia.nombre }${ comprador ? `-${ fichaVivienda.ref }` : '' }`.toLowerCase().normalize( 'NFD' ).replace( /[^a-z0-9]+/g, '-' ).replace( /-$/, '' );
-	$( '#plano-comercial' ).addEventListener( 'click', () => abrirDescarga( 'Plano comercial', 'Plano a escala generado a partir del modelo de la vivienda, con superficies, leyenda, escala gráfica, orientación y la marca de la promoción.', [
+	const opcionesPlano = () => abrirDescarga( 'Plano comercial', 'Plano a escala generado a partir del modelo de la vivienda, con superficies, leyenda, escala gráfica, orientación y la marca de la promoción.', [
 		{ titulo: 'PDF A3 vectorial', detalle: 'Para imprimir y adjuntar a la documentación comercial. Nítido a cualquier tamaño.', formato: 'PDF', hacer: async ( pr ) => {
 
 			pr( 'Dibujando el plano…' );
@@ -908,7 +1024,30 @@ async function iniciar() {
 			await descargar( `${ nombreArchivo( 'plano-comercial' ) }.png`, await planoPNG( datosPlano() ) );
 
 		} },
-	] ) );
+	] );
+	// Público y comprador: descarga directa del PDF comercial (sin selector).
+	// Promotora y Studio: selector PDF vectorial / PNG de alta resolución.
+	$( '#plano-comercial' ).addEventListener( 'click', async () => {
+
+		if ( puedeEntregables() ) return opcionesPlano();
+		const b = $<HTMLButtonElement>( '#plano-comercial' );
+		b.disabled = true;
+		try {
+
+			await descargar( `${ nombreArchivo( 'plano-comercial' ) }.pdf`, await planoPDF( datosPlano() ) );
+
+		} catch ( e ) {
+
+			console.error( e );
+			avisar( 'No se ha podido generar el plano. Inténtalo de nuevo.' );
+
+		} finally {
+
+			b.disabled = false;
+
+		}
+
+	} );
 
 	// ---------------------------------------------------------------- render HD (imagen comercial)
 	const hd = new RenderHD( renderer, escena, camara, luzSol, () => lucesVentana.children.filter( ( l ): l is THREE.SpotLight => ( l as THREE.SpotLight ).isSpotLight ) );
@@ -916,6 +1055,7 @@ async function iniciar() {
 	let proporcion: [ number, number ] = [ 16, 9 ];
 	$( '#foto' ).addEventListener( 'click', () => {
 
+		if ( ! puedeEntregables() ) return; // renders comerciales: solo promotora y Studio
 		const formatos = document.createElement( 'div' );
 		formatos.className = 'formatos-render';
 		formatos.setAttribute( 'role', 'group' );
@@ -1127,18 +1267,31 @@ async function iniciar() {
 		} );
 
 	};
-	// en este navegador se recuerda el acceso (solo el código ya validado)
-	const CLAVE_STUDIO = 'inmobiliarias:studio';
-	const pedirStudio = async ( codigo?: string ) => {
+	// ---------------------------------------------------------------- perfiles profesionales
+	// Público → Comprador (código de vivienda) → Promotora (entregables comerciales)
+	// → Studio (producción). Promotora y Studio entran con su propio código por
+	// «Acceso profesional»; el navegador recuerda el último código válido.
+	const CLAVE_PROFESIONAL = 'inmobiliarias:profesional';
+	const entrarPromotora = ( codigo: string ) => {
+
+		guardar( CLAVE_PROFESIONAL, codigo );
+		document.body.classList.add( 'perfil-promotora' );
+		$( '#perfil-promotora' ).hidden = false;
+
+	};
+	const pedirAcceso = async ( codigo?: string ) => {
 
 		if ( document.body.classList.contains( 'en-studio' ) ) return;
-		codigo ||= leer( CLAVE_STUDIO ) ?? '';
-		if ( codigo && await accesoStudio( codigo ) ) {
+		codigo ||= leer( CLAVE_PROFESIONAL ) ?? leer( 'inmobiliarias:studio' ) ?? '';
+		const perfil = codigo ? await accesoProfesional( codigo ) : null;
+		if ( perfil === 'studio' ) {
 
-			guardar( CLAVE_STUDIO, codigo );
+			guardar( CLAVE_PROFESIONAL, codigo );
 			return abrirStudio();
 
 		}
+
+		if ( perfil === 'promotora' ) return entrarPromotora( codigo );
 		$( '#acceso-studio .error' ).hidden = true;
 		$<HTMLInputElement>( '#codigo-studio' ).value = '';
 		dialogoStudio.showModal();
@@ -1149,18 +1302,46 @@ async function iniciar() {
 
 		ev.preventDefault();
 		const codigo = $<HTMLInputElement>( '#codigo-studio' ).value.trim();
-		if ( await accesoStudio( codigo ) ) {
+		const perfil = await accesoProfesional( codigo );
+		if ( ! perfil ) {
 
-			guardar( CLAVE_STUDIO, codigo );
-			dialogoStudio.close();
+			$( '#acceso-studio .error' ).hidden = false;
+			return;
+
+		}
+
+		dialogoStudio.close();
+		if ( perfil === 'studio' ) {
+
+			guardar( CLAVE_PROFESIONAL, codigo );
 			void abrirStudio();
 
-		} else $( '#acceso-studio .error' ).hidden = false;
+		} else {
+
+			entrarPromotora( codigo );
+			avisar( 'Perfil Promotora: puedes descargar renders HD (botón «Render HD») y el plano comercial en PDF o PNG (modo Plano).' );
+
+		}
 
 	} );
-	$( '#abrir-studio' ).addEventListener( 'click', () => void pedirStudio() );
-	if ( pideStudio ) void pedirStudio( location.hash.replace( /^#studio-?/, '' ) );
-	addEventListener( 'hashchange', () => location.hash.startsWith( '#studio' ) && void pedirStudio( location.hash.replace( /^#studio-?/, '' ) ) );
+	$( '#abrir-studio' ).addEventListener( 'click', () => void pedirAcceso() );
+	$( '#salir-promotora' ).addEventListener( 'click', () => {
+
+		guardar( CLAVE_PROFESIONAL, null );
+		document.body.classList.remove( 'perfil-promotora' );
+		$( '#perfil-promotora' ).hidden = true;
+
+	} );
+	// la sesión de promotora recordada se recupera sin pedir nada
+	void ( async () => {
+
+		const guardado = leer( CLAVE_PROFESIONAL );
+		if ( guardado && ! pideProfesional && ( await accesoProfesional( guardado ) ) === 'promotora' ) entrarPromotora( guardado );
+
+	} )();
+	const codigoHash = () => location.hash.replace( /^#(studio|promotora)-?/, '' );
+	if ( pideProfesional ) void pedirAcceso( codigoHash() );
+	addEventListener( 'hashchange', () => /^#(studio|promotora)/.test( location.hash ) && void pedirAcceso( codigoHash() ) );
 
 	Object.assign( window, { __vivienda: { nav, irModo, irEstado: ( n: number ) => irModo( n === 1 ? 'plano' : 'vivienda' ), cam, estados: est, renderer, camara, ctrl, pausar: ( p: boolean ) => ( pausado = p ), diagnostico: () => diagnostico } } );
 

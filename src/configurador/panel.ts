@@ -81,6 +81,11 @@ export class Panel {
 		const chip = h( 'span', { class: `estado-pack ${ estado }` } );
 		if ( estado !== 'disponible' ) chip.insertAdjacentHTML( 'afterbegin', CANDADO );
 		chip.append( ETIQUETA_ESTADO[ estado ] );
+		// próximamente: solo nombre, estado y un aviso neutro (sin fechas, precios
+		// ni opciones, que todavía pueden cambiar)
+		if ( estado === 'proximamente' ) return h( 'section', { class: 'pack', 'data-estado': estado, 'aria-label': `${ pack.titulo }: ${ ETIQUETA_ESTADO[ estado ] }` },
+			h( 'header', { class: 'cabecera-pack' }, h( 'div', { class: 'titulo-pack' }, h( 'h3', {}, pack.titulo ), chip ) ),
+			h( 'p', { class: 'nota-pack' }, 'Este pack estará disponible en una fase posterior de la promoción. Te informaremos cuando se abra el periodo de selección.' ) );
 		const cabecera = h( 'header', { class: 'cabecera-pack' },
 			h( 'div', { class: 'titulo-pack' }, h( 'h3', {}, pack.titulo ), chip ),
 			h( 'p', { class: 'periodo-pack' }, textoPeriodo( pack, estado ) ),
@@ -105,14 +110,10 @@ export class Panel {
 
 		}
 
-		for ( const c of pv.categorias ) seccion.append( this.seccionCategoria( c.id, estado === 'disponible' ) );
-		if ( estado === 'disponible' ) {
-
-			const pie = h( 'div', { class: 'pie-pack' } );
-			this.piesPack.set( pack.id, pie );
-			seccion.append( pie );
-
-		} else seccion.append( h( 'p', { class: 'nota-pack' }, 'Puedes consultar las opciones y sus precios; podrás elegir cuando se abra el periodo de selección.' ) );
+		for ( const c of pv.categorias ) seccion.append( this.seccionCategoria( c.id, true ) );
+		const pie = h( 'div', { class: 'pie-pack' } );
+		this.piesPack.set( pack.id, pie );
+		seccion.append( pie );
 		return seccion;
 
 	}

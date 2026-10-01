@@ -229,6 +229,8 @@ export interface Promocion {
 	viviendas: ViviendaPromocion[];
 	/** Acceso al Studio de producción (hash del código). */
 	studio?: { acceso: string };
+	/** Acceso del perfil Promotora: solo entregables comerciales (hash del código). */
+	promotora?: { acceso: string };
 	/** Packs de personalización, en el orden en que se ofrecen. */
 	packs?: Pack[];
 	pagos?: Pagos;

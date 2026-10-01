@@ -117,6 +117,18 @@ export async function accesoStudio( codigo: string ) {
 
 }
 
+export type PerfilProfesional = 'promotora' | 'studio';
+
+/** Perfil profesional que abre un código: Studio (producción) o Promotora (entregables). */
+export async function accesoProfesional( codigo: string ): Promise<PerfilProfesional | null> {
+
+	if ( ! codigo || ! crypto?.subtle ) return null;
+	if ( await accesoStudio( codigo ) ) return 'studio';
+	if ( PROMOCION.promotora && ( await sha256( `${ PROMOCION.id }:promotora:${ codigo.trim() }` ) ) === PROMOCION.promotora.acceso ) return 'promotora';
+	return null;
+
+}
+
 /** Vivienda asociada a un código de acceso, o null. */
 export async function resolverAcceso( codigo: string ): Promise<ViviendaPromocion | null> {
 

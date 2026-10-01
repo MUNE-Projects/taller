@@ -3,17 +3,22 @@
 El Studio es el modo de trabajo del equipo que prepara una promoción. Es
 independiente de la experiencia pública y de la del comprador:
 
-| | Público | Comprador | Studio |
-|---|---|---|---|
-| Acceso | web abierta | enlace privado `#c-…` | botón **Studio** (abajo a la derecha) + código |
-| Qué hace | ver la vivienda | personalizar y generar PDF | preparar los datos de la promoción |
-| IA | nunca | nunca | opcional, solo aquí |
-| Código cargado | bundle principal | bundle principal | + chunk `studio` (bajo demanda) |
+| | Público | Comprador | Promotora | Studio |
+|---|---|---|---|---|
+| Acceso | web abierta | enlace privado `#c-…` | «Acceso profesional» + código de promotora | «Acceso profesional» + código de Studio |
+| Qué hace | ver la vivienda | personalizar y generar los PDF de sus packs | descargar entregables comerciales | preparar los datos de la promoción |
+| Plano comercial | PDF directo | PDF directo | PDF o PNG (selector) | PDF o PNG (selector) |
+| Render HD | no | no | sí | sí |
+| Edición (muebles, cámaras, precios…) | no | no | no | sí |
+| IA | nunca | nunca | nunca | opcional, solo aquí |
+| Código cargado | bundle principal | bundle principal | bundle principal | + chunk `studio` (bajo demanda) |
 
 **Cómo entrar:**
-- Pulsa **Studio** (abajo a la derecha) e introduce el código. Código de la demo: `estudio-7q4m2x`.
+- Pulsa **Acceso profesional** (abajo a la derecha) e introduce el código. El código decide el perfil. Códigos de la demo:
+  - Studio: `estudio-7q4m2x`;
+  - Promotora: `promotora-3k8d1w`.
 - Ese navegador recuerda el acceso: la próxima vez, el botón abre el Studio directamente.
-- También se entra con `#studio`, o de una vez con `#studio-estudio-7q4m2x` al final de la URL.
+- También se entra de una vez con `#studio-estudio-7q4m2x` o `#promotora-promotora-3k8d1w` al final de la URL.
 
 El código no se guarda en los datos: `promocion.json` solo contiene
 `studio.acceso`, el SHA-256 de `"<id de promoción>:studio:<código>"`.

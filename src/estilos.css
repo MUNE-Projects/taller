@@ -124,9 +124,8 @@ body[data-modo="personalizar"] .dock { left: calc((100% - var(--cajon) - 16px) /
 .vistas .accion-vistas svg { flex: none; }
 #plano-comercial { display: none; }
 body[data-modo="plano"] #plano-comercial { display: inline-flex; }
-body[data-modo="plano"] #foto { display: none; }
 body[data-modo="plano"] .vistas { display: flex; }
-body[data-modo="plano"] .vistas [data-vista], body[data-modo="plano"] .vistas .separador { display: none; }
+body[data-modo="plano"] .vistas [data-vista], body[data-modo="plano"] .vistas .grupo-vistas, body[data-modo="plano"] .vistas .separador { display: none; }
 .vistas .accion-vistas:disabled { opacity: 0.5; cursor: progress; }
 
 .modos button {
@@ -498,7 +497,15 @@ body.listo #carga { opacity: 0; visibility: hidden; }
 }
 .boton-studio:hover { color: var(--tinta); background: #fff; }
 .boton-studio:active { transform: scale(0.97); }
-body.en-studio .boton-studio { display: none; }
+body.en-studio .boton-studio, body.perfil-promotora .boton-studio { display: none; }
+.perfil-activo { display: inline-flex; align-items: center; gap: 10px; margin-right: 10px; padding: 6px 12px; border: 1px solid var(--linea); border-radius: 999px; background: var(--superficie); font-size: 12px; color: var(--tinta-2); pointer-events: auto; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.perfil-activo[hidden] { display: none; }
+.perfil-activo strong { font-weight: 600; color: var(--acento); }
+.perfil-activo .enlace { padding: 0; border: 0; background: none; font: inherit; color: var(--tinta-2); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+body.en-studio .perfil-activo { display: none; }
+/* render HD: solo promotora y Studio */
+#foto { display: none; }
+body.perfil-promotora:not([data-modo="plano"]) #foto, body.en-studio:not([data-modo="plano"]) #foto { display: inline-flex; }
 
 /* ------------------------------------------------ packs de personalización */
 .pack { border-bottom: 6px solid rgb(28 28 26 / 0.035); }
@@ -560,3 +567,18 @@ body.en-studio .boton-studio { display: none; }
 .formatos-render { display: flex; gap: 6px; margin: 0 0 10px; }
 .formatos-render button { padding: 6px 12px; border: 1px solid var(--linea); border-radius: 999px; background: transparent; font: inherit; font-size: 12px; color: var(--tinta-2); cursor: pointer; }
 .formatos-render button[aria-pressed="true"] { border-color: var(--tinta); background: var(--tinta); color: var(--papel); }
+
+/* ------------------------------------------------ vistas agrupadas */
+.vistas .grupo-vistas { display: inline-flex; align-items: center; gap: 4px; }
+.vistas .grupo-vistas svg { color: var(--tinta-3); transition: transform 180ms var(--salida); }
+.vistas .grupo-vistas[aria-expanded="true"] { background: rgb(28 28 26 / 0.06); color: var(--tinta); }
+.vistas .grupo-vistas[aria-expanded="true"] svg { transform: rotate(180deg); }
+.vistas .grupo-vistas[aria-pressed="true"] { background: rgb(28 28 26 / 0.08); color: var(--tinta); }
+.menu-vistas {
+	position: fixed; z-index: 40; display: grid; gap: 2px; min-width: 180px; padding: 5px;
+	background: var(--superficie); backdrop-filter: blur(14px) saturate(1.2); -webkit-backdrop-filter: blur(14px) saturate(1.2);
+	border: 1px solid var(--linea); border-radius: 14px; box-shadow: var(--sombra);
+}
+.menu-vistas button { padding: 8px 12px; border: 0; border-radius: 9px; background: transparent; text-align: left; font: inherit; font-size: 13px; color: var(--tinta-2); cursor: pointer; white-space: nowrap; }
+.menu-vistas button:hover, .menu-vistas button:focus-visible { background: rgb(28 28 26 / 0.05); color: var(--tinta); }
+.menu-vistas button[aria-pressed="true"] { background: rgb(28 28 26 / 0.08); color: var(--tinta); font-weight: 500; }

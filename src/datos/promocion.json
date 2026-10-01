@@ -163,5 +163,9 @@
     "plazoDias": 10,
     "instrucciones": "La selección queda confirmada cuando el departamento comercial recibe el documento firmado y el justificante de pago. Si la transferencia no se recibe dentro del plazo, la selección de este pack quedará sin efecto.",
     "nota": "Datos bancarios de ejemplo. La promotora los configura aquí o desde el Studio (Acabados y precios → Pagos)."
+  },
+  "promotora": {
+    "nota": "Acceso del perfil Promotora (entregables comerciales: renders HD y plano comercial en PDF y PNG; sin herramientas de producción): SHA-256 de \"<id de promoción>:promotora:<código>\".",
+    "acceso": "26d15e0cc242b9f5c4a040ae062f56c5a16170a353bbbf5b0044bb770c0bcf4d"
   }
 }

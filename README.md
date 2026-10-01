@@ -11,7 +11,8 @@ La interfaz tiene dos niveles de acceso sobre una única experiencia visual:
 |---|---|
 | **Público** (web de la promotora) | Plano, Vivienda, vistas guiadas y navegación libre. Sin personalización ni precios de mejoras. Incluye el aviso "¿Ya eres comprador? Accede para personalizar tu vivienda." |
 | **Comprador** (enlace privado de su vivienda) | Lo anterior, más **Personalizar**: opciones de su vivienda, precio, resumen tipo carrito y documento de selección en PDF |
-| **Studio** (botón «Studio» abajo a la derecha + código, solo producción) | Edición de ambientación, cámaras, acabados y precios, marca, biblioteca de activos, interiorismo asistido por IA y exportación de datos. Ver [`docs/arquitectura-studio.md`](docs/arquitectura-studio.md) |
+| **Promotora** («Acceso profesional» + código de promotora) | Lo público, más los entregables comerciales: renders HD y plano comercial en PDF vectorial o PNG de alta resolución. Sin herramientas de producción |
+| **Studio** («Acceso profesional» + código de Studio, solo producción) | Todo lo anterior, más la edición de ambientación, cámaras, acabados y precios, marca, biblioteca, interiorismo asistido, actualización de planos y exportación de datos. Ver [`docs/arquitectura-studio.md`](docs/arquitectura-studio.md) |
 
 | | |
 |---|---|
@@ -108,16 +109,16 @@ Todos salen de la misma base digital de la tipología (geometría, cámaras, amb
   - Iluminación global y reflejos a calidad media, antialiasing temporal y render bajo demanda.
   - Luz de ventana con sombras, que no se cuela entre estancias.
   - Respaldo automático a WebGL 2 si WebGPU falla.
-- **Render HD** (botón «Render HD»): la vista actual sin interfaz, con una cadena de render aparte.
+- **Render HD** (botón «Render HD», solo Promotora y Studio): la vista actual sin interfaz, con una cadena de render aparte.
   - Iluminación global con más muestras, reflejos a resolución completa y sombras a 8K.
   - Supermuestreo por desplazamiento de subpíxel y render por mosaicos.
   - Resoluciones: Web (1920 px), Alta (3840 px) e Impresión (6000 px), en 16:9 o 3:2. Formato JPEG.
-- **Plano comercial** (modo Plano → «Plano comercial»): se genera desde los datos.
+- **Plano comercial** (modo Plano → «Plano comercial»): se genera desde los datos. Público y comprador descargan directamente el PDF; Promotora y Studio eligen entre PDF y PNG.
   - PDF A3 vectorial e imagen PNG a 300 ppp.
   - Logos, tipología, plano a escala normalizada (1:50) con rótulos sin solapes, tabla de superficies, leyenda, escala gráfica, norte, aviso legal y revisión del proyecto.
 - **Personalización por packs** (`promocion.json → packs`): cada pack tiene título, descripción, periodo, categorías y estado.
   - *Disponible:* se puede elegir.
-  - *Próximamente:* visible y bloqueado.
+  - *Próximamente:* solo el nombre, el estado y un aviso neutro (sin fechas, precios ni opciones).
   - *Periodo finalizado:* histórico en gris con lo formalizado.
   - Para revisar otro momento de la promoción: `?fecha=AAAA-MM-DD`.
 - **Documento por pack** (PDF): opciones e importes, total del pack, datos y DNI/NIE del comprador, firma, datos bancarios configurables (`promocion.json → pagos`) y el procedimiento: descargar → firmar → transferencia → enviar al comercial.
