@@ -31,6 +31,8 @@ import { fileURLToPath } from 'node:url';
 
 const RAIZ = resolve( dirname( fileURLToPath( import.meta.url ) ), '..' );
 const SALIDA = join( RAIZ, 'salida' );
+// en el escaparate, lo que Cloudflare sirve vive en publico/<promoción>/
+const PUBLICO = 'publico';
 
 // límites de Cloudflare (archivos estáticos)
 const MAX_ARCHIVO = 25 * 1024 * 1024;
@@ -168,16 +170,16 @@ function publicar( id ) {
 	}
 
 	// escaparate: sustituye la carpeta de la promoción por la nueva versión
-	const carpeta = join( esc, id );
+	const carpeta = join( esc, PUBLICO, id );
 	rmSync( carpeta, { recursive: true, force: true } );
 	mkdirSync( carpeta, { recursive: true } );
 	cpSync( destino, carpeta, { recursive: true } );
 	const fecha = hoy();
 	escribirJSON( join( carpeta, 'version.json' ), { promocion: id, version, fecha, taller: motor } );
-	git( esc, 'add', '-A', id );
+	git( esc, 'add', '-A', join( PUBLICO, id ) );
 	git( esc, 'commit', '-q', '-m', `Publica ${ id } ${ version }\n\n${ cambios }\nAprobado por: ${ aprobadoPor }\nTaller: ${ motor }` );
 	git( esc, 'tag', '-a', etiqueta, '-m', `${ id } ${ version } · ${ fecha }` );
-	ok( `Escaparate: ${ id }/ actualizado y etiquetado ${ etiqueta }` );
+	ok( `Escaparate: ${ PUBLICO }/${ id }/ actualizado y etiquetado ${ etiqueta }` );
 
 	// taller: etiqueta inmutable en el commit publicado + registro de versiones
 	git( RAIZ, 'tag', '-a', etiqueta, motor, '-m', `${ id } ${ version } · ${ fecha }` );
@@ -220,10 +222,10 @@ function volver( id, version ) {
 	}
 
 	const fecha = hoy();
-	git( esc, 'rm', '-r', '-q', '--ignore-unmatch', id );
-	git( esc, 'checkout', etiqueta, '--', id );
+	git( esc, 'rm', '-r', '-q', '--ignore-unmatch', join( PUBLICO, id ) );
+	git( esc, 'checkout', etiqueta, '--', join( PUBLICO, id ) );
 	git( esc, 'commit', '-q', '-m', `Vuelve ${ id } a ${ version }\n\nMotivo: ${ motivo }` );
-	ok( `Escaparate: ${ id }/ restaurado a ${ version }` );
+	ok( `Escaparate: ${ PUBLICO }/${ id }/ restaurado a ${ version }` );
 
 	if ( vigente ) vigente.estado = 'retirada';
 	destinoV.estado = 'publicada';

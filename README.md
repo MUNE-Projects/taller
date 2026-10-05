@@ -51,7 +51,7 @@ biblioteca/                   biblioteca compartida del producto (activos de mob
 | `node herramientas/publicacion.mjs volver <id> vN --motivo "…" [--confirmar]` | Vuelve a una versión anterior; la vigente queda como «retirada», nunca se borra |
 | `node herramientas/publicacion.mjs estado <id>` | Historial de versiones de la promoción |
 
-El escaparate (`MUNE-Projects/escaparate`) contiene solo lo publicado, una carpeta por promoción.
+El escaparate (`MUNE-Projects/escaparate`) contiene solo lo publicado: `publico/<id>/`, una carpeta por promoción, que Cloudflare sirve tal cual.
 
 - **Una tipología por geometría distinta,** no un modelo por vivienda. Las viviendas que comparten geometría cargan la misma tipología.
 - **Viviendas simétricas** (`"espejo": true`): se espejan los datos al cargar (muros, huecos, giros de puerta, mobiliario, alternativas, cámaras y piscina) en lugar de crear otro modelo.
