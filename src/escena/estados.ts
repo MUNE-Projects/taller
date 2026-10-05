@@ -111,7 +111,7 @@ export class Estados {
 
 	}
 
-	/** Reaplica escalas y visibilidad (p. ej. tras reconstruir grupos por una variante). */
+	/** Reaplica escalas y visibilidad (p. ej. tras reconstruir grupos por una alternativa). */
 	refrescar() {
 
 		this.aplicar( performance.now() );

@@ -1,7 +1,7 @@
 """
 Genera los accesos privados de cada vivienda de la promoción.
 
-- En src/datos/promocion.json solo se guarda el hash SHA-256 de cada código
+- En promociones/<id>/promocion.json solo se guarda el hash SHA-256 de cada código
   (con el id de la promoción como sal): el código en claro no viaja en la web.
 - Los enlaces se escriben en accesos-privados.csv (fuera del control de
   versiones) para que la promotora los entregue a cada comprador.
@@ -14,13 +14,15 @@ Uso:
 import csv
 import hashlib
 import json
+import os
 import secrets
 import sys
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
-PROMOCION = RAIZ / "src" / "datos" / "promocion.json"
-SALIDA = RAIZ / "accesos-privados.csv"
+ID = os.environ.get("PROMOCION", "residencial-demo")
+PROMOCION = RAIZ / "promociones" / ID / "promocion.json"
+SALIDA = RAIZ / f"accesos-privados-{ID}.csv"
 ALFABETO = "abcdefghjkmnpqrstuvwxyz23456789"  # sin caracteres ambiguos
 
 

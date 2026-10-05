@@ -32,12 +32,12 @@ src/datos/
   catalogo.json         catálogo de opciones de la promoción (precios, parámetros, vista asociada)
   tipologias/a/
     vivienda.json       geometría (generada por herramientas/extraer_plano.py)
-    variantes.json      distribuciones alternativas (parches sobre la geometría)
+    alternativas.json      distribuciones alternativas (parches sobre la geometría)
     tipologia.json      cámaras maestras, vistas guiadas y extras ligados a la geometría (piscina)
 ```
 
 - **Una tipología por geometría distinta,** no un modelo por vivienda. Las viviendas que comparten geometría cargan la misma tipología.
-- **Viviendas simétricas** (`"espejo": true`): se espejan los datos al cargar (muros, huecos, giros de puerta, mobiliario, variantes, cámaras y piscina) en lugar de crear otro modelo.
+- **Viviendas simétricas** (`"espejo": true`): se espejan los datos al cargar (muros, huecos, giros de puerta, mobiliario, alternativas, cámaras y piscina) en lugar de crear otro modelo.
 - **Cada vivienda aporta sus datos:** referencia, planta, orientación, superficies, precio base y, si hace falta, restricciones de opciones. En el ejemplo, Bajo B no admite piscina.
 - **Catálogo.** Se carga una vez por promoción. La tipología indica qué opciones admite. Una categoría con una sola opción posible no se muestra.
 
@@ -164,7 +164,7 @@ plano (imagen o DWG) ──► src/modelo/vivienda.json ──► generadores �
    - `estados.ts`: la máquina de estados y sus transiciones.
    - `camaras.ts`: las vistas predefinidas y el paso de una a otra.
 4. **Configurador** (`src/configurador/`):
-   - `variantes.ts` aplica un parche de distribución sobre la vivienda base. Recalcula las superficies por diferencia de área y recoloca el equipamiento apoyado en un muro que cambia: lo ajusta al tramo que queda o lo retira, e informa de ello.
+   - `alternativas.ts` aplica un parche de distribución sobre la vivienda base. Recalcula las superficies por diferencia de área y recoloca el equipamiento apoyado en un muro que cambia: lo ajusta al tramo que queda o lo retira, e informa de ello.
    - `configurador.ts` guarda la selección y los precios, y lleva los parámetros de cada acabado a los uniforms de los materiales con un fundido.
    - `panel.ts` genera el panel a partir del catálogo.
 5. **Render** (`src/main.ts`): iluminación global en espacio de pantalla (SSGI), oclusión ambiental y antialiasing temporal (TRAA), mapeo tonal Neutral y exposición automática al entrar en la vivienda.

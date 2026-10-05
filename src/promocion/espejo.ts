@@ -4,7 +4,7 @@
 // sin crear ni mantener un segundo modelo.
 
 import type { Ambientacion } from '../biblioteca/biblioteca';
-import type { Equipamiento, Hueco, Punto, Rect, Tipologia, Variante, Vista, Vivienda } from '../modelo/tipos';
+import type { Equipamiento, Hueco, Punto, Rect, Tipologia, Alternativa, Vista, Vivienda } from '../modelo/tipos';
 
 /** Eje de simetría: x' = S - x, con S = xmin + xmax de la envolvente. */
 export function ejeSimetria( v: Vivienda ) {
@@ -58,7 +58,7 @@ export function espejarVivienda( v: Vivienda, S: number ): Vivienda {
 
 }
 
-export function espejarVariante( v: Variante, S: number ): Variante {
+export function espejarAlternativa( v: Alternativa, S: number ): Alternativa {
 
 	const modificar = <T extends object>( o: Record<string, Partial<T>>, f: ( x: Partial<T> ) => Partial<T> ) =>
 		Object.fromEntries( Object.entries( o ).map( ( [ k, x ] ) => [ k, f( x ) ] ) );

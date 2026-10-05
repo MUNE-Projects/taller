@@ -1,11 +1,11 @@
-// Biblioteca de activos: metadatos (src/datos/biblioteca.json) + generadores.
+// Biblioteca de activos: metadatos (biblioteca/biblioteca.json) + generadores.
 //
 // Un activo es un generador procedural con parámetros (materiales, forma) y
 // medidas por defecto. El mobiliario de la vivienda (sofá, cama…) toma las
 // medidas del rectángulo del plano; la decoración usa las del activo.
 
 import * as THREE from 'three/webgpu';
-import datos from '../datos/biblioteca.json';
+import datos from '../../biblioteca/biblioteca.json';
 import { Pieza } from '../escena/equipamiento';
 import type { Rect } from '../modelo/tipos';
 import { GENERADORES, type Params } from './generadores';

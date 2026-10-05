@@ -4,7 +4,7 @@
 // demanda (chunk propio) tras un código de acceso. Edita los DATOS de la
 // promoción —ambientación, cámaras, acabados y precios, marca, biblioteca—
 // sobre la escena en vivo, y exporta un paquete JSON que se integra en
-// src/datos/ antes de publicar. La web publicada solo lee esos datos: la IA
+// promociones/<id>/ antes de publicar. La web publicada solo lee esos datos: la IA
 // (si se usa) actúa aquí, durante la producción, nunca por visitante.
 
 import * as THREE from 'three/webgpu';
@@ -656,13 +656,13 @@ Muebles del plano sustituibles (id y tipo): ${ muebles }
 Decoración actual (id: activo en estancia):
 ${ decor }
 
-Puedes además crear variantes de color de activos textiles (sofás, camas, alfombras, cojines): cambia solo valores de color hexadecimales de sus parámetros "tela", "cojines", "manta", "plaid", "material" o "base". No reproduzcas productos concretos de ninguna marca.
+Puedes además crear alternativas de color de activos textiles (sofás, camas, alfombras, cojines): cambia solo valores de color hexadecimales de sus parámetros "tela", "cojines", "manta", "plaid", "material" o "base". No reproduzcas productos concretos de ninguna marca.
 Responde SOLO con JSON con esta forma:
 {"estilo": "texto corto", "resumen": "2 frases para el promotor", "paleta": ["#hex", ...],
  "sustituciones": {"<id de mueble>": "<id de activo>"},
  "decoracion": {"<id de decoración>": "<id de activo de la misma categoría>"},
- "variantes": [{"base": "<id de activo>", "nombre": "texto", "colores": {"tela": "#hex", "cojines": ["#hex", "#hex"], "manta": "#hex", "plaid": "#hex", "material": "#hex", "base": "#hex"}}],
- "aplicar_variantes_a": {"<id de mueble o decoración>": <índice en variantes>}}`;
+ "alternativas": [{"base": "<id de activo>", "nombre": "texto", "colores": {"tela": "#hex", "cojines": ["#hex", "#hex"], "manta": "#hex", "plaid": "#hex", "material": "#hex", "base": "#hex"}}],
+ "aplicar_alternativas_a": {"<id de mueble o decoración>": <índice en alternativas>}}`;
 		try {
 
 			const r = await sample.json<Propuesta>( prompt, { images: conImagenes ? referencias.slice( 0, 4 ) : undefined, signal: ctlIA.signal } );
@@ -687,7 +687,7 @@ Responde SOLO con JSON con esta forma:
 		const a = amb();
 		anterior = JSON.stringify( a );
 		const creados: string[] = [];
-		( p.variantes ?? [] ).forEach( ( v, i ) => {
+		( p.alternativas ?? [] ).forEach( ( v, i ) => {
 
 			const base = activo( v.base );
 			if ( ! base ) return creados.push( '' );
@@ -725,7 +725,7 @@ Responde SOLO con JSON con esta forma:
 
 		}
 
-		for ( const [ objetivo, i ] of Object.entries( p.aplicar_variantes_a ?? {} ) ) {
+		for ( const [ objetivo, i ] of Object.entries( p.aplicar_alternativas_a ?? {} ) ) {
 
 			const id = creados[ Number( i ) ];
 			if ( ! id ) continue;
@@ -777,7 +777,7 @@ Responde SOLO con JSON con esta forma:
 				p.paleta?.length ? h( 'div', { class: 'st-paleta' }, ...p.paleta.map( ( c ) => h( 'span', { style: `background:${ c }`, title: c } ) ) ) : null,
 				h( 'ul', {}, ...Object.entries( p.sustituciones ?? {} ).map( ( [ k, v ] ) => h( 'li', {}, `${ k } → ${ activo( v )?.nombre ?? v }` ) ),
 					...Object.entries( p.decoracion ?? {} ).map( ( [ k, v ] ) => h( 'li', {}, `${ k } → ${ activo( v )?.nombre ?? v }` ) ),
-					...( p.variantes ?? [] ).map( ( v ) => h( 'li', {}, `Variante de color: ${ v.nombre } (sobre ${ activo( v.base )?.nombre ?? v.base })` ) ) ),
+					...( p.alternativas ?? [] ).map( ( v ) => h( 'li', {}, `Alternativa de color: ${ v.nombre } (sobre ${ activo( v.base )?.nombre ?? v.base })` ) ) ),
 				h( 'div', { class: 'st-acciones' }, boton( 'Aplicar a la escena', () => aplicarPropuesta( p ), 'st-principal' ),
 					anterior ? boton( 'Deshacer última', () => {
 
@@ -1010,7 +1010,7 @@ Es una aproximación ligera; no reproduzcas un producto concreto. Responde SOLO 
 
 		// revisión de impactos
 		out.push( h( 'h3', {}, 'Revisión de lo que depende de la geometría' ) );
-		const hallazgos = revisarPromocion( base.vivienda, base.tipologia, base.variantes, base.ambientacion, api.catalogo );
+		const hallazgos = revisarPromocion( base.vivienda, base.tipologia, base.alternativas, base.ambientacion, api.catalogo );
 		const orden = { error: 0, aviso: 1, ok: 2 };
 		out.push( h( 'ul', { class: 'st-hallazgos' }, ...hallazgos.sort( ( a, b ) => orden[ a.nivel ] - orden[ b.nivel ] ).map( ( x ) => h( 'li', { class: x.nivel }, h( 'span', { class: 'st-nivel' }, { error: 'Corregir', aviso: 'Revisar', ok: 'Correcto' }[ x.nivel ] ), h( 'span', {}, h( 'strong', {}, `${ x.ambito }. ` ), x.mensaje ) ) ) ) );
 		out.push( h( 'h3', {}, 'Qué se regenera solo' ), h( 'ul', { class: 'st-lista' },
@@ -1022,7 +1022,7 @@ Es una aproximación ligera; no reproduzcas un producto concreto. Responde SOLO 
 		h( 'h3', {}, 'Qué hay que repasar' ), h( 'ul', { class: 'st-lista' },
 			h( 'li', {}, 'Cámaras compuestas a mano (pestaña Cámaras) si la estancia cambia' ),
 			h( 'li', {}, 'Decoración colocada (pestaña Escena)' ),
-			h( 'li', {}, 'Parches de las distribuciones alternativas (variantes.json)' ),
+			h( 'li', {}, 'Parches de las distribuciones alternativas (alternativas.json)' ),
 			h( 'li', {}, 'Opciones y precios afectados (pestaña Acabados y precios)' ) ) );
 		return out;
 
@@ -1078,7 +1078,7 @@ Es una aproximación ligera; no reproduzcas un producto concreto. Responde SOLO 
 		} catch { /* sin almacenamiento */ }
 
 		return [
-			h( 'p', { class: 'st-ayuda' }, 'La web publicada no ejecuta IA ni edita nada: carga datos preparados. Exporta el paquete, sustituye los ficheros en src/datos/ (y src/datos/tipologias/<id>/) y vuelve a publicar.' ),
+			h( 'p', { class: 'st-ayuda' }, 'La web publicada no ejecuta IA ni edita nada: carga datos preparados. Exporta el paquete, sustituye los ficheros en promociones/<id>/ (y promociones/<id>/tipologias/<tipología>/) y vuelve a publicar.' ),
 			h( 'h3', {}, 'Revisión' ),
 			avisos.length ? h( 'ul', { class: 'st-avisos' }, ...avisos.map( ( a ) => h( 'li', {}, a ) ) ) : h( 'p', { class: 'st-ok' }, 'Sin incidencias.' ),
 			h( 'div', { class: 'st-acciones' },

@@ -1,4 +1,4 @@
-// Aplica una variante de distribución (un parche) sobre la vivienda base.
+// Aplica una alternativa de distribución (un parche) sobre la vivienda base.
 //
 // Garantías:
 //  - lo que el parche no nombra se copia tal cual (misma geometría, mismos ids);
@@ -8,7 +8,7 @@
 //  - el equipamiento apoyado en un muro que cambia se recoloca solo: se ajusta
 //    al tramo de muro que queda o, si no cabe, se retira. Todo queda en el informe.
 
-import type { Equipamiento, Rect, Variante, Vivienda } from '../modelo/tipos';
+import type { Equipamiento, Rect, Alternativa, Vivienda } from '../modelo/tipos';
 import { areaPoligono, puntoEnRect } from '../util/geo';
 
 const NOMBRES: Record<string, string> = {
@@ -78,20 +78,20 @@ function tramoMasLargo( m: boolean[] ) {
 
 const solapa = ( r: Rect, s: Rect ) => r[ 0 ] < s[ 2 ] - 0.01 && r[ 2 ] > s[ 0 ] + 0.01 && r[ 1 ] < s[ 3 ] - 0.01 && r[ 3 ] > s[ 1 ] + 0.01;
 
-export function aplicarVariante( base: Vivienda, variante: Variante | null ): Resultado {
+export function aplicarAlternativa( base: Vivienda, alternativa: Alternativa | null ): Resultado {
 
 	const informe: string[] = [];
-	if ( ! variante ) return { vivienda: base, informe };
+	if ( ! alternativa ) return { vivienda: base, informe };
 	const v: Vivienda = structuredClone( base );
 
-	v.muros = parchear( v.muros, variante.muros );
+	v.muros = parchear( v.muros, alternativa.muros );
 	const murosVivos = new Set( v.muros.map( ( m ) => m.id ) );
-	v.huecos = parchear( v.huecos, variante.huecos ).filter( ( h ) => murosVivos.has( h.muro ) );
+	v.huecos = parchear( v.huecos, alternativa.huecos ).filter( ( h ) => murosVivos.has( h.muro ) );
 
 	// estancias: nombre/polígono del parche; la superficie se recalcula por diferencia de área
 	v.estancias = v.estancias.map( ( e ) => {
 
-		const p = variante.estancias?.modificar?.[ e.id ];
+		const p = alternativa.estancias?.modificar?.[ e.id ];
 		if ( ! p ) return e;
 		const nueva = { ...e, ...p };
 		if ( p.poligono && p.superficie === undefined ) {
@@ -106,10 +106,10 @@ export function aplicarVariante( base: Vivienda, variante: Variante | null ): Re
 
 	} );
 
-	v.equipamiento = parchear( v.equipamiento, variante.equipamiento );
+	v.equipamiento = parchear( v.equipamiento, alternativa.equipamiento );
 
 	// recolocación automática del equipamiento afectado
-	const cambiados = new Set( [ ...Object.keys( variante.muros?.modificar ?? {} ), ...( variante.muros?.quitar ?? [] ), ...( variante.muros?.anadir ?? [] ).map( ( m ) => m.id ) ] );
+	const cambiados = new Set( [ ...Object.keys( alternativa.muros?.modificar ?? {} ), ...( alternativa.muros?.quitar ?? [] ), ...( alternativa.muros?.anadir ?? [] ).map( ( m ) => m.id ) ] );
 	const murosNuevos = v.muros.filter( ( m ) => cambiados.has( m.id ) );
 	v.equipamiento = v.equipamiento.flatMap( ( e ) => {
 

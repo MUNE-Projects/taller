@@ -39,7 +39,7 @@ documentación de la promoción ──► datos (JSON) ──► Studio (edició
    Los ficheros no se suben a ningún sitio: solo se anota su referencia.
 2. **Datos.** Cada tipología vive en `src/datos/tipologias/<id>/`:
    - `vivienda.json`: la geometría;
-   - `variantes.json`: las distribuciones alternativas;
+   - `alternativas.json`: las distribuciones alternativas;
    - `tipologia.json`: las cámaras maestras;
    - `ambientacion.json`: el mobiliario y la decoración.
 
@@ -94,7 +94,7 @@ Salida: una **propuesta editable** sobre la escena 3D, nunca una imagen plana.
 
 1. Se extrae la paleta dominante de las referencias en el navegador (k-medias sobre píxeles reducidos).
 2. Se genera la propuesta, por una de dos vías:
-   - **Sin IA:** reglas por temperatura y luminosidad de la paleta. Deciden el estilo, eligen activos de la biblioteca y crean variantes de color de los textiles (sofá, cojines, manta, plaid).
+   - **Sin IA:** reglas por temperatura y luminosidad de la paleta. Deciden el estilo, eligen activos de la biblioteca y crean alternativas de color de los textiles (sofá, cojines, manta, plaid).
    - **Con IA:** capability `sample`, que usa la cuenta de Claude de quien trabaja en el Studio. Se envían las imágenes, la paleta, la lista de activos y los muebles de la vivienda. Claude responde con la misma estructura JSON y solo puede referirse a activos existentes. Lo que no valida se descarta.
 3. «Aplicar a la escena» la convierte en sustituciones, cambios de decoración y activos derivados (`propio: true`). Todo sigue editable pieza a pieza, y «Deshacer» recupera la ambientación anterior.
 

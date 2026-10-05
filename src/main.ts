@@ -26,7 +26,7 @@ import { Camarografo, fovPara, type Vista } from './escena/camaras';
 import { Estados } from './escena/estados';
 import { Navegacion } from './escena/navegacion';
 import { construirPiscina, validarPiscina } from './escena/piscina';
-import { aplicarVariante, fmtM2 } from './configurador/variantes';
+import { aplicarAlternativa, fmtM2 } from './configurador/alternativas';
 import { Configurador, fmtEuros, fmtPrecio, type Seleccion } from './configurador/configurador';
 import { Panel } from './configurador/panel';
 import { packsDeVivienda } from './configurador/packs';
@@ -266,8 +266,8 @@ async function iniciar() {
 	let estados: Estados | undefined;
 	const reconstruir = () => {
 
-		const variante = modelo.variantes.find( ( v ) => v.id === conf.variante ) ?? null;
-		const r = aplicarVariante( modelo.vivienda, variante );
+		const alternativa = modelo.alternativas.find( ( v ) => v.id === conf.alternativa ) ?? null;
+		const r = aplicarAlternativa( modelo.vivienda, alternativa );
 		vivienda = r.vivienda;
 		const { geos } = construirMuros( vivienda );
 		const muros = new THREE.Group();
@@ -611,13 +611,13 @@ async function iniciar() {
 	// ---------------------------------------------------------------- personalizar
 	const guardarSeleccion = () => comprador && guardar( claveSeleccion( comprador.ref ), JSON.stringify( Object.fromEntries( Object.entries( conf.seleccion ).filter( ( [ k ] ) => conf.editable( k ) ) ) ) );
 
-	const vistaDeVariante = () => ( modelo.variantes.find( ( v ) => v.id === conf.variante ) ?? modelo.variantes[ 0 ] )?.vista ?? null;
+	const vistaDeAlternativa = () => ( modelo.alternativas.find( ( v ) => v.id === conf.alternativa ) ?? modelo.alternativas[ 0 ] )?.vista ?? null;
 	/** Vista que corresponde a una categoría ("mantener" = ninguna). */
 	const vistaDeCategoria = ( id: string ): string | Vista | null => {
 
 		const v = conf.categoria( id ).vista;
 		if ( v === 'mantener' ) return null;
-		if ( v === 'variante' ) return vistaDeVariante() ?? 'aerea';
+		if ( v === 'alternativa' ) return vistaDeAlternativa() ?? 'aerea';
 		return v;
 
 	};
@@ -655,12 +655,12 @@ async function iniciar() {
 		const cat = conf.categoria( categoria );
 		const anterior = conf.elegir( categoria, opcion );
 		const nueva = conf.opcion( categoria );
-		if ( categoria === 'distribucion' && anterior.variante !== nueva.variante ) {
+		if ( categoria === 'distribucion' && anterior.alternativa !== nueva.alternativa ) {
 
 			const informe = reconstruir();
-			const variante = modelo.variantes.find( ( v ) => v.id === nueva.variante );
-			panel.informe( 'distribucion', variante ? [ variante.descripcion, ...informe ] : [] );
-			avisar( variante ? variante.resumen : 'Distribución base: salón y cocina vuelven a estar separados.', {
+			const alternativa = modelo.alternativas.find( ( v ) => v.id === nueva.alternativa );
+			panel.informe( 'distribucion', alternativa ? [ alternativa.descripcion, ...informe ] : [] );
+			avisar( alternativa ? alternativa.resumen : 'Distribución base: salón y cocina vuelven a estar separados.', {
 				etiqueta: 'Ver en plano', hacer: () => irModo( 'plano' ),
 			} );
 
@@ -732,9 +732,9 @@ async function iniciar() {
 		panel.destruir();
 		panel = crearPanel();
 		panel.desplegar( 'distribucion', false );
-		const variante = modelo.variantes.find( ( x ) => x.id === conf.variante );
+		const alternativa = modelo.alternativas.find( ( x ) => x.id === conf.alternativa );
 		const informe = reconstruir();
-		if ( variante ) panel.informe( 'distribucion', [ variante.descripcion, ...informe ] );
+		if ( alternativa ) panel.informe( 'distribucion', [ alternativa.descripcion, ...informe ] );
 		panel.resumen();
 
 	};
@@ -1008,7 +1008,7 @@ async function iniciar() {
 	// ---------------------------------------------------------------- plano comercial
 	const datosPlano = (): DatosPlano => ( {
 		promocion: PROMOCION, tipologia: modelo.tipologia, vivienda, ficha: comprador ? fichaVivienda : null,
-		distribucion: conf.variante ? ( modelo.variantes.find( ( x ) => x.id === conf.variante )?.nombre ?? 'alternativa' ) : 'base',
+		distribucion: conf.alternativa ? ( modelo.alternativas.find( ( x ) => x.id === conf.alternativa )?.nombre ?? 'alternativa' ) : 'base',
 	} );
 	const nombreArchivo = ( base: string ) => `${ base }-${ PROMOCION.promocion.nombre }-${ modelo.tipologia.nombre }${ comprador ? `-${ fichaVivienda.ref }` : '' }`.toLowerCase().normalize( 'NFD' ).replace( /[^a-z0-9]+/g, '-' ).replace( /-$/, '' );
 	const opcionesPlano = () => abrirDescarga( 'Plano comercial', 'Plano a escala generado a partir del modelo de la vivienda, con superficies, leyenda, escala gráfica, orientación y la marca de la promoción.', [
@@ -1246,10 +1246,10 @@ async function iniciar() {
 	if ( comprador ) avisar( `Bienvenido. Estás viendo tu vivienda ${ comprador.ref }. Pulsa Personalizar para elegir tus acabados.` );
 
 	// ---------------------------------------------------------------- studio (producción)
-	// Chunk aparte, solo con código: la experiencia pública y la del comprador
-	// no cargan nada del Studio.
+	// Solo existe en la construcción interna (--mode studio). En la web pública
+	// __STUDIO__ es false y el Studio no se incluye: ni código ni acceso.
 	const dialogoStudio = $<HTMLDialogElement>( '#acceso-studio' );
-	const abrirStudio = async () => {
+	const abrirStudio = ! __STUDIO__ ? async () => {} : async () => {
 
 		const { abrirStudio: abrir } = await import( './studio/studio' );
 		await abrir( {

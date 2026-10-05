@@ -6,7 +6,7 @@
 import { jsPDF } from 'jspdf';
 import type { Configurador } from '../configurador/configurador';
 import { fmtEuros } from '../configurador/configurador';
-import { fmtM2 } from '../configurador/variantes';
+import { fmtM2 } from '../configurador/alternativas';
 import type { Promocion, Tipologia, ViviendaPromocion } from '../modelo/tipos';
 import { logoPNG } from '../promocion/marca';
 import { fmtFecha, type PackVivienda } from '../configurador/packs';

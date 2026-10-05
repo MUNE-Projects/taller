@@ -70,12 +70,12 @@ La tolerancia es de ±10 cm, y está dentro de lo esperable midiendo sobre una i
 
 ### Cómo se ha integrado
 
-- **La vivienda base no se toca.** Una distribución alternativa es un parche en `variantes.json` que solo nombra lo que cambia. `aplicarVariante()` genera la vivienda resultante y la escena se reconstruye dentro de contenedores persistentes. Estados, cámaras y render siguen apuntando a los mismos objetos, y todo lo que el parche no nombra conserva la misma geometría.
+- **La vivienda base no se toca.** Una distribución alternativa es un parche en `alternativas.json` que solo nombra lo que cambia. `aplicarAlternativa()` genera la vivienda resultante y la escena se reconstruye dentro de contenedores persistentes. Estados, cámaras y render siguen apuntando a los mismos objetos, y todo lo que el parche no nombra conserva la misma geometría.
 - **Acabados.** Suelo de madera, frentes de cocina, encimera y baños leen uniforms de TSL (`P` en `materiales.ts`). Cambiar una opción cambia valores y los funde en 450 ms, sin reconstruir geometría ni recompilar shaders.
 - **Piscina.** Se construye una vez y aparece o desaparece con el equipamiento (estados 3 y 4). En planta se dibuja su contorno.
 - **Cámaras maestras.** El objeto `VISTAS` está congelado.
 
-### Variante "cocina abierta al salón" (+4.500 €)
+### Alternativa "cocina abierta al salón" (+4.500 €)
 
 - **Tabique:** el tabique salón-cocina se acorta. Se conserva el tramo norte, junto al pilar, y se abre un paso de 2,0 m junto a la fachada.
 - **Puerta:** no hace falta modificar ninguna. La cocina conserva su puerta al recibidor, que sigue siendo el acceso directo desde la entrada.
@@ -123,13 +123,13 @@ La opción de baños no tiene cámara maestra propia, así que mantiene la vista
 2. **Vistas.** Se añade la vista maestra **Baño**: desde la puerta del baño principal, con ducha, inodoro y doble lavabo en un solo encuadre. Se recoloca **Terraza**: desde el suroeste, por encima de la barandilla, con fachada, terraza y piscina. Aérea pasa a llamarse **Vista general**. Salón, Cocina y Dormitorio no cambian.
 3. **Cajón de 320 px a la derecha,** con acordeón (una categoría abierta a la vez), elección y precio en la cabecera de cada categoría, total fijo y desglose plegable. Al desplegar una categoría, la cámara va a la estancia afectada. Así, al elegir una opción la cámara ya está allí y no se mueve.
 4. **Cámara.** Se elimina el arco. Una sola transición por acción; no se mueve si ya está en la vista; fundido de unos 0,3 s entre vistas a la altura de los ojos; desplazamiento suave según la distancia en el resto.
-5. **Distribución.** Cada variante lleva su propia vista explicativa. Para la cocina abierta es una vista interior desde el salón hacia la cocina, a través del paso, que muestra la apertura, la cocina y el cambio de pavimento. Un aviso resume el cambio y ofrece "Ver en plano" como complemento.
+5. **Distribución.** Cada alternativa lleva su propia vista explicativa. Para la cocina abierta es una vista interior desde el salón hacia la cocina, a través del paso, que muestra la apertura, la cocina y el cambio de pavimento. Un aviso resume el cambio y ofrece "Ver en plano" como complemento.
 
 ## Iteración 4: producto comercial
 
 ### Cambios
 
-- **Estructura:** Promoción → Tipologías → Viviendas → Opciones. La geometría, las variantes y las cámaras maestras van por tipología. Bajo B (ejemplo) es la tipología A espejada, con otro precio base y sin piscina.
+- **Estructura:** Promoción → Tipologías → Viviendas → Opciones. La geometría, las alternativas y las cámaras maestras van por tipología. Bajo B (ejemplo) es la tipología A espejada, con otro precio base y sin piscina.
 - **Acceso sin base de datos:** enlace privado por vivienda (`#c-…`). Solo se guarda su hash. La parte pública no muestra personalización ni precios.
 - **Carrito:** quitar mejoras desde el resumen, restablecer con confirmación, y total, número de mejoras y extras siempre visibles.
 - **Documento de selección en PDF**, que sustituye a "Guardar configuración". Se genera con jsPDF en el navegador.
@@ -151,7 +151,7 @@ La opción de baños no tiene cámara maestra propia, así que mantiene la vista
 
 - **Marca de ejemplo ficticia** (Promotora Demo, Residencial Demo). No se usa la marca de la promotora del plano de prueba porque no tenemos su permiso. Se cambia en `promocion.json`.
 - **Tipografía del PDF:** Helvetica. Incrustar la tipografía de la promotora requiere su fichero de fuente (TTF); se puede añadir cuando la promotora lo facilite.
-- **Distribución:** al cambiarla, la cámara va a la vista explicativa de la variante (interior salón-cocina) y el aviso ofrece "Ver en plano".
+- **Distribución:** al cambiarla, la cámara va a la vista explicativa de la alternativa (interior salón-cocina) y el aviso ofrece "Ver en plano".
 
 ## Iteración 5: navegación, calidad visual, ambientación y Studio
 

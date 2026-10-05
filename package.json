@@ -6,11 +6,13 @@
   "description": "Visualización arquitectónica 3D procedural a partir de planos de vivienda (Three.js + TSL).",
   "scripts": {
     "dev": "vite",
+    "studio": "vite --mode studio",
     "build": "tsc --noEmit && vite build",
+    "build:studio": "tsc --noEmit && vite build --mode studio",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "plano": "python3 herramientas/extraer_plano.py",
-    "artefacto": "npm run build && python3 herramientas/empaquetar_artefacto.py"
+    "artefacto": "npm run build:studio && python3 herramientas/empaquetar_artefacto.py"
   },
   "dependencies": {
     "jspdf": "4.2.1",

@@ -5,7 +5,7 @@ La promoción tiene **una única base digital** por tipología. Todo lo que se e
 ```
 src/datos/tipologias/<id>/
   vivienda.json       geometría: muros, huecos, estancias, equipamiento   ← lo que cambia con un plano nuevo
-  variantes.json      distribuciones alternativas (parches sobre la geometría)
+  alternativas.json      distribuciones alternativas (parches sobre la geometría)
   tipologia.json      cámaras maestras, orientación (norte) y revisión del proyecto
   ambientacion.json   mobiliario y decoración
   versiones/          copias de las geometrías anteriores (para comparar)
@@ -25,14 +25,14 @@ No hay un modelo distinto para cada uno.
 
 1. **Guardar la versión vigente:** copiar `vivienda.json` a `versiones/`, por ejemplo `versiones/v1-anteproyecto.json`. La del anteproyecto ya está guardada.
 2. **Traducir el plano nuevo a `vivienda.json`**, con `herramientas/extraer_plano.py` y revisión, o a mano desde el plano acotado.
-   - **Clave: conservar los identificadores** (`id`) de los elementos que siguen existiendo. Si un muro «m-salon-cocina» sigue ahí, debe seguir llamándose así aunque se mueva. Los ids son lo que mantiene enlazadas las variantes, las sustituciones de mobiliario y las cámaras.
+   - **Clave: conservar los identificadores** (`id`) de los elementos que siguen existiendo. Si un muro «m-salon-cocina» sigue ahí, debe seguir llamándose así aunque se mueva. Los ids son lo que mantiene enlazadas las alternativas, las sustituciones de mobiliario y las cámaras.
 3. **Actualizar `revision` en `tipologia.json`** (fase, versión, fecha, fuente) y, si el nuevo plano lo aclara, `norte`.
 4. **Abrir el Studio → pestaña «Actualización»:**
    - *Cambios respecto a una versión anterior:* muros, huecos, estancias y equipamiento nuevos, eliminados o modificados.
-   - *Revisión:* lo que hay que corregir (rojo) o repasar (ámbar) en superficies, huecos, equipamiento, cámaras, vistas obligatorias, decoración, variantes y opciones del catálogo.
+   - *Revisión:* lo que hay que corregir (rojo) o repasar (ámbar) en superficies, huecos, equipamiento, cámaras, vistas obligatorias, decoración, alternativas y opciones del catálogo.
 5. **Repasar lo señalado:**
    - cámaras y decoración, en el Studio;
-   - parches de variantes, en `variantes.json`;
+   - parches de alternativas, en `alternativas.json`;
    - precios u opciones, en el Studio.
 6. **Exportar el paquete** desde Publicación, integrarlo en `src/datos/`, hacer el build y publicar.
 
@@ -42,7 +42,7 @@ No hay un modelo distinto para cada uno.
 |---|---|
 | Muros, carpinterías, suelos, techos, rodapiés, interruptores, luz de ventana, paisaje | Cámaras compuestas a mano, si la estancia cambia |
 | Superficies (ficha, plano comercial, documentos) | Decoración colocada (la revisión detecta la que invade muros o queda sin mueble debajo) |
-| Plano comercial con los rótulos recolocados | Parches de las variantes, si cambian los elementos que modifican |
+| Plano comercial con los rótulos recolocados | Parches de las alternativas, si cambian los elementos que modifican |
 | Renders HD (se generan desde las cámaras) | Opciones y precios afectados |
 | Vistas automáticas de estancias nuevas sin vista | |
 | Viviendas simétricas | |
@@ -61,7 +61,7 @@ Sobre la tipología A se aplicó un «plano de ejecución» ficticio con estos c
 - **Cambios detectados:** los siete.
 - **Revisión:** tres puntos a repasar:
   - un jarrón que quedaba flotando sin la mesa auxiliar;
-  - el parche de la variante «Cocina abierta», roto por el cambio de id del muro;
+  - el parche de la alternativa «Cocina abierta», roto por el cambio de id del muro;
   - una discrepancia de superficie del recibidor que ya existía en el plano de origen.
 - **Resto:** geometría, superficies, plano comercial y renders se regeneran sin intervención.
 - **Trabajo manual estimado para este caso:** mover un objeto, restablecer un id y confirmar la superficie del recibidor.

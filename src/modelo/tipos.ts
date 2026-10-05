@@ -82,13 +82,13 @@ export interface Vivienda {
 // ------------------------------------------------------------ configurador
 
 /** Parche de distribución: solo describe lo que cambia respecto a la vivienda base. */
-export interface Variante {
+export interface Alternativa {
 	id: string;
 	nombre: string;
 	descripcion: string;
 	/** Frase corta para el aviso al comprador. */
 	resumen: string;
-	/** Vista que explica el efecto espacial de la variante. */
+	/** Vista que explica el efecto espacial de la alternativa. */
 	vista: { nombre: string; pos: [ number, number, number ]; obj: [ number, number, number ]; fov: number; interior?: boolean } | null;
 	origen: string;
 	muros: { quitar: string[]; anadir: Muro[]; modificar: Record<string, Partial<Muro>> };
@@ -102,7 +102,7 @@ export interface Opcion {
 	nombre: string;
 	detalle?: string;
 	precio: number;
-	variante?: string | null;
+	alternativa?: string | null;
 	piscina?: boolean;
 	parametros?: Record<string, string | number>;
 }

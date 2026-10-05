@@ -4,12 +4,12 @@
 // Todo (visor, renders, plano comercial, personalizaciones y documentos)
 // sale de los mismos datos; al sustituir vivienda.json por una versión nueva
 // se regenera solo. Lo que NO es automático es lo que se compuso a mano sobre
-// la geometría anterior: cámaras, decoración, parches de variantes y
+// la geometría anterior: cámaras, decoración, parches de alternativas y
 // referencias a ids. Esta revisión lo señala para repasarlo en el Studio.
 
 import type { Ambientacion } from '../biblioteca/biblioteca';
 import { activo, huella } from '../biblioteca/biblioteca';
-import type { Configuracion, Rect, Tipologia, Variante, Vivienda } from '../modelo/tipos';
+import type { Configuracion, Rect, Tipologia, Alternativa, Vivienda } from '../modelo/tipos';
 import { areaPoligono, puntoEnPoligono, puntoEnRect } from '../util/geo';
 import { revisarVistas } from '../escena/vistas';
 
@@ -86,7 +86,7 @@ function dentroInterior( v: Vivienda, x: number, y: number ) {
 }
 
 /** Revisión completa de lo que depende de la geometría. */
-export function revisarPromocion( v: Vivienda, t: Tipologia, variantes: Variante[], amb: Ambientacion | null, catalogo: Configuracion ): Hallazgo[] {
+export function revisarPromocion( v: Vivienda, t: Tipologia, alternativas: Alternativa[], amb: Ambientacion | null, catalogo: Configuracion ): Hallazgo[] {
 
 	const h: Hallazgo[] = [];
 	const add = ( nivel: Nivel, ambito: string, mensaje: string ) => h.push( { nivel, ambito, mensaje } );
@@ -172,8 +172,8 @@ export function revisarPromocion( v: Vivienda, t: Tipologia, variantes: Variante
 
 	}
 
-	// variantes: el parche debe referirse a ids que existan
-	for ( const va of variantes ) {
+	// alternativas: el parche debe referirse a ids que existan
+	for ( const va of alternativas ) {
 
 		const faltan = [
 			...[ ...va.muros.quitar, ...Object.keys( va.muros.modificar ) ].filter( ( id ) => ! muros.has( id ) ).map( ( id ) => `muro ${ id }` ),
@@ -181,22 +181,22 @@ export function revisarPromocion( v: Vivienda, t: Tipologia, variantes: Variante
 			...Object.keys( va.estancias.modificar ).filter( ( id ) => ! estancias.has( id ) ).map( ( id ) => `estancia ${ id }` ),
 			...[ ...va.equipamiento.quitar, ...Object.keys( va.equipamiento.modificar ) ].filter( ( id ) => ! equipos.has( id ) ).map( ( id ) => `equipamiento ${ id }` ),
 		];
-		if ( faltan.length ) add( 'error', 'Variantes', `La variante «${ va.nombre }» modifica elementos que ya no existen: ${ faltan.join( ', ' ) }. Hay que rehacer su parche.` );
-		else add( 'ok', 'Variantes', `La variante «${ va.nombre }» sigue siendo aplicable (revisar visualmente su resultado).` );
-		// geometría modificada por la variante: ¿sigue dentro de su muro original?
+		if ( faltan.length ) add( 'error', 'Alternativas', `La alternativa «${ va.nombre }» modifica elementos que ya no existen: ${ faltan.join( ', ' ) }. Hay que rehacer su parche.` );
+		else add( 'ok', 'Alternativas', `La alternativa «${ va.nombre }» sigue siendo aplicable (revisar visualmente su resultado).` );
+		// geometría modificada por la alternativa: ¿sigue dentro de su muro original?
 		for ( const [ id, cambio ] of Object.entries( va.muros.modificar ) ) {
 
 			const m = v.muros.find( ( w ) => w.id === id );
 			const rr = cambio.rect as Rect | undefined;
-			if ( m && rr && ( rr[ 0 ] < m.rect[ 0 ] - 0.3 || rr[ 2 ] > m.rect[ 2 ] + 0.3 || rr[ 1 ] < m.rect[ 1 ] - 0.3 || rr[ 3 ] > m.rect[ 3 ] + 0.3 ) ) add( 'aviso', 'Variantes', `La variante «${ va.nombre }» mueve el muro «${ id }» fuera de su posición actual: comprobar.` );
+			if ( m && rr && ( rr[ 0 ] < m.rect[ 0 ] - 0.3 || rr[ 2 ] > m.rect[ 2 ] + 0.3 || rr[ 1 ] < m.rect[ 1 ] - 0.3 || rr[ 3 ] > m.rect[ 3 ] + 0.3 ) ) add( 'aviso', 'Alternativas', `La alternativa «${ va.nombre }» mueve el muro «${ id }» fuera de su posición actual: comprobar.` );
 
 		}
 
 	}
 
-	// catálogo: opciones que activan variantes existentes
-	const idsVariantes = new Set( variantes.map( ( x ) => x.id ) );
-	for ( const c of catalogo.categorias ) for ( const o of c.opciones ) if ( o.variante && ! idsVariantes.has( o.variante ) ) add( 'error', 'Personalización', `La opción «${ o.nombre }» activa la variante «${ o.variante }», que no existe en esta tipología.` );
+	// catálogo: opciones que activan alternativas existentes
+	const idsAlternativas = new Set( alternativas.map( ( x ) => x.id ) );
+	for ( const c of catalogo.categorias ) for ( const o of c.opciones ) if ( o.alternativa && ! idsAlternativas.has( o.alternativa ) ) add( 'error', 'Personalización', `La opción «${ o.nombre }» activa la alternativa «${ o.alternativa }», que no existe en esta tipología.` );
 
 	if ( ! h.some( ( x ) => x.nivel !== 'ok' ) ) add( 'ok', 'General', 'Sin incidencias: la promoción está al día con esta versión del plano.' );
 	return h;

@@ -4,20 +4,20 @@
     {
       "id": "distribucion",
       "nombre": "Distribución",
-      "vista": "variante",
+      "vista": "alternativa",
       "opciones": [
         {
           "id": "base",
           "nombre": "Distribución base",
           "precio": 0,
-          "variante": null
+          "alternativa": null
         },
         {
           "id": "alternativa",
           "nombre": "Distribución alternativa",
           "detalle": "Cocina abierta al salón",
           "precio": 4500,
-          "variante": "cocina-abierta"
+          "alternativa": "cocina-abierta"
         }
       ]
     },

@@ -1,5 +1,5 @@
 // Marca blanca: todo lo visual que depende de la promotora sale de
-// src/datos/promocion.json (logo, colores, tipografía, favicon, textos).
+// promociones/<id>/promocion.json (logo, colores, tipografía, favicon, textos).
 
 import type { Marca, Promocion } from '../modelo/tipos';
 

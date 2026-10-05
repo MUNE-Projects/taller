@@ -16,8 +16,8 @@ export interface Propuesta {
 	paleta?: string[];
 	sustituciones?: Record<string, string>;
 	decoracion?: Record<string, string>;
-	variantes?: { base: string; nombre: string; colores: Record<string, string | string[]> }[];
-	aplicar_variantes_a?: Record<string, number>;
+	alternativas?: { base: string; nombre: string; colores: Record<string, string | string[]> }[];
+	aplicar_alternativas_a?: Record<string, number>;
 }
 
 /** Paleta dominante (k-medias sobre píxeles reducidos) de varias imágenes. */
@@ -97,22 +97,22 @@ export function propuestaLocal( paleta: string[], amb: Ambientacion, v: Vivienda
 
 	const sustituciones: Record<string, string> = {};
 	const aplicar: Record<string, number> = {};
-	const variantes: Propuesta[ 'variantes' ] = [];
+	const alternativas: Propuesta[ 'alternativas' ] = [];
 	const clave = estilo === 'orgánico' ? [ 'orgánico', 'nórdico' ] : estilo === 'ecléctico cálido' ? [ 'ecléctico', 'clásico' ] : [ 'mediterráneo', 'nórdico' ];
 
 	const sofaBase = elegir( 'sofas', 'sofa', clave );
 	if ( sofaBase ) {
 
-		variantes.push( { base: sofaBase, nombre: `Sofá ${ estilo } (paleta de referencia)`, colores: { tela: neutro, cojines: [ a1, neutro, a2 ], manta: a2 } } );
-		for ( const e of v.equipamiento.filter( ( x ) => x.tipo === 'sofa' ) ) aplicar[ e.id ] = variantes.length - 1;
+		alternativas.push( { base: sofaBase, nombre: `Sofá ${ estilo } (paleta de referencia)`, colores: { tela: neutro, cojines: [ a1, neutro, a2 ], manta: a2 } } );
+		for ( const e of v.equipamiento.filter( ( x ) => x.tipo === 'sofa' ) ) aplicar[ e.id ] = alternativas.length - 1;
 
 	}
 
 	const camaBase = elegir( 'camas', 'cama', clave );
 	if ( camaBase ) {
 
-		variantes.push( { base: camaBase, nombre: `Cama ${ estilo } (paleta de referencia)`, colores: { cojines: [ a1, neutro, a2 ], plaid: a1 } } );
-		for ( const e of v.equipamiento.filter( ( x ) => x.tipo === 'cama' && x.rect[ 2 ] - x.rect[ 0 ] > 1.2 && x.rect[ 3 ] - x.rect[ 1 ] > 1.2 ) ) aplicar[ e.id ] = variantes.length - 1;
+		alternativas.push( { base: camaBase, nombre: `Cama ${ estilo } (paleta de referencia)`, colores: { cojines: [ a1, neutro, a2 ], plaid: a1 } } );
+		for ( const e of v.equipamiento.filter( ( x ) => x.tipo === 'cama' && x.rect[ 2 ] - x.rect[ 0 ] > 1.2 && x.rect[ 3 ] - x.rect[ 1 ] > 1.2 ) ) aplicar[ e.id ] = alternativas.length - 1;
 
 	}
 
@@ -140,7 +140,7 @@ export function propuestaLocal( paleta: string[], amb: Ambientacion, v: Vivienda
 	return {
 		origen: 'local', estilo, paleta,
 		resumen: `Ambientación ${ estilo } a partir de la paleta de las referencias: tapicerías en ${ neutro }, acentos textiles en ${ a1 } y ${ a2 }. Todo queda editable pieza a pieza.`,
-		sustituciones, decoracion, variantes, aplicar_variantes_a: aplicar,
+		sustituciones, decoracion, alternativas, aplicar_alternativas_a: aplicar,
 	};
 
 }

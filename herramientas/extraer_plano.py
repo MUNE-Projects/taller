@@ -1,5 +1,5 @@
 """
-Genera src/datos/tipologias/a/vivienda.json (y variantes.json) a partir de las medidas tomadas sobre
+Genera promociones/residencial-demo/tipologias/a/vivienda.json (y alternativas.json) a partir de las medidas tomadas sobre
 docs/plano-original.png (2000 x 1413 px).
 
 Las coordenadas en píxeles se obtuvieron analizando el color de los muros
@@ -193,10 +193,10 @@ BARANDILLA = dict(
 )
 
 
-# ---------------------------------------------------------------- variantes de distribución
-# Cada variante es un parche sobre la vivienda base: solo describe lo que cambia.
+# ---------------------------------------------------------------- alternativas de distribución
+# Cada alternativa es un parche sobre la vivienda base: solo describe lo que cambia.
 # Lo que no aparece aquí se conserva exactamente igual.
-VARIANTES = [
+ALTERNATIVAS = [
     dict(
         id="cocina-abierta",
         nombre="Cocina abierta al salón",
@@ -221,13 +221,13 @@ VARIANTES = [
 ]
 
 
-def variante_json(v):
+def alternativa_json(v):
     out = {"id": v["id"], "nombre": v["nombre"], "descripcion": v["descripcion"], "resumen": v.get("resumen", ""),
            "vista": v.get("vista"), "origen": "propuesta (prueba de configurador)"}
     muros = v.get("muros", {})
     out["muros"] = {
         "quitar": muros.get("quitar", []),
-        "anadir": [{"id": i, "tipo": t, "rect": rect(*r), "origen": "variante"} for i, t, r in muros.get("anadir", [])],
+        "anadir": [{"id": i, "tipo": t, "rect": rect(*r), "origen": "alternativa"} for i, t, r in muros.get("anadir", [])],
         "modificar": {k: {"rect": rect(*d["px"])} for k, d in muros.get("modificar", {}).items()},
     }
     est = v.get("estancias", {})
@@ -314,11 +314,11 @@ def main():
                 d[k] = [my(b), my(a)]
         out["equipamiento"].append(d)
 
-    dst = Path(__file__).resolve().parent.parent / "src" / "datos" / "tipologias" / "a" / "vivienda.json"
+    dst = Path(__file__).resolve().parent.parent / "promociones" / "residencial-demo" / "tipologias" / "a" / "vivienda.json"
     dst.write_text(json.dumps(out, ensure_ascii=False, indent=2))
 
-    dst_var = dst.parent / "variantes.json"
-    dst_var.write_text(json.dumps([variante_json(v) for v in VARIANTES], ensure_ascii=False, indent=2))
+    dst_var = dst.parent / "alternativas.json"
+    dst_var.write_text(json.dumps([alternativa_json(v) for v in ALTERNATIVAS], ensure_ascii=False, indent=2))
     print("->", dst_var)
 
     # comprobación de superficies
