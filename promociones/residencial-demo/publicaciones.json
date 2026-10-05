@@ -14,12 +14,22 @@
     {
       "version": "v2",
       "fecha": "2026-10-05T18:29:43Z",
-      "estado": "publicada",
+      "estado": "sustituida",
       "taller": "6f755e465caedd2ce611aaec632e8167b8b344f0",
       "aprobadoPor": "Carolina (MUNE Projects) — pendiente de revisar la vista previa",
       "cambios": "Carga del visor: sin congelar el navegador, pantalla de carga con marca y progreso, luces de ventana en segundo plano",
       "archivos": 6,
       "bytes": 2175340
+    },
+    {
+      "version": "v3",
+      "fecha": "2026-10-05T20:47:06Z",
+      "estado": "publicada",
+      "taller": "0eb7e9a5e83eec8383929e4ee4cca70d2bc94aef",
+      "aprobadoPor": "Carolina (MUNE Projects) — pendiente de revisar la vista previa",
+      "cambios": "Carga más rápida: familias de materiales, ruido pre-generado, compilación en paralelo",
+      "archivos": 6,
+      "bytes": 2177313
     }
   ],
   "historial": [
@@ -33,6 +43,12 @@
       "fecha": "2026-10-05T18:29:43Z",
       "accion": "publicar",
       "version": "v2",
+      "por": "Carolina (MUNE Projects) — pendiente de revisar la vista previa"
+    },
+    {
+      "fecha": "2026-10-05T20:47:06Z",
+      "accion": "publicar",
+      "version": "v3",
       "por": "Carolina (MUNE Projects) — pendiente de revisar la vista previa"
     }
   ]
