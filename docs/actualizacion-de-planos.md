@@ -3,7 +3,7 @@
 La promoción tiene **una única base digital** por tipología. Todo lo que se entrega sale de ella:
 
 ```
-src/datos/tipologias/<id>/
+promociones/<id>/tipologias/<tipología>/
   vivienda.json       geometría: muros, huecos, estancias, equipamiento   ← lo que cambia con un plano nuevo
   alternativas.json      distribuciones alternativas (parches sobre la geometría)
   tipologia.json      cámaras maestras, orientación (norte) y revisión del proyecto
@@ -34,7 +34,7 @@ No hay un modelo distinto para cada uno.
    - cámaras y decoración, en el Studio;
    - parches de alternativas, en `alternativas.json`;
    - precios u opciones, en el Studio.
-6. **Exportar el paquete** desde Publicación, integrarlo en `src/datos/`, hacer el build y publicar.
+6. **Exportar el paquete** desde Publicación, integrarlo en `promociones/<id>/`, hacer el build y publicar.
 
 ## Qué se regenera solo y qué hay que repasar
 

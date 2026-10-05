@@ -29,7 +29,7 @@ el Studio edita no se publica hasta que se exporta y se reconstruye la web.
 ## Flujo
 
 ```
-documentación de la promoción ──► datos (JSON) ──► Studio (edición en la escena) ──► paquete JSON ──► src/datos/ ──► build ──► web publicada
+documentación de la promoción ──► datos (JSON) ──► Studio (edición en la escena) ──► paquete JSON ──► promociones/<id>/ ──► build ──► web publicada
 ```
 
 1. **Documentación.** Plano de urbanización, planos acotados por tipología,
@@ -37,7 +37,7 @@ documentación de la promoción ──► datos (JSON) ──► Studio (edició
    calidades, información comercial, branding, acabados, opciones y precios.
    La pestaña Documentación lleva la lista de lo recibido y lo ya integrado.
    Los ficheros no se suben a ningún sitio: solo se anota su referencia.
-2. **Datos.** Cada tipología vive en `src/datos/tipologias/<id>/`:
+2. **Datos.** Cada tipología vive en `promociones/<id>/tipologias/<tipología>/`:
    - `vivienda.json`: la geometría;
    - `alternativas.json`: las distribuciones alternativas;
    - `tipologia.json`: las cámaras maestras;
@@ -50,7 +50,7 @@ documentación de la promoción ──► datos (JSON) ──► Studio (edició
 3. **Studio.** Edita esos datos sobre la escena real (mismo motor, mismos
    materiales). No automatiza de más: propone, y el equipo decide.
 4. **Publicación.** «Exportar paquete de datos» descarga un JSON con los
-   ficheros editados. Se copian a `src/datos/`, se ejecuta `npm run build` y se
+   ficheros editados. Se copian a `promociones/<id>/`, se ejecuta `npm run build` y se
    publica. La web publicada solo lee datos preparados.
 
 ## Pestañas
@@ -75,7 +75,7 @@ documentación de la promoción ──► datos (JSON) ──► Studio (edició
 
 ## Biblioteca de activos
 
-`src/datos/biblioteca.json` (metadatos) y `src/biblioteca/generadores.ts` (geometría).
+`biblioteca/biblioteca.json` (metadatos) y `src/biblioteca/generadores.ts` (geometría).
 
 - **Activo:** un generador procedural con sus parámetros. Cada activo lleva:
   - `id`, `categoria`, `nombre`, `estilo`, `materiales`, `color`, `gama`;

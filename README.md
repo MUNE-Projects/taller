@@ -27,14 +27,31 @@ La interfaz tiene dos niveles de acceso sobre una única experiencia visual:
 ## Estructura: Promoción → Tipologías → Viviendas → Opciones
 
 ```
-src/datos/
+promociones/<id>/             una carpeta por promoción (instancia del producto maestro)
   promocion.json        marca blanca, promoción, tipologías (opciones admitidas) y viviendas
   catalogo.json         catálogo de opciones de la promoción (precios, parámetros, vista asociada)
+  publicaciones.json    registro de versiones publicadas (v1, v2…), lo escribe la herramienta de publicación
   tipologias/a/
     vivienda.json       geometría (generada por herramientas/extraer_plano.py)
-    alternativas.json      distribuciones alternativas (parches sobre la geometría)
+    alternativas.json   distribuciones alternativas que puede elegir el comprador (parches sobre la geometría)
     tipologia.json      cámaras maestras, vistas guiadas y extras ligados a la geometría (piscina)
+biblioteca/                   biblioteca compartida del producto (activos de mobiliario y decoración)
 ```
+
+**Terminología:** *variante* es una modificación fija del proyecto (por ejemplo, espejo); *alternativa* es una opción que elige el comprador al personalizar.
+
+## Construir y publicar
+
+| Orden | Qué hace |
+|---|---|
+| `npm run dev` | Web pública en local (promoción por defecto: `residencial-demo`; otra con `PROMOCION=<id>`) |
+| `npm run studio` | Construcción interna con Studio (herramienta de producción; nunca se publica) |
+| `node herramientas/publicacion.mjs construir <id>` | Construye la web pública de una promoción en `salida/<id>/` y comprueba que no contiene Studio ni secretos |
+| `node herramientas/publicacion.mjs publicar <id> --aprobado-por "…" --cambios "…" [--confirmar]` | Publica una versión numerada en el escaparate (sin `--confirmar` solo simula) |
+| `node herramientas/publicacion.mjs volver <id> vN --motivo "…" [--confirmar]` | Vuelve a una versión anterior; la vigente queda como «retirada», nunca se borra |
+| `node herramientas/publicacion.mjs estado <id>` | Historial de versiones de la promoción |
+
+El escaparate (`MUNE-Projects/escaparate`) contiene solo lo publicado, una carpeta por promoción.
 
 - **Una tipología por geometría distinta,** no un modelo por vivienda. Las viviendas que comparten geometría cargan la misma tipología.
 - **Viviendas simétricas** (`"espejo": true`): se espejan los datos al cargar (muros, huecos, giros de puerta, mobiliario, alternativas, cámaras y piscina) en lugar de crear otro modelo.
@@ -92,7 +109,7 @@ La interfaz (colores, tipografía, logo, favicon, título) y el PDF se generan a
   - se cruzan las puertas interiores abiertas, pero no los muros, la puerta de entrada, los armarios, los muebles ni la decoración;
   - fuera, la órbita tiene límites y no deja meterse en la maqueta;
   - «Recentrar vista» devuelve a la última vista guiada.
-- **Mobiliario y decoración** desde la biblioteca de activos (`src/datos/biblioteca.json`, `src/biblioteca/`) y la ambientación de cada tipología (`ambientacion.json`).
+- **Mobiliario y decoración** desde la biblioteca de activos (`biblioteca/biblioteca.json`, `src/biblioteca/`) y la ambientación de cada tipología (`ambientacion.json`).
 - **Render:**
   - iluminación global en pantalla, reflejos en pantalla ponderados por el brillo de cada material, sol de tarde que entra en las estancias, cielo con nubes y horizonte, resplandor suave y gradación con viñeteado;
   - detalles: rodapiés, downlights y paisaje de zonas comunes.
