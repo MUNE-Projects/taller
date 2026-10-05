@@ -1,0 +1,23 @@
+{
+  "promocion": "residencial-demo",
+  "versiones": [
+    {
+      "version": "v1",
+      "fecha": "2026-10-05T15:54:45Z",
+      "estado": "publicada",
+      "taller": "b0ee43f2a314184e1015c37cf5b1edb995d7d311",
+      "aprobadoPor": "Carolina (MUNE Projects)",
+      "cambios": "Primera publicación de la demo en el escaparate",
+      "archivos": 6,
+      "bytes": 2173567
+    }
+  ],
+  "historial": [
+    {
+      "fecha": "2026-10-05T15:54:45Z",
+      "accion": "publicar",
+      "version": "v1",
+      "por": "Carolina (MUNE Projects)"
+    }
+  ]
+}
