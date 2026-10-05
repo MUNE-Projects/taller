@@ -4,12 +4,22 @@
     {
       "version": "v1",
       "fecha": "2026-10-05T15:54:45Z",
-      "estado": "publicada",
+      "estado": "sustituida",
       "taller": "b0ee43f2a314184e1015c37cf5b1edb995d7d311",
       "aprobadoPor": "Carolina (MUNE Projects)",
       "cambios": "Primera publicación de la demo en el escaparate",
       "archivos": 6,
       "bytes": 2173567
+    },
+    {
+      "version": "v2",
+      "fecha": "2026-10-05T18:29:43Z",
+      "estado": "publicada",
+      "taller": "6f755e465caedd2ce611aaec632e8167b8b344f0",
+      "aprobadoPor": "Carolina (MUNE Projects) — pendiente de revisar la vista previa",
+      "cambios": "Carga del visor: sin congelar el navegador, pantalla de carga con marca y progreso, luces de ventana en segundo plano",
+      "archivos": 6,
+      "bytes": 2175340
     }
   ],
   "historial": [
@@ -18,6 +28,12 @@
       "accion": "publicar",
       "version": "v1",
       "por": "Carolina (MUNE Projects)"
+    },
+    {
+      "fecha": "2026-10-05T18:29:43Z",
+      "accion": "publicar",
+      "version": "v2",
+      "por": "Carolina (MUNE Projects) — pendiente de revisar la vista previa"
     }
   ]
 }
