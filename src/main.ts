@@ -1276,6 +1276,7 @@ async function iniciar() {
 	// cediendo el control al navegador entre objeto y objeto:
 	//  1. vista inicial sin luces de ventana (pantalla de carga con progreso);
 	//  2. con la vivienda ya navegable: luces de ventana y modo Plano, en segundo plano.
+	const TANDAS = Math.max( 2, Math.min( 8, navigator.hardwareConcurrency || 4 ) );
 	const compilar = async ( paso: { destino: THREE.RenderTarget; mrt: ReturnType<typeof renderer.getMRT> | null }, conVentanas: boolean, progreso?: ( f: number ) => void ) => {
 
 		// todo visible durante la parte síncrona (lista de objetos y luces): los
@@ -1297,7 +1298,32 @@ async function iniciar() {
 		renderer.setRenderTarget( paso.destino );
 		renderer.setMRT( paso.mrt );
 		enCompilacion = paso;
-		const trabajo = renderer.compileAsync( escena, camara, null, ( e ) => progreso?.( e.loaded / Math.max( 1, e.total ) ) );
+		// La librería prepara los objetos de uno en uno, esperando a cada programa.
+		// Repartirlos en varias tandas simultáneas permite al navegador compilar
+		// varios programas a la vez (en paralelo en los núcleos del procesador).
+		const tandas: THREE.Object3D[][] = Array.from( { length: TANDAS }, () => [] );
+		let n = 0;
+		escena.traverse( ( o ) => {
+
+			if ( ( o as THREE.Mesh ).isMesh ) tandas[ n ++ % TANDAS ].push( o );
+
+		} );
+		const hechos = new Array( TANDAS ).fill( 0 ), totales = new Array( TANDAS ).fill( 1 );
+		const trabajo = Promise.all( tandas.filter( ( t ) => t.length ).map( ( objetos, i ) => {
+
+			const grupo = new THREE.Group();
+			// grupo de compilación: referencia a los objetos sin sacarlos de la escena
+			( grupo as unknown as { children: THREE.Object3D[] } ).children = objetos;
+			grupo.matrixWorldAutoUpdate = false;
+			return renderer.compileAsync( grupo, camara, escena, ( e ) => {
+
+				hechos[ i ] = e.loaded;
+				totales[ i ] = Math.max( 1, e.total );
+				progreso?.( hechos.reduce( ( a, b ) => a + b, 0 ) / totales.reduce( ( a, b ) => a + b, 0 ) );
+
+			} );
+
+		} ) );
 		for ( const o of ocultos ) o.visible = false;
 		lucesVentana.visible = ventanasAntes;
 		try {

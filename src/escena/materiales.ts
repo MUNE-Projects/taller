@@ -9,19 +9,155 @@
 
 import * as THREE from 'three/webgpu';
 import {
-	abs, attribute, bumpMap, clamp, float, floor, fract, hash, max, mix, mx_cell_noise_float,
-	mx_fractal_noise_float, mx_noise_float, normalWorld, positionLocal, positionWorld, sin, smoothstep,
-	step, uniform, vec2, vec3,
+	abs, attribute, bumpMap, clamp, float, floor, fract, hash, max, mix, normalWorld, positionLocal,
+	positionWorld, sin, smoothstep, step, texture, uniform, vec2, vec3,
 } from 'three/tsl';
 
 type N = any; // nodos TSL: el tipado de @types/three para TSL es demasiado estricto para componer libremente
 
-// Colores y parámetros como uniforms, no como constantes: así los materiales del
-// mismo tipo generan exactamente el mismo shader (solo cambian los valores) y
-// el navegador compila un programa por tipo de material, no uno por color.
-// Es lo que más reduce la espera de la primera carga.
-export const color = ( c: string ): N => uniform( new THREE.Color( c ) );
-const valor = ( n: number ): N => uniform( n );
+// ------------------------------------------------------------ ruido pre-generado
+//
+// El ruido (vetas, grano, nubes de pintura, motas) se lee de una textura
+// pequeña generada al cargar, en vez de calcularse dentro de cada shader: las
+// funciones de ruido de MaterialX multiplicaban el tamaño de cada shader y el
+// tiempo de compilación de la primera carga. Visualmente es equivalente.
+//   R: ruido de valor (8 celdas por tesela)      → ruido()
+//   G: ruido fractal de 3 octavas (4 celdas)     → ruidoFractal()
+//   B: valor aleatorio por celda (32 celdas)     → ruidoCelda()
+//   A: segundo ruido de valor, independiente     → descorrelación de la 3.ª coordenada
+
+const TAM_RUIDO = 256;
+const texturaRuido = ( () => {
+
+	const azar = ( n: number ) => {
+
+		const t = Math.sin( n * 127.1 + 311.7 ) * 43758.5453;
+		return t - Math.floor( t );
+
+	};
+	const red = ( celdas: number, semilla: number ) => {
+
+		const v = new Float32Array( celdas * celdas );
+		for ( let i = 0; i < v.length; i ++ ) v[ i ] = azar( i * 1.37 + semilla * 91.3 );
+		return v;
+
+	};
+	const suave = ( t: number ) => t * t * ( 3 - 2 * t );
+	// ruido de valor periódico (tesela sin costuras)
+	const valorEn = ( v: Float32Array, celdas: number, x: number, y: number ) => {
+
+		const fx = x * celdas / TAM_RUIDO, fy = y * celdas / TAM_RUIDO;
+		const x0 = Math.floor( fx ), y0 = Math.floor( fy );
+		const tx = suave( fx - x0 ), ty = suave( fy - y0 );
+		const at = ( i: number, j: number ) => v[ ( ( j % celdas ) + celdas ) % celdas * celdas + ( ( i % celdas ) + celdas ) % celdas ];
+		const a = at( x0, y0 ), b = at( x0 + 1, y0 ), c = at( x0, y0 + 1 ), d = at( x0 + 1, y0 + 1 );
+		return ( a + ( b - a ) * tx ) + ( ( c + ( d - c ) * tx ) - ( a + ( b - a ) * tx ) ) * ty;
+
+	};
+	const r8 = red( 8, 1 ), f4 = red( 4, 2 ), f8 = red( 8, 3 ), f16 = red( 16, 4 ), c32 = red( 32, 5 ), a8 = red( 8, 6 );
+	const datos = new Uint8Array( TAM_RUIDO * TAM_RUIDO * 4 );
+	for ( let y = 0; y < TAM_RUIDO; y ++ ) for ( let x = 0; x < TAM_RUIDO; x ++ ) {
+
+		const k = ( y * TAM_RUIDO + x ) * 4;
+		const fr = ( valorEn( f4, 4, x, y ) + valorEn( f8, 8, x, y ) * 0.5 + valorEn( f16, 16, x, y ) * 0.25 ) / 1.75;
+		datos[ k ] = Math.round( valorEn( r8, 8, x, y ) * 255 );
+		datos[ k + 1 ] = Math.round( fr * 255 );
+		datos[ k + 2 ] = Math.round( c32[ Math.floor( y * 32 / TAM_RUIDO ) * 32 + Math.floor( x * 32 / TAM_RUIDO ) ] * 255 );
+		datos[ k + 3 ] = Math.round( valorEn( a8, 8, x, y ) * 255 );
+
+	}
+
+	const t = new THREE.DataTexture( datos, TAM_RUIDO, TAM_RUIDO, THREE.RGBAFormat, THREE.UnsignedByteType );
+	t.wrapS = t.wrapT = THREE.RepeatWrapping;
+	t.magFilter = THREE.LinearFilter;
+	t.minFilter = THREE.LinearMipmapLinearFilter;
+	t.generateMipmaps = true;
+	t.colorSpace = THREE.NoColorSpace;
+	t.needsUpdate = true;
+	return t;
+
+} )();
+
+/** Coordenadas de lectura: la 3.ª coordenada desplaza el plano para no repetir el dibujo. */
+const coordRuido = ( p: any, celdas: number ): any => vec2( p.x.add( p.z.mul( 0.371 ) ), p.y.add( p.z.mul( 0.613 ) ) ).div( celdas );
+/** Ruido suave en [-1, 1] (equivalente a mx_noise_float). */
+const mx_noise_float = ( p: any ): any => texture( texturaRuido, coordRuido( p, 8 ) ).r.mul( 2 ).sub( 1 );
+/** Ruido fractal en [-1, 1] (equivalente a mx_fractal_noise_float; octavas y ganancia fijas). */
+const mx_fractal_noise_float = ( p: any, _octavas?: number, _lacunaridad?: number, _ganancia?: number ): any => texture( texturaRuido, coordRuido( p, 4 ) ).g.mul( 2 ).sub( 1 );
+/** Valor aleatorio por celda unidad en [0, 1] (equivalente a mx_cell_noise_float). */
+const mx_cell_noise_float = ( p: any ): any => texture( texturaRuido, coordRuido( p, 32 ) ).b;
+
+// ------------------------------------------------------------ familias de materiales
+//
+// Preparar un material en el navegador (construir y compilar su shader) es lo
+// que más tarda en la primera carga. Los materiales de una misma familia (todos
+// los textiles, todas las maderas…) solo se diferencian en colores y valores,
+// así que comparten un único shader: los colores y valores son uniforms que
+// cada material aporta al dibujarse (userData.variables), no constantes.
+
+interface Variables { c: THREE.Color[]; v: number[] }
+let recogiendo: Variables | null = null;
+
+/** Color de un acabado: variable por material dentro de su familia. */
+export const color = ( hex: string ): N => {
+
+	const propio = new THREE.Color( hex );
+	if ( ! recogiendo ) return uniform( propio );
+	const i = recogiendo.c.length;
+	recogiendo.c.push( propio );
+	return uniform( propio.clone() ).onObjectUpdate( ( { material } ) => ( material?.userData.variables as Variables | undefined )?.c[ i ] ?? propio );
+
+};
+
+/** Valor numérico de un acabado (rugosidad, intensidad…): variable por material dentro de su familia. */
+const valor = ( n: number ): N => {
+
+	if ( ! recogiendo ) return uniform( n );
+	const i = recogiendo.v.length;
+	recogiendo.v.push( n );
+	return uniform( n ).onObjectUpdate( ( { material } ) => ( material?.userData.variables as Variables | undefined )?.v[ i ] ?? n );
+
+};
+
+const familias = new Map<string, THREE.Material>();
+
+/**
+ * Material de una familia: la primera vez se crea el material base; las
+ * siguientes, una copia que comparte sus nodos (y por tanto su shader) con sus
+ * propios colores y valores. `clave` identifica la estructura (tipo de acabado
+ * y parámetros que cambian el dibujo, no los colores).
+ */
+export function familia<T extends THREE.Material>( clave: string, fabrica: () => T ): T {
+
+	const variables: Variables = { c: [], v: [] };
+	const antes = recogiendo;
+	recogiendo = variables;
+	let m: T;
+	try {
+
+		m = fabrica();
+
+	} finally {
+
+		recogiendo = antes;
+
+	}
+
+	const base = familias.get( clave ) as T | undefined;
+	if ( ! base ) {
+
+		m.userData.variables = variables;
+		familias.set( clave, m );
+		return m;
+
+	}
+
+	m.dispose();
+	const copia = base.clone() as T;
+	copia.userData.variables = variables;
+	return copia;
+
+}
 
 export const U = {
 	plano: uniform( 1 ),
@@ -111,9 +247,14 @@ interface Opciones {
 	corte?: boolean; // cara superior de muros con color de sección
 }
 
+const FISICO = false;
+
 export function material( o: Opciones ): THREE.MeshStandardNodeMaterial {
 
-	const m = o.fisico ? new THREE.MeshPhysicalNodeMaterial() : new THREE.MeshStandardNodeMaterial();
+	// Material estándar siempre: el físico (barniz, terciopelo) duplicaba el tamaño
+	// del shader y el tiempo de carga a cambio de un matiz apenas visible con los
+	// reflejos en pantalla. `fisico` solo se usa si se pide expresamente FISICO.
+	const m = o.fisico && FISICO ? new THREE.MeshPhysicalNodeMaterial() : new THREE.MeshStandardNodeMaterial();
 	const r = o.barridoLocal ? barridoLocal( U.acabado ) : barrido( U.acabado );
 
 	let base: N = mix( color( o.arcilla ?? PALETA.arcilla ), o.acabado, r );

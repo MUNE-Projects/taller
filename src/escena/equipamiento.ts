@@ -24,6 +24,15 @@ export function materialDinamico( k: string ): THREE.Material {
 	if ( MAT && k in MAT ) return ( MAT as Record<string, THREE.Material> )[ k ];
 	if ( dinamicos.has( k ) ) return dinamicos.get( k )!;
 	const [ tipo, tono = '#cccccc', extra ] = k.split( ':' );
+	// misma familia (tipo y parámetros de forma) = mismo shader; solo cambian colores y valores
+	const m = M.familia( `${ tipo }:${ extra ?? '' }`, () => crearDinamico( tipo, tono, extra ) );
+	dinamicos.set( k, m );
+	return m;
+
+}
+
+function crearDinamico( tipo: string, tono: string, extra?: string ): THREE.Material {
+
 	let m: THREE.Material;
 	switch ( tipo ) {
 
@@ -42,7 +51,6 @@ export function materialDinamico( k: string ): THREE.Material {
 
 	}
 
-	dinamicos.set( k, m );
 	return m;
 
 }
