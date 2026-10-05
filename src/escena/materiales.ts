@@ -9,12 +9,19 @@
 
 import * as THREE from 'three/webgpu';
 import {
-	abs, attribute, bumpMap, clamp, color, float, floor, fract, hash, max, mix, mx_cell_noise_float,
+	abs, attribute, bumpMap, clamp, float, floor, fract, hash, max, mix, mx_cell_noise_float,
 	mx_fractal_noise_float, mx_noise_float, normalWorld, positionLocal, positionWorld, sin, smoothstep,
 	step, uniform, vec2, vec3,
 } from 'three/tsl';
 
 type N = any; // nodos TSL: el tipado de @types/three para TSL es demasiado estricto para componer libremente
+
+// Colores y parámetros como uniforms, no como constantes: así los materiales del
+// mismo tipo generan exactamente el mismo shader (solo cambian los valores) y
+// el navegador compila un programa por tipo de material, no uno por color.
+// Es lo que más reduce la espera de la primera carga.
+export const color = ( c: string ): N => uniform( new THREE.Color( c ) );
+const valor = ( n: number ): N => uniform( n );
 
 export const U = {
 	plano: uniform( 1 ),
@@ -121,23 +128,23 @@ export function material( o: Opciones ): THREE.MeshStandardNodeMaterial {
 	const plano = color( o.planoColor ?? PALETA.papel ).mul( 1.12 );
 	m.colorNode = base.mul( float( 1 ).sub( U.plano ) );
 	m.emissiveNode = plano.mul( U.plano );
-	m.roughnessNode = mix( float( 0.9 ), typeof o.rugosidad === 'number' ? float( o.rugosidad ) : ( o.rugosidad ?? float( 0.8 ) ), r );
-	m.metalnessNode = mix( float( 0 ), typeof o.metal === 'number' ? float( o.metal ) : ( o.metal ?? float( 0 ) ), r );
-	if ( o.relieve ) m.normalNode = bumpMap( o.relieve.mul( r ), float( o.relieveEscala ?? 1 ) );
+	m.roughnessNode = mix( float( 0.9 ), typeof o.rugosidad === 'number' ? valor( o.rugosidad ) : ( o.rugosidad ?? float( 0.8 ) ), r );
+	m.metalnessNode = mix( float( 0 ), typeof o.metal === 'number' ? valor( o.metal ) : ( o.metal ?? float( 0 ) ), r );
+	if ( o.relieve ) m.normalNode = bumpMap( o.relieve.mul( r ), valor( o.relieveEscala ?? 1 ) );
 
 	if ( o.fisico && m instanceof THREE.MeshPhysicalNodeMaterial ) {
 
 		if ( o.fisico.sheen ) {
 
-			m.sheenNode = ( color( o.fisico.sheenColor ?? '#ffffff' ) as N ).mul( float( o.fisico.sheen ).mul( r ) );
+			m.sheenNode = ( color( o.fisico.sheenColor ?? '#ffffff' ) as N ).mul( valor( o.fisico.sheen ).mul( r ) );
 			m.sheenRoughnessNode = float( 0.6 );
 
 		}
 
 		if ( o.fisico.clearcoat ) {
 
-			m.clearcoatNode = float( o.fisico.clearcoat ).mul( r );
-			m.clearcoatRoughnessNode = float( o.fisico.clearcoatRoughness ?? 0.1 );
+			m.clearcoatNode = valor( o.fisico.clearcoat ).mul( r );
+			m.clearcoatRoughnessNode = valor( o.fisico.clearcoatRoughness ?? 0.1 );
 
 		}
 
@@ -178,7 +185,7 @@ export function porcelanico( tono: string | N, tam = 0.9, junta = 0.0025, rug = 
 	const acabado = mix( base, c.mul( 0.72 ), enJunta );
 	return material( {
 		acabado,
-		rugosidad: mix( float( rug ).add( vetas.mul( 0.08 ) ), float( 0.9 ), enJunta ),
+		rugosidad: mix( valor( rug ).add( vetas.mul( 0.08 ) ), float( 0.9 ), enJunta ),
 		relieve: enJunta.oneMinus().mul( 0.6 ),
 		relieveEscala: 0.35,
 		planoColor: PALETA.papel,
@@ -240,7 +247,7 @@ export function madera( tono = '#b99a78', oscuro = '#94765a', rug = 0.55 ) {
 	const t = veta.mul( 0.55 ).add( fibra.mul( 0.45 ) );
 	return material( {
 		acabado: mix( color( oscuro ), color( tono ), t ),
-		rugosidad: float( rug ).add( fibra.mul( 0.1 ) ),
+		rugosidad: valor( rug ).add( fibra.mul( 0.1 ) ),
 		relieve: fibra.mul( 0.4 ),
 		relieveEscala: 0.1,
 		barridoLocal: false,
@@ -396,7 +403,7 @@ export function emisivo( tono = '#fff4e0', intensidad = 2 ) {
 
 	const m = material( { acabado: color( tono ), rugosidad: 0.8, planoColor: PALETA.papel } );
 	const plano = color( PALETA.papel ).mul( 1.12 );
-	m.emissiveNode = mix( color( tono ).mul( float( intensidad ).mul( U.acabado ) ), plano, U.plano );
+	m.emissiveNode = mix( color( tono ).mul( valor( intensidad ).mul( U.acabado ) ), plano, U.plano );
 	return m;
 
 }

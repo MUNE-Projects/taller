@@ -461,6 +461,12 @@ body.con-etiquetas .etiqueta { opacity: 1; }
 	transition: opacity 400ms var(--salida), visibility 0s linear 400ms;
 }
 body.listo #carga { opacity: 0; visibility: hidden; }
+.carga-caja { display: grid; justify-items: center; gap: 14px; }
+.carga-logo svg { display: block; height: 32px; width: auto; }
+.carga-texto { margin: 0; }
+.carga-barra { width: 180px; height: 3px; border-radius: 3px; background: var(--linea); overflow: hidden; }
+.carga-barra span { display: block; height: 100%; width: 0; background: var(--tinta-2); transition: width 200ms linear; }
+.calidad { font-size: 11px; color: var(--tinta-2); opacity: 0.8; }
 
 /* ------------------------------------------------ pantallas pequeñas */
 @media (max-width: 760px) {

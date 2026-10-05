@@ -371,8 +371,30 @@ async function iniciar() {
 	// finos del plano; FXAA es espacial y determinista: la imagen queda fija.
 	const pipelinePlano = new THREE.RenderPipeline( renderer );
 	pipelinePlano.outputColorTransform = false;
-	pipelinePlano.outputNode = fxaa( renderOutput( pass( escena, camara ) ) );
-	const renderizar = () => ( modo === 'plano' ? pipelinePlano : pipeline ).render();
+	const escenaPlano = pass( escena, camara );
+	pipelinePlano.outputNode = fxaa( renderOutput( escenaPlano ) );
+	// Mientras se compilan shaders en segundo plano, el renderer conserva el
+	// destino y las salidas de esa compilación: cada fotograma los aparta y los
+	// devuelve, para que la compilación y el dibujo no se pisen.
+	let enCompilacion: { destino: THREE.RenderTarget | null; mrt: ReturnType<typeof renderer.getMRT> | null } | null = null;
+	const renderizar = () => {
+
+		if ( enCompilacion ) {
+
+			renderer.setRenderTarget( null );
+			renderer.setMRT( null );
+
+		}
+
+		( modo === 'plano' ? pipelinePlano : pipeline ).render();
+		if ( enCompilacion ) {
+
+			renderer.setRenderTarget( enCompilacion.destino );
+			renderer.setMRT( enCompilacion.mrt );
+
+		}
+
+	};
 
 	// ---------------------------------------------------------------- estados y cámara
 	// Internamente se conservan los estados de construcción (la vivienda "se
@@ -1176,9 +1198,13 @@ async function iniciar() {
 	let exposicion = renderer.toneMappingExposure;
 	let interiorT = 0;
 	let piscinaT = conf.piscina ? 1 : 0;
+	// no se pinta nada hasta que los shaders de la vista inicial estén compilados
+	let preparado = false;
+	// luces de ventana: se activan cuando sus shaders están compilados (segunda fase)
+	let ventanasListas = false;
 	renderer.setAnimationLoop( ( t ) => {
 
-		if ( pausado || capturando ) return;
+		if ( ! preparado || pausado || capturando ) return;
 		est.actualizar( t );
 		cam.actualizar( performance.now() );
 		const orbitando = ctrl.update();
@@ -1197,7 +1223,7 @@ async function iniciar() {
 		for ( const tc of c.techos.children ) tc.castShadow = bajo || tc.userData.porche;
 		c.techos.visible = est.valores.muros > 0.98;
 		// luz de ventana: con el sol (no en el plano, donde no aporta y cuesta sombras)
-		lucesVentana.visible = modo !== 'plano' && est.valores.sol > 0.05;
+		lucesVentana.visible = ventanasListas && modo !== 'plano' && est.valores.sol > 0.05;
 		for ( const l of lucesVentana.children ) if ( ( l as THREE.SpotLight ).isSpotLight ) ( l as THREE.SpotLight ).intensity = l.userData.base * est.valores.sol / 3.4;
 		c.canto.visible = bajo && c.techos.visible;
 		conf.actualizar( performance.now() );
@@ -1242,7 +1268,82 @@ async function iniciar() {
 	cam.ir( 'aerea', true );
 	marcarVista( 'aerea' );
 	irModo( 'vivienda' );
+
+	// ---------------------------------------------------------------- compilación de shaders
+	// El navegador necesita un programa de dibujo por tipo de material y por
+	// combinación de luces. Compilarlos al pintar el primer fotograma congelaba
+	// la página (hasta 2 minutos en un portátil normal). Aquí se compilan antes,
+	// cediendo el control al navegador entre objeto y objeto:
+	//  1. vista inicial sin luces de ventana (pantalla de carga con progreso);
+	//  2. con la vivienda ya navegable: luces de ventana y modo Plano, en segundo plano.
+	const compilar = async ( paso: { destino: THREE.RenderTarget; mrt: ReturnType<typeof renderer.getMRT> | null }, conVentanas: boolean, progreso?: ( f: number ) => void ) => {
+
+		// todo visible durante la parte síncrona (lista de objetos y luces): los
+		// estados de construcción ocultan partes que se verán más tarde
+		const ocultos: THREE.Object3D[] = [];
+		escena.traverse( ( o ) => {
+
+			if ( ! o.visible && o !== lucesVentana ) {
+
+				ocultos.push( o );
+				o.visible = true;
+
+			}
+
+		} );
+		const ventanasAntes = lucesVentana.visible;
+		lucesVentana.visible = conVentanas;
+		const previo = { destino: renderer.getRenderTarget(), mrt: renderer.getMRT() };
+		renderer.setRenderTarget( paso.destino );
+		renderer.setMRT( paso.mrt );
+		enCompilacion = paso;
+		const trabajo = renderer.compileAsync( escena, camara, null, ( e ) => progreso?.( e.loaded / Math.max( 1, e.total ) ) );
+		for ( const o of ocultos ) o.visible = false;
+		lucesVentana.visible = ventanasAntes;
+		try {
+
+			await trabajo;
+
+		} finally {
+
+			enCompilacion = null;
+			renderer.setRenderTarget( previo.destino );
+			renderer.setMRT( previo.mrt );
+
+		}
+
+	};
+	const barra = $( '.carga-barra span' );
+	await compilar( { destino: escenaPass.renderTarget, mrt: escenaPass.getMRT() }, false, ( f ) => ( barra.style.width = `${ Math.round( f * 100 ) }%` ) );
+	preparado = true;
+	despertar();
+	// el primer fotograma (sombras y efectos) se pinta tras la pantalla de carga
+	await new Promise( requestAnimationFrame );
+	await new Promise( requestAnimationFrame );
 	document.body.classList.add( 'listo' );
+	void ( async () => {
+
+		const aviso = $( '#calidad' );
+		aviso.hidden = false;
+		try {
+
+			await compilar( { destino: escenaPass.renderTarget, mrt: escenaPass.getMRT() }, true );
+			ventanasListas = true;
+			despertar();
+			await compilar( { destino: escenaPlano.renderTarget, mrt: null }, false );
+
+		} catch ( e ) {
+
+			console.warn( 'Compilación en segundo plano:', e );
+			ventanasListas = true;
+
+		} finally {
+
+			aviso.hidden = true;
+
+		}
+
+	} )();
 	if ( comprador ) avisar( `Bienvenido. Estás viendo tu vivienda ${ comprador.ref }. Pulsa Personalizar para elegir tus acabados.` );
 
 	// ---------------------------------------------------------------- studio (producción)

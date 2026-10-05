@@ -2,7 +2,8 @@
 // y la proyección del porche, como líneas finas sobre el suelo.
 
 import * as THREE from 'three/webgpu';
-import { color, float, uniform } from 'three/tsl';
+import { float, uniform } from 'three/tsl';
+import { color } from './materiales';
 import type { Rect, Vivienda } from '../modelo/tipos';
 
 export const uLineas = uniform( 1 );

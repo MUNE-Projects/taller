@@ -6,7 +6,6 @@
 
 import * as THREE from 'three/webgpu';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { color } from 'three/tsl';
 import type { Equipamiento, Vivienda } from '../modelo/tipos';
 import { unir } from '../util/geo';
 import * as M from './materiales';
@@ -32,14 +31,14 @@ export function materialDinamico( k: string ): THREE.Material {
 		case 'boucle': m = M.boucle( tono ); break;
 		case 'madera': m = M.madera( tono, M.oscurecer( tono, 0.78 ), 0.55 ); break;
 		case 'metal': m = M.metalico( tono, 0.32 ); break;
-		case 'ceramica': m = M.material( { acabado: color( tono ), rugosidad: 0.28, fisico: { clearcoat: 0.5, clearcoatRoughness: 0.15 } } ); break;
+		case 'ceramica': m = M.material( { acabado: M.color( tono ), rugosidad: 0.28, fisico: { clearcoat: 0.5, clearcoatRoughness: 0.15 } } ); break;
 		case 'marmol': m = M.marmol( tono ); break;
-		case 'terracota': m = M.material( { acabado: color( tono ), rugosidad: 0.85 } ); break;
+		case 'terracota': m = M.material( { acabado: M.color( tono ), rugosidad: 0.85 } ); break;
 		case 'hoja': m = M.hoja( tono ); break;
 		case 'emisivo': m = M.emisivo( tono, extra ? Number( extra ) : 2 ); break;
 		case 'lienzo': m = M.lienzo( tono.split( ',' ) ); break;
 		case 'vidrio': m = M.vidrio( tono, 0.35 ); break;
-		default: m = M.material( { acabado: color( tono ), rugosidad: 0.7 } );
+		default: m = M.material( { acabado: M.color( tono ), rugosidad: 0.7 } );
 
 	}
 
@@ -53,8 +52,8 @@ function crearMateriales() {
 	return {
 		lacado: M.lacado( '#f2f0eb', 0.4 ),
 		laminado: M.laminadoCocina(),
-		zocalo: M.material( { acabado: color( '#3a3a39' ), rugosidad: 0.6 } ),
-		sombra: M.material( { acabado: color( '#1b1b1b' ), rugosidad: 0.9 } ),
+		zocalo: M.material( { acabado: M.color( '#3a3a39' ), rugosidad: 0.6 } ),
+		sombra: M.material( { acabado: M.color( '#1b1b1b' ), rugosidad: 0.9 } ),
 		cuarzo: M.cuarzo(),
 		inox: M.metalico( '#cdd0d1', 0.28 ),
 		cromo: M.metalico( '#c4c6c7', 0.22 ),
@@ -66,10 +65,10 @@ function crearMateriales() {
 		cojin: M.textil( '#e8e3da' ),
 		ropa: M.textil( '#f4f2ed', 0.8 ),
 		cabecero: M.textil( '#c9bfb0' ),
-		metalNegro: M.material( { acabado: color( '#202020' ), rugosidad: 0.45, metal: 0.7 } ),
+		metalNegro: M.material( { acabado: M.color( '#202020' ), rugosidad: 0.45, metal: 0.7 } ),
 		vidrio: M.vidrio( '#e6eeee', 0.16 ),
 		espejo: M.espejo(),
-		resina: M.material( { acabado: color( '#ecebe7' ), rugosidad: 0.55 } ),
+		resina: M.material( { acabado: M.color( '#ecebe7' ), rugosidad: 0.55 } ),
 	};
 
 }

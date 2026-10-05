@@ -137,6 +137,7 @@
 			<strong>Promotora</strong>
 			<button type="button" id="salir-promotora" class="enlace">Salir</button>
 		</span>
+		<span id="calidad" class="calidad" role="status" hidden>Mejorando la iluminación…</span>
 		<span id="motor"></span>
 	</footer>
 
@@ -150,7 +151,13 @@
 		</figure>
 	</div>
 
-	<div id="carga" role="status">Preparando la vivienda…</div>
+	<div id="carga" role="status" aria-live="polite">
+		<div class="carga-caja">
+			<span id="carga-logo" class="carga-logo" aria-hidden="true"></span>
+			<p class="carga-texto">Preparando la vivienda…</p>
+			<div class="carga-barra" aria-hidden="true"><span></span></div>
+		</div>
+	</div>
 
 	<script type="module" src="/src/main.ts"></script>
 </body>

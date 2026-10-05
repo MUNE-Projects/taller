@@ -46,8 +46,7 @@ export function aplicarMarca( p: Promocion ) {
 	document.title = `${ p.promocion.nombre } · ${ m.promotora }`;
 
 	// textos de la interfaz
-	const logo = document.querySelector( '#ficha-logo' );
-	if ( logo ) logo.innerHTML = m.logoSvg;
+	for ( const logo of document.querySelectorAll( '#ficha-logo, #carga-logo' ) ) logo.innerHTML = m.logoSvg;
 	const nombre = document.querySelector( '#ficha-promocion' );
 	if ( nombre ) nombre.textContent = `${ p.promocion.nombre } · ${ p.promocion.ubicacion }`;
 

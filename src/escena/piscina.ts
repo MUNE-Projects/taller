@@ -2,7 +2,7 @@
 // Se construye una vez y se muestra u oculta sin reconstruir nada más.
 
 import * as THREE from 'three/webgpu';
-import { bumpMap, color, float, mx_noise_float, positionWorld, time, vec3 } from 'three/tsl';
+import { bumpMap, float, mx_noise_float, positionWorld, time, vec3 } from 'three/tsl';
 import type { Piscina, Vivienda } from '../modelo/tipos';
 import { puntoEnPoligono } from '../util/geo';
 import { caja, unir } from '../util/geo';
@@ -64,7 +64,7 @@ export function construirPiscina( c: Piscina ) {
 	const p = positionWorld;
 	const ola = mx_noise_float( vec3( p.x.mul( 3 ).add( time.mul( 0.25 ) ), p.z.mul( 3 ), time.mul( 0.2 ) ) )
 		.add( mx_noise_float( vec3( p.x.mul( 7 ), p.z.mul( 7 ).sub( time.mul( 0.35 ) ), 1.3 ) ).mul( 0.5 ) );
-	agua.colorNode = color( '#5fa9bb' );
+	agua.colorNode = M.color( '#5fa9bb' );
 	agua.opacityNode = float( 0.55 );
 	agua.roughnessNode = float( 0.04 );
 	agua.normalNode = bumpMap( ola, float( 0.08 ) );
