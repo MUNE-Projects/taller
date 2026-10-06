@@ -1,0 +1,119 @@
+{
+  "promocion": "residencial-demo",
+  "versiones": [
+    {
+      "version": "v1",
+      "fecha": "2026-10-05T15:54:45Z",
+      "estado": "sustituida",
+      "taller": "b0ee43f2a314184e1015c37cf5b1edb995d7d311",
+      "aprobadoPor": "Carolina (MUNE Projects)",
+      "cambios": "Primera publicación de la demo en el escaparate",
+      "archivos": 6,
+      "bytes": 2173567
+    },
+    {
+      "version": "v2",
+      "fecha": "2026-10-05T18:29:43Z",
+      "estado": "sustituida",
+      "taller": "6f755e465caedd2ce611aaec632e8167b8b344f0",
+      "aprobadoPor": "Carolina (MUNE Projects) — pendiente de revisar la vista previa",
+      "cambios": "Carga del visor: sin congelar el navegador, pantalla de carga con marca y progreso, luces de ventana en segundo plano",
+      "archivos": 6,
+      "bytes": 2175340
+    },
+    {
+      "version": "v3",
+      "fecha": "2026-10-05T20:47:06Z",
+      "estado": "sustituida",
+      "taller": "0eb7e9a5e83eec8383929e4ee4cca70d2bc94aef",
+      "aprobadoPor": "Carolina (MUNE Projects) — pendiente de revisar la vista previa",
+      "cambios": "Carga más rápida: familias de materiales, ruido pre-generado, compilación en paralelo",
+      "archivos": 6,
+      "bytes": 2177313
+    },
+    {
+      "version": "v4",
+      "fecha": "2026-10-06T09:51:37Z",
+      "estado": "sustituida",
+      "taller": "251bd13846da653d88a166bdfb5567a92f34028c",
+      "aprobadoPor": "Carolina (MUNE Projects) — pendiente de revisar la vista previa",
+      "cambios": "Carga más rápida: material único por grupos de acabados",
+      "archivos": 6,
+      "bytes": 2178270
+    },
+    {
+      "version": "v5",
+      "fecha": "2026-10-06T11:06:07Z",
+      "estado": "sustituida",
+      "taller": "815b05fd5292c0bef8dffd1d8096ed6bf2be690a",
+      "aprobadoPor": "Carolina (MUNE Projects) — pendiente de revisar la vista previa",
+      "cambios": "Se abre en el plano; la vivienda 3D se prepara mientras tanto",
+      "archivos": 6,
+      "bytes": 2179286
+    },
+    {
+      "version": "v6",
+      "fecha": "2026-10-06T11:26:06Z",
+      "estado": "sustituida",
+      "taller": "9125e592415dd96ed779cc93fc91d1120d97e79a",
+      "aprobadoPor": "Carolina (MUNE Projects) — pendiente de revisar la vista previa",
+      "cambios": "Empieza en el plano y solo pasa a la vivienda al pulsar Vivienda",
+      "archivos": 6,
+      "bytes": 2179235
+    },
+    {
+      "version": "v7",
+      "fecha": "2026-10-06T11:35:12Z",
+      "estado": "publicada",
+      "taller": "b0e131bbef9cdab2dd56507745c0666fd47f22b7",
+      "aprobadoPor": "Carolina (MUNE Projects) — pendiente de revisar la vista previa",
+      "cambios": "Corrige el plano estirado",
+      "archivos": 6,
+      "bytes": 2179308
+    }
+  ],
+  "historial": [
+    {
+      "fecha": "2026-10-05T15:54:45Z",
+      "accion": "publicar",
+      "version": "v1",
+      "por": "Carolina (MUNE Projects)"
+    },
+    {
+      "fecha": "2026-10-05T18:29:43Z",
+      "accion": "publicar",
+      "version": "v2",
+      "por": "Carolina (MUNE Projects) — pendiente de revisar la vista previa"
+    },
+    {
+      "fecha": "2026-10-05T20:47:06Z",
+      "accion": "publicar",
+      "version": "v3",
+      "por": "Carolina (MUNE Projects) — pendiente de revisar la vista previa"
+    },
+    {
+      "fecha": "2026-10-06T09:51:37Z",
+      "accion": "publicar",
+      "version": "v4",
+      "por": "Carolina (MUNE Projects) — pendiente de revisar la vista previa"
+    },
+    {
+      "fecha": "2026-10-06T11:06:07Z",
+      "accion": "publicar",
+      "version": "v5",
+      "por": "Carolina (MUNE Projects) — pendiente de revisar la vista previa"
+    },
+    {
+      "fecha": "2026-10-06T11:26:06Z",
+      "accion": "publicar",
+      "version": "v6",
+      "por": "Carolina (MUNE Projects) — pendiente de revisar la vista previa"
+    },
+    {
+      "fecha": "2026-10-06T11:35:12Z",
+      "accion": "publicar",
+      "version": "v7",
+      "por": "Carolina (MUNE Projects) — pendiente de revisar la vista previa"
+    }
+  ]
+}

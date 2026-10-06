@@ -1,0 +1,26 @@
+{
+  "name": "inmobiliarias",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Visualización arquitectónica 3D procedural a partir de planos de vivienda (Three.js + TSL).",
+  "scripts": {
+    "dev": "vite",
+    "studio": "vite --mode studio",
+    "build": "tsc --noEmit && vite build",
+    "build:studio": "tsc --noEmit && vite build --mode studio",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "plano": "python3 herramientas/extraer_plano.py",
+    "artefacto": "npm run build:studio && python3 herramientas/empaquetar_artefacto.py"
+  },
+  "dependencies": {
+    "jspdf": "4.2.1",
+    "three": "0.186.1"
+  },
+  "devDependencies": {
+    "@types/three": "^0.186.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.1"
+  }
+}
