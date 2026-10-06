@@ -8,7 +8,11 @@ con contraseña + código del móvil y registro de actividad.
   - `001_panel.sql`: administradoras y registro de actividad;
   - `002_promociones.sql`: lista privada de promotoras y promociones;
   - `003_peticiones.sql`: peticiones de cambios y usuario robot de Claude;
-  - `004_referencias.sql`: almacén privado de fotos de referencia.
+  - `004_referencias.sql`: almacén privado de fotos de referencia;
+  - `005_portal.sql`: portal de promotoras (miembros, requisitos, documentos, entregables, validaciones y sus almacenes privados).
+
+  Ojo: volver a lanzar `002` después de `005` quita los permisos de escritura de la administradora; en ese caso, relanzar `005`.
+- Prueba de aislamiento entre promotoras: `bash pruebas/lanzar.sh` (necesita Docker y psql). Levanta un Supabase local vacío, aplica estos archivos y hace las comprobaciones. En GitHub se lanza sola en cada propuesta (`.github/workflows/aislamiento.yml`).
 - Función de Supabase `ejecutar` (`supabase/funciones/ejecutar/index.ts`): botones Publicar y Volver, a través de `.github/workflows/publicar.yml`.
 - Mapa completo del Panel y brazo ejecutor: `docs/panel.md`.
 - Versiones: el Panel lee el `version.json` de cada promoción en producción y en la vista previa del escaparate. No existe ninguna lista pública de promociones.
