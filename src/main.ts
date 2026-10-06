@@ -1413,7 +1413,6 @@ async function iniciar() {
 	await new Promise( requestAnimationFrame );
 	await new Promise( requestAnimationFrame );
 	document.body.classList.add( 'listo' );
-	const tListo = performance.now();
 	void ( async () => {
 
 		const aviso = $( '#calidad' );
@@ -1426,9 +1425,9 @@ async function iniciar() {
 			await new Promise( requestAnimationFrame );
 			await new Promise( requestAnimationFrame );
 			viviendaLista = true;
-			// si se pidió la vivienda, se abre; si nadie ha tocado el plano, la vivienda
-			// «se construye» sola desde el plano; si se está usando el plano, se respeta
-			const destino = modoPendiente ?? ( ultimaInteraccion <= tListo ? 'vivienda' : null );
+			// la visita se queda en el plano: la vivienda se abre cuando el visitante
+			// la pide (si la pidió antes de estar lista, se abre ahora)
+			const destino = modoPendiente;
 			modoPendiente = null;
 			if ( destino && ( modo as Modo ) === 'plano' ) irModo( destino );
 
