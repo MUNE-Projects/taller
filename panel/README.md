@@ -10,7 +10,8 @@ con contraseña + código del móvil y registro de actividad.
   - `003_peticiones.sql`: peticiones de cambios y usuario robot de Claude;
   - `004_referencias.sql`: almacén privado de fotos de referencia;
   - `005_portal.sql`: portal de promotoras (miembros, requisitos, documentos, entregables, validaciones y sus almacenes privados);
-  - `006_accesos.sql`: accesos de las promotoras (para la sección *Promotoras* y la función `invitar`).
+  - `006_accesos.sql`: accesos de las promotoras (para la sección *Promotoras* y la función `invitar`);
+  - `007_equipos.sql`: equipos por promoción (o acceso a todas las de la promotora), sin roles, y datos fiscales de promotoras y promociones.
 
   Ojo: volver a lanzar `002` después de `005` quita los permisos de escritura de la administradora; en ese caso, relanzar `005`.
 - Prueba de aislamiento entre promotoras: `bash pruebas/lanzar.sh` (necesita Docker y psql). Levanta un Supabase local vacío, aplica estos archivos y hace las comprobaciones. En GitHub se lanza sola en cada propuesta (`.github/workflows/aislamiento.yml`).

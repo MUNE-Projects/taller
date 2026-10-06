@@ -116,26 +116,30 @@ const [ pA ] = await exigir( admin.from( 'promotoras' ).insert( { nombre: 'Promo
 const [ pB ] = await exigir( admin.from( 'promotoras' ).insert( { nombre: 'Promotora B (prueba)' } ).select( 'id' ), 'alta promotora B' );
 await exigir( admin.from( 'promociones' ).insert( [
 	{ id: 'prueba-a', promotora_id: pA.id, nombre: 'Residencial A' },
+	{ id: 'prueba-a2', promotora_id: pA.id, nombre: 'Residencial A2 (otro equipo)' },
 	{ id: 'prueba-a-baja', promotora_id: pA.id, nombre: 'Residencial A (se desactiva)' },
 	{ id: 'prueba-b', promotora_id: pB.id, nombre: 'Residencial B' },
 ] ), 'alta promociones' );
 const reqs = await exigir( admin.from( 'requisitos' ).insert( [
 	{ promocion_id: 'prueba-a', bloque: 'Planos', elemento: 'Planta tipo' },
+	{ promocion_id: 'prueba-a2', bloque: 'Planos', elemento: 'Planta tipo' },
 	{ promocion_id: 'prueba-a-baja', bloque: 'Planos', elemento: 'Planta tipo' },
 	{ promocion_id: 'prueba-b', bloque: 'Planos', elemento: 'Planta tipo' },
 ] ).select( 'id, promocion_id' ), 'alta requisitos' );
 const req = Object.fromEntries( reqs.map( ( r ) => [ r.promocion_id, r.id ] ) );
 
 // Personas: en A, un gestor y una aprobadora; en B, una aprobadora.
+// Personas (acceso por promoción, sin roles): en A, un comercial solo de
+// «prueba-a» y una directora con acceso a todas; en B, una técnica de «prueba-b».
 const personas = [
-	[ 'gestor.a@prueba.local', pA.id, 'gestor' ],
-	[ 'aprobadora.a@prueba.local', pA.id, 'aprobador' ],
-	[ 'aprobadora.b@prueba.local', pB.id, 'aprobador' ],
+	[ 'gestor.a@prueba.local', pA.id, 'prueba-a', 'Comercial' ],
+	[ 'aprobadora.a@prueba.local', pA.id, null, 'Directora' ],
+	[ 'aprobadora.b@prueba.local', pB.id, 'prueba-b', 'Técnica' ],
 ];
-for ( const [ email, promotora, rol ] of personas ) {
+for ( const [ email, promotora, promocion, cargo ] of personas ) {
 
 	const id = await crearUsuario( email );
-	await exigir( admin.from( 'miembros' ).insert( { user_id: id, promotora_id: promotora, nombre: email, email, rol } ), `acceso ${ email }` );
+	await exigir( admin.from( 'miembros' ).insert( { user_id: id, promotora_id: promotora, promocion_id: promocion, nombre: email, email, cargo } ), `acceso ${ email }` );
 
 }
 const gestorA = await entrar( 'gestor.a@prueba.local' );
@@ -175,6 +179,7 @@ async function entregable( promocion, texto ) {
 const planoA = await entregable( 'prueba-a', 'plano de A' );
 const planoB = await entregable( 'prueba-b', 'plano de B' );
 const planoBaja = await entregable( 'prueba-a-baja', 'plano de A (baja)' );
+const planoA2 = await entregable( 'prueba-a2', 'plano de A2' );
 
 // ─── Comprobaciones ─────────────────────────────────────────────────────────
 
@@ -290,16 +295,23 @@ await caso( DEBE_FALLAR, '10. A intenta borrar su propio documento', async () =>
 
 } );
 
-await caso( DEBE_FALLAR, '11. Un usuario de A sin rol de aprobador intenta aprobar un plano', async () =>
-	falla( await gestorA.from( 'validaciones' ).insert( { entregable_id: planoA.id, decision: 'aprobado', confirmado: true } ) ) );
+await caso( DEBE_FALLAR, '11. Una persona del equipo de una promoción intenta ver o tocar otra promoción de su misma promotora', async () =>
+	vacio( await gestorA.from( 'promociones' ).select( 'id' ).eq( 'id', 'prueba-a2' ) )
+	&& vacio( await gestorA.from( 'requisitos' ).select( 'id' ).eq( 'promocion_id', 'prueba-a2' ) )
+	&& vacio( await gestorA.from( 'entregables' ).select( 'id' ).eq( 'promocion_id', 'prueba-a2' ) )
+	&& falla( await gestorA.storage.from( 'entregables' ).download( planoA2.ruta ) )
+	&& falla( await gestorA.storage.from( 'documentos' ).upload( `${ pA.id }/prueba-a2/${ req[ 'prueba-a2' ] }/x.pdf`, pdf( 'x' ) ) )
+	&& falla( await gestorA.from( 'validaciones' ).insert( { entregable_id: planoA2.id, decision: 'aprobado', confirmado: true } ) )
+	&& falla( await gestorA.rpc( 'guardar_datos_promocion', { p_promocion: 'prueba-a2', p_razon_social: 'x', p_cif: 'x', p_domicilio_fiscal: 'x' } ) ) );
 
 await caso( DEBE_FALLAR, '12. A intenta ver su promoción después de ser desactivada', async () => {
 
 	await exigir( admin.from( 'promociones' ).update( { activa: false } ).eq( 'id', 'prueba-a-baja' ), 'desactivar' );
-	return vacio( await gestorA.from( 'promociones' ).select( 'id' ).eq( 'id', 'prueba-a-baja' ) )
-		&& vacio( await gestorA.from( 'requisitos' ).select( 'id' ).eq( 'promocion_id', 'prueba-a-baja' ) )
-		&& falla( await gestorA.storage.from( 'entregables' ).download( planoBaja.ruta ) )
-		&& falla( await gestorA.storage.from( 'documentos' ).upload( `${ pA.id }/prueba-a-baja/${ req[ 'prueba-a-baja' ] }/x.pdf`, pdf( 'x' ) ) );
+	// (la directora tiene acceso a todas las promociones de A)
+	return vacio( await aprobA.from( 'promociones' ).select( 'id' ).eq( 'id', 'prueba-a-baja' ) )
+		&& vacio( await aprobA.from( 'requisitos' ).select( 'id' ).eq( 'promocion_id', 'prueba-a-baja' ) )
+		&& falla( await aprobA.storage.from( 'entregables' ).download( planoBaja.ruta ) )
+		&& falla( await aprobA.storage.from( 'documentos' ).upload( `${ pA.id }/prueba-a-baja/${ req[ 'prueba-a-baja' ] }/x.pdf`, pdf( 'x' ) ) );
 
 } );
 
@@ -324,13 +336,14 @@ await caso( DEBE_FALLAR, '14. A intenta ver las personas con acceso de B, el reg
 	&& vacio( await gestorA.from( 'peticiones' ).select( 'id' ) )
 	&& vacio( await gestorA.from( 'administradores' ).select( 'user_id' ) ) );
 
-await caso( DEBE_FALLAR, '15. A intenta darse a sí misma el rol de aprobadora', async () => {
+await caso( DEBE_FALLAR, '15. Una persona intenta ampliarse el acceso (a otra promoción o a todas)', async () => {
 
 	const { data: { user } } = await gestorA.auth.getUser();
-	await gestorA.from( 'miembros' ).update( { rol: 'aprobador' } ).eq( 'user_id', user.id );
-	const r = await gestorA.from( 'miembros' ).insert( { user_id: user.id, promotora_id: pB.id, nombre: 'x', email: 'x@x', rol: 'aprobador' } );
-	const fila = ( await servicio.from( 'miembros' ).select( 'rol' ).eq( 'user_id', user.id ).eq( 'promotora_id', pA.id ).single() ).data;
-	return falla( r ) && fila.rol === 'gestor';
+	await gestorA.from( 'miembros' ).update( { promocion_id: null } ).eq( 'user_id', user.id );
+	const r1 = await gestorA.from( 'miembros' ).insert( { user_id: user.id, promotora_id: pA.id, promocion_id: null, nombre: 'x', email: 'x@x' } );
+	const r2 = await gestorA.from( 'miembros' ).insert( { user_id: user.id, promotora_id: pA.id, promocion_id: 'prueba-a2', nombre: 'x', email: 'x@x' } );
+	const filas = ( await servicio.from( 'miembros' ).select( 'promocion_id' ).eq( 'user_id', user.id ) ).data;
+	return falla( r1 ) && falla( r2 ) && filas.length === 1 && filas[ 0 ].promocion_id === 'prueba-a';
 
 } );
 
@@ -365,7 +378,7 @@ await caso( DEBE_FALLAR, '19. Rechazar un plano sin comentario, o aprobarlo sin 
 await caso( DEBE_FALLAR, '20. Una persona con el acceso retirado intenta seguir entrando', async () => {
 
 	const id = await crearUsuario( 'baja.a@prueba.local' );
-	await exigir( admin.from( 'miembros' ).insert( { user_id: id, promotora_id: pA.id, nombre: 'Baja', email: 'baja.a@prueba.local', rol: 'aprobador' } ), 'acceso' );
+	await exigir( admin.from( 'miembros' ).insert( { user_id: id, promotora_id: pA.id, promocion_id: 'prueba-a', nombre: 'Baja', email: 'baja.a@prueba.local' } ), 'acceso' );
 	const baja = await entrar( 'baja.a@prueba.local' );
 	const antes = await baja.from( 'promociones' ).select( 'id' ).eq( 'id', 'prueba-a' );
 	await exigir( admin.from( 'miembros' ).update( { activo: false } ).eq( 'user_id', id ), 'retirar acceso' );
@@ -380,6 +393,25 @@ await caso( DEBE_FUNCIONAR, 'A ve sus promociones (y solo las activas)', async (
 
 	const { data } = await gestorA.from( 'promociones' ).select( 'id' ).order( 'id' );
 	return JSON.stringify( data.map( ( p ) => p.id ) ) === '["prueba-a"]';
+
+} );
+
+await caso( DEBE_FUNCIONAR, 'Quien tiene acceso a todas ve todas las promociones activas de su promotora', async () => {
+
+	const { data } = await aprobA.from( 'promociones' ).select( 'id' ).order( 'id' );
+	return JSON.stringify( data.map( ( p ) => p.id ) ) === '["prueba-a","prueba-a2"]';
+
+} );
+
+await caso( DEBE_FUNCIONAR, 'Cualquier persona del equipo rellena los datos fiscales de su promoción y de su promotora (y nada más)', async () => {
+
+	await exigir( gestorA.rpc( 'guardar_datos_promocion', { p_promocion: 'prueba-a', p_razon_social: 'Las Eras Promociones S.L.', p_cif: 'b11111111', p_domicilio_fiscal: 'Calle Mayor 1' } ), 'datos promoción' );
+	await exigir( gestorA.rpc( 'guardar_datos_promotora', { p_promotora: pA.id, p_razon_social: 'Grupo A S.A.', p_cif: 'a22222222', p_domicilio_fiscal: 'Calle Real 2', p_contacto: 'info@a.local' } ), 'datos promotora' );
+	const p = await filaDe( 'promociones', 'prueba-a' );
+	const po = ( await servicio.from( 'promotoras' ).select( 'cif' ).eq( 'id', pA.id ).single() ).data;
+	const ajena = await gestorA.rpc( 'guardar_datos_promotora', { p_promotora: pB.id, p_razon_social: 'x', p_cif: 'x', p_domicilio_fiscal: 'x', p_contacto: 'x' } );
+	const directa = await gestorA.from( 'promociones' ).update( { cif: 'X' } ).eq( 'id', 'prueba-a' );
+	return p.cif === 'B11111111' && p.estado === 'documentacion' && po.cif === 'A22222222' && falla( ajena ) && falla( directa );
 
 } );
 
@@ -468,8 +500,8 @@ async function ultimoEmail( para ) {
 
 await caso( DEBE_FALLAR, '22. Una promotora intenta dar acceso a alguien (o llamar sin sesión)', async () => {
 
-	const r1 = await invitar( aprobA, { accion: 'invitar', promotora_id: pA.id, nombre: 'Intrusa', email: 'intrusa@prueba.local', rol: 'aprobador' } );
-	const r2 = await invitar( anonimo, { accion: 'invitar', promotora_id: pA.id, nombre: 'Intrusa', email: 'intrusa@prueba.local', rol: 'aprobador' } );
+	const r1 = await invitar( aprobA, { accion: 'invitar', promotora_id: pA.id, nombre: 'Intrusa', email: 'intrusa@prueba.local', cargo: 'x' } );
+	const r2 = await invitar( anonimo, { accion: 'invitar', promotora_id: pA.id, promocion_id: 'prueba-a', nombre: 'Intrusa', email: 'intrusa@prueba.local' } );
 	const cuenta = await servicio.rpc( 'cuenta_por_email', { p_email: 'intrusa@prueba.local' } );
 	if ( estadoHttp( r1 ) !== 403 || ! [ 401, 403 ].includes( estadoHttp( r2 ) ) ) throw new Error( `respuestas ${ estadoHttp( r1 ) } y ${ estadoHttp( r2 ) }` );
 	return cuenta.data.length === 0;
@@ -484,14 +516,23 @@ await caso( DEBE_FALLAR, '23. Una promotora intenta averiguar cuentas por su cor
 	&& falla( await robot.rpc( 'accesos', { p_promotora: pB.id } ) ) );
 
 await caso( DEBE_FALLAR, '24. Dar acceso de promotora a una cuenta interna (administradora o robot)', async () =>
-	estadoHttp( await invitar( admin, { accion: 'invitar', promotora_id: pA.id, nombre: 'Robot', email: 'robot@prueba.local', rol: 'aprobador' } ) ) === 409
-	&& estadoHttp( await invitar( admin, { accion: 'invitar', promotora_id: pA.id, nombre: 'Admin', email: 'ADMIN@prueba.local', rol: 'gestor' } ) ) === 409 );
+	estadoHttp( await invitar( admin, { accion: 'invitar', promotora_id: pA.id, promocion_id: null, nombre: 'Robot', email: 'robot@prueba.local' } ) ) === 409
+	&& estadoHttp( await invitar( admin, { accion: 'invitar', promotora_id: pA.id, promocion_id: null, nombre: 'Admin', email: 'ADMIN@prueba.local' } ) ) === 409 );
+
+await caso( DEBE_FALLAR, '25. Dar acceso en una promotora a alguien que ya está en otra, o a una promoción ajena', async () => {
+
+	const r1 = estadoHttp( await invitar( admin, { accion: 'invitar', promotora_id: pA.id, promocion_id: 'prueba-a', nombre: 'Bea', email: 'aprobadora.b@prueba.local' } ) );
+	const r2 = estadoHttp( await invitar( admin, { accion: 'invitar', promotora_id: pA.id, promocion_id: 'prueba-b', nombre: 'Otra', email: 'otra@prueba.local' } ) );
+	if ( r1 !== 409 || r2 !== 404 ) throw new Error( `respuestas ${ r1 } y ${ r2 }` );
+	return true;
+
+} );
 
 let nuevaInvitada = false;
 await caso( DEBE_FUNCIONAR, 'La administradora invita a una persona: recibe el email, elige su contraseña y entra', async () => {
 
 	const email = 'nueva.a@prueba.local';
-	const r = await invitar( admin, { accion: 'invitar', promotora_id: pA.id, nombre: 'Nueva de A', email, rol: 'gestor' } );
+	const r = await invitar( admin, { accion: 'invitar', promotora_id: pA.id, promocion_id: 'prueba-a2', nombre: 'Nueva de A', email, cargo: 'Técnica' } );
 	if ( r.error ) throw new Error( `invitar: ${ await r.error.context?.text?.() ?? r.error.message }` );
 	const mensaje = await ultimoEmail( email );
 	const enlace = mensaje.Text.match( /https?:\/\/\S+verify\S+/ )?.[ 0 ];
@@ -507,20 +548,22 @@ await caso( DEBE_FUNCIONAR, 'La administradora invita a una persona: recibe el e
 	const { data } = await nueva.from( 'promociones' ).select( 'id' );
 	const accesos = await exigir( admin.rpc( 'accesos', { p_promotora: pA.id } ), 'accesos' );
 	nuevaInvitada = true;
-	return data.length === 1 && data[ 0 ].id === 'prueba-a' && accesos.some( ( a ) => a.email === email && a.aceptada && a.rol === 'gestor' );
+	return data.length === 1 && data[ 0 ].id === 'prueba-a2' && accesos.some( ( a ) => a.email === email && a.aceptada && a.cargo === 'Técnica' && a.promocion_id === 'prueba-a2' );
 
 } );
 
-await caso( DEBE_FUNCIONAR, 'Volver a invitar el mismo correo no duplica, y «Reenviar acceso» envía otro email', async () => {
+await caso( DEBE_FUNCIONAR, 'Volver a invitar a la misma promoción no duplica; a otra promoción, sí suma acceso; «Reenviar» envía otro email', async () => {
 
 	if ( ! nuevaInvitada ) throw new Error( 'depende del caso anterior' );
-	const r = await invitar( admin, { accion: 'invitar', promotora_id: pA.id, nombre: 'Otra vez', email: 'nueva.a@prueba.local', rol: 'gestor' } );
+	const r = await invitar( admin, { accion: 'invitar', promotora_id: pA.id, promocion_id: 'prueba-a2', nombre: 'Otra vez', email: 'nueva.a@prueba.local' } );
+	// …pero sí se le puede dar acceso a otra promoción de la misma promotora, sin otro email
+	const otra = await invitar( admin, { accion: 'invitar', promotora_id: pA.id, promocion_id: 'prueba-a', nombre: 'Nueva de A', email: 'nueva.a@prueba.local' } );
 	const { data: [ cuenta ] } = await servicio.rpc( 'cuenta_por_email', { p_email: 'nueva.a@prueba.local' } );
 	const antes = ( await ( await fetch( `${ BUZON }/api/v1/search?query=${ encodeURIComponent( 'to:nueva.a@prueba.local' ) }` ) ).json() ).messages.length;
 	const re = await invitar( admin, { accion: 'reenviar', promotora_id: pA.id, user_id: cuenta.user_id } );
 	await new Promise( ( ok ) => setTimeout( ok, 1500 ) );
 	const despues = ( await ( await fetch( `${ BUZON }/api/v1/search?query=${ encodeURIComponent( 'to:nueva.a@prueba.local' ) }` ) ).json() ).messages.length;
-	return estadoHttp( r ) === 409 && ! re.error && despues === antes + 1;
+	return estadoHttp( r ) === 409 && ! otra.error && ! re.error && despues === antes + 1;
 
 } );
 

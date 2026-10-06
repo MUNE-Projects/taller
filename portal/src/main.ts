@@ -148,11 +148,14 @@ function pantallaClave(tipo: 'invite' | 'recovery'): void {
 
 // ── Navegación: #/ (inicio) y #/promocion/<id> ───────────────────────────
 
-interface Acceso { nombre: string; rol: string; promotoras: { nombre: string } | null }
+interface DatosFiscales { razon_social: string | null; cif: string | null; domicilio_fiscal: string | null }
+interface Promotora extends DatosFiscales { id: string; nombre: string; contacto: string | null }
+interface Acceso { nombre: string; cargo: string; promotoras: Promotora | null }
 let acceso: Acceso | null = null;
 
 async function navegar(): Promise<void> {
-	const { data, error } = await sb.from('miembros').select('nombre, rol, promotoras(nombre)').limit(1).maybeSingle();
+	const { data, error } = await sb.from('miembros')
+		.select('nombre, cargo, promotoras(id, nombre, razon_social, cif, domicilio_fiscal, contacto)').limit(1).maybeSingle();
 	if (error) throw error;
 	if (!data) {
 		await sb.auth.signOut();
@@ -172,9 +175,41 @@ addEventListener('hashchange', () => { if (acceso) void navegar().catch(fallo); 
 function cabeceraSesion(): string {
 	return `<div class="cabecera">
 		<div>${CABECERA}<h1>${esc(acceso?.promotoras?.nombre ?? '')}</h1>
-			<p class="rol">${esc(acceso?.nombre ?? '')} · ${acceso?.rol === 'aprobador' ? 'aprueba planos' : 'gestiona la documentación'}</p></div>
+			<p class="rol">${esc(acceso?.nombre ?? '')}${acceso?.cargo ? ` · ${esc(acceso.cargo)}` : ''}</p></div>
 		<button class="boton secundario" type="button" data-salir>Salir</button>
 	</div>`;
+}
+
+/** Formulario de datos fiscales (de la promotora o de una promoción). */
+function formFiscal(d: DatosFiscales & { contacto?: string | null }, conContacto: boolean, conCopiar: boolean): string {
+	return `<form class="peticion-form" data-fiscal novalidate>
+		${conCopiar ? '<button class="boton secundario pequeno" type="button" data-copiar>Copiar los datos de la promotora</button>' : ''}
+		<label>Razón social <input name="razon_social" maxlength="200" value="${esc(d.razon_social ?? '')}"></label>
+		<label>CIF <input name="cif" maxlength="20" value="${esc(d.cif ?? '')}"></label>
+		<label>Domicilio fiscal <input name="domicilio_fiscal" maxlength="300" value="${esc(d.domicilio_fiscal ?? '')}"></label>
+		${conContacto ? `<label>Persona de contacto (nombre, correo o teléfono) <input name="contacto" maxlength="300" value="${esc(d.contacto ?? '')}"></label>` : ''}
+		<p class="error" role="alert"></p>
+		<div class="acciones"><button class="boton" type="submit">Guardar datos</button></div>
+		<p class="ok" data-guardado role="status"></p>
+	</form>`;
+}
+
+/** Conecta el formulario de datos fiscales a la función que los guarda. */
+function conectarFiscal(guardar: (d: FormData) => PromiseLike<{ error: unknown }>): void {
+	const form = app.querySelector<HTMLFormElement>('[data-fiscal]')!;
+	alEnviar(form, async (d) => {
+		const { error } = await guardar(d);
+		if (error) throw error;
+		form.querySelector<HTMLElement>('[data-guardado]')!.textContent = '✓ Datos guardados.';
+		form.querySelector<HTMLButtonElement>('button[type=submit]')!.disabled = false;
+	});
+	form.querySelector('[data-copiar]')?.addEventListener('click', () => {
+		const po = acceso?.promotoras;
+		if (!po) return;
+		for (const campo of ['razon_social', 'cif', 'domicilio_fiscal'] as const) {
+			form.querySelector<HTMLInputElement>(`input[name=${campo}]`)!.value = po[campo] ?? '';
+		}
+	});
 }
 
 // ── Inicio: promociones ───────────────────────────────────────────────────
@@ -202,8 +237,28 @@ async function pantallaInicio(): Promise<void> {
 				</a>`;
 			}).join('')}</div>` : '<p class="vacio">Todavía no hay promociones. Cuando MUNE Projects dé de alta la primera, aparecerá aquí.</p>'}
 		</section>
+		<section class="tarjeta">
+			<h2>Datos de ${esc(acceso?.promotoras?.nombre ?? 'la promotora')}</h2>
+			<p class="ayuda">Los datos generales de la promotora. Cada promoción tiene además los suyos propios, por si es una sociedad distinta.</p>
+			${formFiscal(acceso?.promotoras ?? { razon_social: null, cif: null, domicilio_fiscal: null }, true, false)}
+		</section>
 	</div>`);
 	app.querySelector('[data-salir]')!.addEventListener('click', salir);
+	conectarFiscal((d) => sb.rpc('guardar_datos_promotora', {
+		p_promotora: acceso!.promotoras!.id, p_razon_social: String(d.get('razon_social')), p_cif: String(d.get('cif')),
+		p_domicilio_fiscal: String(d.get('domicilio_fiscal')), p_contacto: String(d.get('contacto')),
+	}).then(async (r) => {
+		// Para que «Copiar los datos de la promotora» use los datos recién guardados.
+		if (!r.error) await navegarSinPintar();
+		return r;
+	}));
+}
+
+/** Vuelve a leer los datos de la sesión (promotora) sin cambiar de pantalla. */
+async function navegarSinPintar(): Promise<void> {
+	const { data } = await sb.from('miembros')
+		.select('nombre, cargo, promotoras(id, nombre, razon_social, cif, domicilio_fiscal, contacto)').limit(1).maybeSingle();
+	if (data) acceso = data as unknown as Acceso;
 }
 
 // ── Una promoción: documentación, planos y entregables, versión publicada ─
@@ -218,7 +273,7 @@ const numVersion = (v: string) => Number(v.slice(1));
 
 async function pantallaPromocion(id: string): Promise<void> {
 	const [promo, reqs, docs, entr, vals] = await Promise.all([
-		sb.from('promociones').select('id, nombre, ubicacion, promotora_id').eq('id', id).maybeSingle(),
+		sb.from('promociones').select('id, nombre, ubicacion, promotora_id, razon_social, cif, domicilio_fiscal').eq('id', id).maybeSingle(),
 		sb.from('requisitos').select('id, bloque, elemento, descripcion, obligatorio, orden').eq('promocion_id', id).order('orden').order('id'),
 		sb.from('documentos').select('id, requisito_id, nombre, ruta, version, estado, nota, subido_en').eq('promocion_id', id).order('version', { ascending: false }),
 		sb.from('entregables').select('id, version, tipo, tipologia, nombre, ruta').eq('promocion_id', id).order('creado_en', { ascending: false }),
@@ -301,8 +356,16 @@ async function pantallaPromocion(id: string): Promise<void> {
 			<h2>Planos y entregables</h2>
 			${htmlEntr || '<p class="vacio">Todavía no hay planos ni entregables. Aparecerán aquí cuando estén listos.</p>'}
 		</section>
+		<section class="tarjeta">
+			<h2>Datos fiscales de la promoción</h2>
+			<p class="ayuda">La sociedad de esta promoción. Si es la misma que la de la promotora, pulsa «Copiar los datos de la promotora».</p>
+			${formFiscal(p, false, true)}
+		</section>
 	</div>`);
 	app.querySelector('[data-salir]')!.addEventListener('click', salir);
+	conectarFiscal((d) => sb.rpc('guardar_datos_promocion', {
+		p_promocion: p.id, p_razon_social: String(d.get('razon_social')), p_cif: String(d.get('cif')), p_domicilio_fiscal: String(d.get('domicilio_fiscal')),
+	}));
 	void pintarPublicada(p.id);
 
 	app.querySelectorAll<HTMLButtonElement>('[data-bajar]').forEach((b) => b.addEventListener('click', () => void descargar(b)));

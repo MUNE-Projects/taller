@@ -5,8 +5,9 @@
 //    móvil (la misma regla es_admin() de la base de datos).
 // 2. «invitar»: si el correo no tiene cuenta, la crea y Supabase le envía el
 //    email de invitación con el enlace para elegir su contraseña en el portal.
-//    Después le da acceso a la promotora, con su rol, usando la sesión de la
-//    administradora (así lo comprueban las reglas y queda en el registro).
+//    Después le da acceso a una promoción (o a todas las de su promotora), con
+//    su cargo, usando la sesión de la administradora (así lo comprueban las
+//    reglas y queda en el registro).
 //    «reenviar»: vuelve a enviar la invitación o, si ya la aceptó, un enlace
 //    para cambiar la contraseña.
 //
@@ -85,11 +86,17 @@ Deno.serve(async (req) => {
 	if (accion === 'invitar') {
 		const nombre = String(cuerpo.nombre ?? '').trim();
 		const email = String(cuerpo.email ?? '').trim().toLowerCase();
-		const rol = String(cuerpo.rol ?? '');
+		const cargo = String(cuerpo.cargo ?? '').trim();
+		// Sin promoción = acceso a todas las promociones de la promotora.
+		const promocion = cuerpo.promocion_id ? String(cuerpo.promocion_id) : null;
 		if (nombre.length < 2 || nombre.length > 120) return responder(400, { error: 'Escribe el nombre de la persona' });
 		if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 200) return responder(400, { error: 'El correo no es válido' });
-		if (rol !== 'gestor' && rol !== 'aprobador') return responder(400, { error: 'Rol no válido' });
+		if (cargo.length > 120) return responder(400, { error: 'El cargo es demasiado largo' });
 		if (!po.activa) return responder(409, { error: 'La promotora está desactivada. Actívala antes de dar accesos.' });
+		if (promocion) {
+			const { data: pr } = await sb.from('promociones').select('id').eq('id', promocion).eq('promotora_id', promotora).maybeSingle();
+			if (!pr) return responder(404, { error: 'Esa promoción no es de esta promotora' });
+		}
 
 		const { data: cuentas, error: eCuenta } = await servicio.rpc('cuenta_por_email', { p_email: email });
 		if (eCuenta) return responder(500, { error: `No se ha podido comprobar el correo: ${eCuenta.message}` });
@@ -105,12 +112,14 @@ Deno.serve(async (req) => {
 			enviada = true;
 		}
 
-		const { error: eMiembro } = await sb.from('miembros').insert({ user_id: userId, promotora_id: promotora, nombre, email, rol });
+		const { error: eMiembro } = await sb.from('miembros')
+			.insert({ user_id: userId, promotora_id: promotora, promocion_id: promocion, nombre, email, cargo });
 		if (eMiembro) {
-			if (eMiembro.code === '23505') return responder(409, { error: 'Esa persona ya tiene acceso a esta promotora (o lo tuvo: usa «Devolver acceso»).' });
+			if (eMiembro.code === '23505') return responder(409, { error: 'Esa persona ya tiene este acceso (o lo tuvo: usa «Devolver acceso»).' });
+			if (/otra promotora/.test(eMiembro.message)) return responder(409, { error: 'Ese correo ya tiene acceso en otra promotora.' });
 			return responder(500, { error: `No se ha podido dar el acceso: ${eMiembro.message}` });
 		}
-		await sb.from('registro').insert({ accion: 'da acceso al portal', detalle: { promotora, email, rol, invitacion: enviada } });
+		await sb.from('registro').insert({ accion: 'da acceso al portal', detalle: { promotora, promocion: promocion ?? 'todas', email, cargo, invitacion: enviada } });
 		return responder(200, {
 			ok: true,
 			mensaje: enviada
@@ -121,10 +130,9 @@ Deno.serve(async (req) => {
 
 	if (accion === 'reenviar') {
 		const userId = String(cuerpo.user_id ?? '');
-		const { data: m } = await sb.from('miembros').select('email, activo')
-			.eq('promotora_id', promotora).eq('user_id', userId).maybeSingle();
-		if (!m) return responder(404, { error: 'Esa persona no tiene acceso a esta promotora' });
-		if (!m.activo) return responder(409, { error: 'Su acceso está retirado. Devuélveselo antes de reenviar.' });
+		const { data: m } = await sb.from('miembros').select('email')
+			.eq('promotora_id', promotora).eq('user_id', userId).eq('activo', true).limit(1).maybeSingle();
+		if (!m) return responder(409, { error: 'Esa persona no tiene ningún acceso activo en esta promotora' });
 
 		const { data: u, error: eU } = await servicio.auth.admin.getUserById(userId);
 		if (eU || !u.user) return responder(404, { error: 'No se encuentra la cuenta' });
