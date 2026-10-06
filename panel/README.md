@@ -6,7 +6,10 @@ con contraseña + código del móvil y registro de actividad.
 - Código: `src/main.ts` (TypeScript sin frameworks) + `@supabase/supabase-js`.
 - Base de datos: los archivos de `supabase/` se ejecutan una vez, en orden, en Supabase → SQL Editor:
   - `001_panel.sql`: administradoras y registro de actividad;
-  - `002_promociones.sql`: lista privada de promotoras y promociones.
+  - `002_promociones.sql`: lista privada de promotoras y promociones;
+  - `003_peticiones.sql`: peticiones de cambios y usuario robot de Claude;
+  - `004_referencias.sql`: almacén privado de fotos de referencia.
+- Mapa completo del Panel: `docs/panel.md`.
 - Versiones: el Panel lee el `version.json` de cada promoción en producción y en la vista previa del escaparate. No existe ninguna lista pública de promociones.
 - Publicación: Cloudflare Workers (`wrangler.jsonc`), solo archivos estáticos.
 

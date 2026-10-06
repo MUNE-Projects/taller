@@ -2,6 +2,7 @@
 // Peticiones de cambios del Panel, vistas por el robot de Claude.
 //
 //   node herramientas/peticiones.mjs listar [--todas]
+//   node herramientas/peticiones.mjs fotos  <id>   (descarga las fotos de referencia a salida/referencias/<id>/)
 //   node herramientas/peticiones.mjs estado <id> <pendiente|en_curso|lista|descartada> [--nota "Texto"] [--enlace https://…]
 //
 // Credenciales: variables de entorno ROBOT_EMAIL y ROBOT_CLAVE, guardadas en la
@@ -13,6 +14,11 @@
 // promociones, cambiar estado/nota/enlace de una petición y anotar en el
 // registro. No puede borrar, crear peticiones, publicar ni cambiar reglas.
 
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const SALIDA = resolve( dirname( fileURLToPath( import.meta.url ) ), '..', 'salida', 'referencias' );
 const SUPABASE_URL = 'https://iowtdenlkxjqzlpwizgb.supabase.co';
 const SUPABASE_CLAVE_PUBLICA = 'sb_publishable_LLvwP-xexV-Hlz2R585IQQ_H2NfJebR';
 const ESTADOS = [ 'pendiente', 'en_curso', 'lista', 'descartada' ];
@@ -61,6 +67,29 @@ async function entrar() {
 
 }
 
+const listarFotos = ( token, id ) => pedir( '/storage/v1/object/list/referencias', { metodo: 'POST', token, cuerpo: { prefix: String( id ), limit: 100 } } );
+
+async function descargarFotos( token, id ) {
+
+	if ( ! /^\d+$/.test( id ?? '' ) ) fallo( 'Indica el número de la petición, por ejemplo: 3' );
+	const archivos = ( await listarFotos( token, id ) ).filter( ( a ) => a.name && a.id );
+	if ( ! archivos.length ) return console.log( `La petición #${ id } no tiene fotos de referencia.` );
+	const carpeta = join( SALIDA, String( id ) );
+	mkdirSync( carpeta, { recursive: true } );
+	for ( const a of archivos ) {
+
+		const r = await fetch( `${ SUPABASE_URL }/storage/v1/object/authenticated/referencias/${ id }/${ encodeURIComponent( a.name ) }`, {
+			headers: { apikey: SUPABASE_CLAVE_PUBLICA, Authorization: `Bearer ${ token }` },
+		} );
+		if ( ! r.ok ) fallo( `No se pudo descargar ${ a.name } (${ r.status })` );
+		writeFileSync( join( carpeta, a.name ), Buffer.from( await r.arrayBuffer() ) );
+		console.log( `✓ ${ join( 'salida', 'referencias', String( id ), a.name ) }` );
+
+	}
+	await anotar( token, 'robot descarga fotos de referencia', { peticion: Number( id ) } );
+
+}
+
 const anotar = ( token, accion, detalle ) => pedir( '/rest/v1/registro', { metodo: 'POST', token, cuerpo: { accion, detalle }, prefer: 'return=minimal' } );
 
 async function listar( token ) {
@@ -74,6 +103,8 @@ async function listar( token ) {
 		console.log( `  ${ p.texto.replace( /\n/g, '\n  ' ) }` );
 		if ( p.nota ) console.log( `  nota: ${ p.nota }` );
 		if ( p.enlace ) console.log( `  enlace: ${ p.enlace }` );
+		const fotos = ( await listarFotos( token, p.id ) ).filter( ( a ) => a.name && a.id );
+		if ( fotos.length ) console.log( `  fotos de referencia: ${ fotos.length } (node herramientas/peticiones.mjs fotos ${ p.id })` );
 
 	}
 
@@ -99,6 +130,7 @@ switch ( orden ) {
 
 	case 'listar': await listar( token ); break;
 	case 'estado': await cambiarEstado( token, id, estado ); break;
-	default: fallo( 'Orden desconocida. Usa: listar | estado' );
+	case 'fotos': await descargarFotos( token, id ); break;
+	default: fallo( 'Orden desconocida. Usa: listar | fotos | estado' );
 
 }

@@ -225,6 +225,9 @@ async function pintarPromociones(destino: HTMLElement): Promise<void> {
 					<textarea name="texto" rows="4" maxlength="4000" required
 						placeholder="Por ejemplo: el suelo de la cocina más claro y el sofá del salón en gris."></textarea>
 				</label>
+				<label>Fotos de referencia (opcional, hasta ${MAX_FOTOS}: JPG, PNG o WebP, máx. 10 MB cada una)
+					<input name="fotos" type="file" accept="image/jpeg,image/png,image/webp" multiple>
+				</label>
 				<p class="error" role="alert"></p>
 				<div class="acciones">
 					<button class="boton" type="submit">Enviar petición</button>
@@ -250,16 +253,52 @@ async function pintarPromociones(destino: HTMLElement): Promise<void> {
 		alEnviar(form, async (d) => {
 			const texto = String(d.get('texto')).trim();
 			if (texto.length < 3) throw new Error('Escribe qué quieres cambiar.');
+			const fotos = (d.getAll('fotos') as File[]).filter((f) => f.size > 0);
+			comprobarFotos(fotos);
 			const { data, error } = await sb.from('peticiones')
 				.insert({ promocion_id: b.dataset.pedir, version: b.dataset.version || null, texto })
 				.select('id').single();
 			if (error) throw error;
-			await anotar('pide cambios', { id: b.dataset.pedir, peticion: data.id });
+			await subirFotos(data.id, fotos);
+			await anotar('pide cambios', { id: b.dataset.pedir, peticion: data.id, fotos: fotos.length });
 			cerrar();
 			form.querySelector<HTMLButtonElement>('button[type=submit]')!.disabled = false;
 			void pintarPeticiones(app.querySelector<HTMLElement>('[data-peticiones]')!);
 		});
 	});
+}
+
+// ── Fotos de referencia ───────────────────────────────────────────────────
+// Almacén privado «referencias/<petición>/…» (supabase/004_referencias.sql).
+
+const MAX_FOTOS = 5;
+const MAX_TAM_FOTO = 10 * 1024 * 1024;
+const TIPOS_FOTO: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
+
+function comprobarFotos(fotos: File[]): void {
+	if (fotos.length > MAX_FOTOS) throw new Error(`Puedes adjuntar como máximo ${MAX_FOTOS} fotos.`);
+	for (const f of fotos) {
+		if (!TIPOS_FOTO[f.type]) throw new Error(`«${f.name}» no es JPG, PNG ni WebP.`);
+		if (f.size > MAX_TAM_FOTO) throw new Error(`«${f.name}» pesa más de 10 MB.`);
+	}
+}
+
+async function subirFotos(peticion: number, fotos: File[]): Promise<void> {
+	for (const [i, f] of fotos.entries()) {
+		const ruta = `${peticion}/${i + 1}.${TIPOS_FOTO[f.type]}`;
+		const { error } = await sb.storage.from('referencias').upload(ruta, f, { contentType: f.type, upsert: false });
+		if (error) throw new Error(`La petición se ha guardado, pero la foto «${f.name}» no se ha podido subir: ${error.message}`);
+	}
+}
+
+/** Miniaturas de las fotos de una petición (enlaces temporales de 1 hora). */
+async function miniaturas(peticion: number): Promise<string> {
+	const { data: archivos } = await sb.storage.from('referencias').list(String(peticion));
+	if (!archivos?.length) return '';
+	const { data: urls } = await sb.storage.from('referencias')
+		.createSignedUrls(archivos.map((a) => `${peticion}/${a.name}`), 3600);
+	return `<div class="fotos">${(urls ?? []).filter((u) => u.signedUrl).map((u, i) =>
+		`<a href="${esc(u.signedUrl!)}" target="_blank" rel="noopener noreferrer"><img src="${esc(u.signedUrl!)}" alt="Foto de referencia ${i + 1}" loading="lazy"></a>`).join('')}</div>`;
 }
 
 // ── Peticiones de cambios ─────────────────────────────────────────────────
@@ -291,7 +330,8 @@ async function pintarPeticiones(destino: HTMLElement): Promise<void> {
 		destino.innerHTML = '<p class="vacio">No hay peticiones. Usa «Pedir cambios» en una promoción.</p>';
 		return;
 	}
-	destino.innerHTML = lista.map((p) => {
+	const fotos = await Promise.all(lista.map((p) => miniaturas(p.id)));
+	destino.innerHTML = lista.map((p, i) => {
 		const [etiqueta, clase] = ESTADOS[p.estado] ?? [p.estado, ''];
 		return `<article class="peticion">
 			<div class="promo-cabeza">
@@ -299,6 +339,7 @@ async function pintarPeticiones(destino: HTMLElement): Promise<void> {
 				<span class="estado ${clase}">${esc(etiqueta)}</span>
 			</div>
 			<p class="peticion-texto">${esc(p.texto)}</p>
+			${fotos[i]}
 			${p.nota ? `<p class="peticion-nota"><strong>Claude:</strong> ${esc(p.nota)}</p>` : ''}
 			<div class="acciones">
 				${p.enlace ? enlace(p.enlace, 'Ver propuesta', 'abre la propuesta de una petición', { peticion: String(p.id) }, true) : ''}
