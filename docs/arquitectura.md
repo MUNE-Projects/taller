@@ -1248,3 +1248,7 @@ Lo que ya funciona, y dónde vive cada pieza:
 | Versiones | `/<promoción>/version.json` del escaparate | El Panel compara producción y vista previa. No existe lista pública de promociones |
 
 Pendiente: «Pedir cambios» (cola de tareas en Supabase) y «Aprobar y publicar» desde el Panel (brazo ejecutor con permisos limitados, que se presentarán antes de crearlo).
+13. **Avisos durante el desarrollo:** el aviso «versión lista para revisar» es una incidencia que abre GitHub Actions (`avisar.yml`). Así GitHub envía el email sin servicio de correo propio. Un email transaccional propio se decidirá en la Fase 1 y se consultará antes si tiene coste.
+14. **Sin índice público de promociones:** la lista de promotoras y promociones vive solo en Supabase. El escaparate solo expone el `version.json` de cada promoción.
+15. **Peticiones a Claude bajo demanda:** de momento no hay tarea programada. Claude atiende la cola cuando la administradora se lo pide. Las peticiones admiten fotos de referencia, también para el interiorismo («estilo a partir de una foto»).
+16. **Direcciones:** subdominio de Cloudflare `mune-projects`. El escaparate conserva el nombre `escaparate`. Las propuestas salen de la rama `revision`, tanto en el taller como en el escaparate.
