@@ -9,6 +9,16 @@ Cada botón dispara una de dos cosas:
 
 Este documento es la referencia: todo lo que se construya en el Panel sigue este mapa.
 
+## Navegación (desde la Etapa 2)
+
+Menú fijo arriba: **Inicio · Promotoras · Sistema · Salir**, y arriba de cada página «dónde estás» (*Promotoras › Promotora › Promoción*).
+
+- `#/` **Inicio**: versiones pendientes de revisar y peticiones abiertas, con enlace a su promoción.
+- `#/promotoras` **Promotoras**: la lista y el alta.
+- `#/promotora/<id>` **Una promotora**: sus promociones, quién tiene acceso a todas, sus datos y su actividad (la suya y la de todas sus promociones).
+- `#/promocion/<id>/<pestaña>` **Una promoción**, con pestañas: *Resumen y versiones* (publicar, volver atrás, estado), *Equipo*, *Documentación*, *Ficha y datos*, *Peticiones de cambios* y *Actividad*.
+- `#/sistema` **Sistema**: el registro de actividad completo (auditoría). Más adelante, copias y avisos de llaves.
+
 ## Secciones
 
 ### 1. Inicio: «qué necesita tu atención»
