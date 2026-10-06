@@ -404,7 +404,13 @@ async function iniciar() {
 				}
 
 			} );
+			// el antialiasing temporal desplaza la cámara (setViewOffset cambia su
+			// proporción) y en este fotograma suelto no la deja como estaba
+			const aspecto = camara.aspect;
 			pipeline.render();
+			camara.clearViewOffset();
+			camara.aspect = aspecto;
+			camara.updateProjectionMatrix();
 			for ( const o of ocultos ) o.visible = false;
 
 		}
