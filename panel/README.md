@@ -26,3 +26,9 @@ cd panel
 npm install
 npm run dev
 ```
+
+## Publicación
+
+Cloudflare Workers Builds (almacén `taller`, directorio raíz `panel`):
+`npm run build` y `npx wrangler deploy`. Cada propuesta de GitHub recibe su
+vista previa; la versión definitiva sale al aprobar la propuesta en `main`.
