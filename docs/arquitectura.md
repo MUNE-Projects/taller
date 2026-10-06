@@ -1232,3 +1232,19 @@ Con tu aprobación empezaría la **fase 0**, y lo primero sería guiarte en la c
 10. **Códigos de comprador validados en Supabase** (fase 1): se guarda solo su hash, con límite de intentos, regeneración y revocación. La web pública no contiene códigos. Solo el acceso privado depende de Supabase.
 11. **Entorno en tres capas** con su fiabilidad indicada: A precisa (planos), B próxima (Catastro, IGN/PNOA/LiDAR, OpenStreetMap) y C lejana. Google 3D Tiles queda fuera salvo aprobación expresa. Dron y fotografía real son un enriquecimiento opcional, nunca un requisito.
 12. **GitHub:** la organización es MUNE-Projects y los almacenes son `taller` (privado) y `escaparate` (privado). La protección de ramas en almacenes privados es de pago (GitHub Team); de momento se sustituye por copias automáticas y por la regla de no reescribir el historial.
+
+## Estado del Panel (Fase 0)
+
+Lo que ya funciona, y dónde vive cada pieza:
+
+| Pieza | Dónde | Notas |
+|---|---|---|
+| Código del Panel | `panel/` en el taller | TypeScript sin frameworks + `@supabase/supabase-js` |
+| Web del Panel | Cloudflare Workers, proyecto `panel` | Solo archivos estáticos. Vista previa por cada propuesta del taller (pestaña «Base de vistas previas»: compilación `npm run build`, directorio `/panel`) |
+| Entrada | Supabase Auth (UE, Irlanda) | Correo + contraseña + código del móvil (TOTP). Alta de usuarios cerrada: solo a mano |
+| Reglas de datos | `panel/supabase/*.sql` | Todo exige doble verificación (`aal2`) y estar en `administradores` |
+| Registro de actividad | Tabla `registro` | Solo añadir; no se edita ni se borra |
+| Promotoras y promociones | Tablas `promotoras` y `promociones` | Privadas. En Fase 1, cada promotora verá solo las suyas |
+| Versiones | `/<promoción>/version.json` del escaparate | El Panel compara producción y vista previa. No existe lista pública de promociones |
+
+Pendiente: «Pedir cambios» (cola de tareas en Supabase) y «Aprobar y publicar» desde el Panel (brazo ejecutor con permisos limitados, que se presentarán antes de crearlo).

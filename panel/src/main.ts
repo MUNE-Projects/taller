@@ -149,6 +149,84 @@ function pantallaCodigo(factor: Factor): void {
 
 interface Apunte { momento: string; accion: string }
 
+// ── Promociones: lo publicado y lo que espera revisión ───────────────────
+// La lista de promociones es privada (Supabase). La versión de cada una se lee
+// de su version.json en producción y en la vista previa, y se comparan.
+
+const ESCAPARATE = 'https://escaparate.mune-projects.workers.dev';
+const REVISION = 'https://revision-escaparate.mune-projects.workers.dev';
+const PROPUESTAS = 'https://github.com/MUNE-Projects/escaparate/pulls';
+
+interface Promocion { id: string; nombre: string; ubicacion: string; promotoras: { nombre: string } | null }
+interface Version { version: string; fecha: string }
+
+/** Versión de una promoción en un entorno; null si no está o no se pudo leer. */
+async function leerVersion(base: string, id: string): Promise<Version | null | 'error'> {
+	try {
+		const r = await fetch(`${base}/${encodeURIComponent(id)}/version.json`, { cache: 'no-store' });
+		if (r.status === 404) return null;
+		if (!r.ok) return 'error';
+		const v = await r.json() as Version;
+		return typeof v.version === 'string' ? v : 'error';
+	} catch {
+		return 'error';
+	}
+}
+
+const fecha = (iso: string) => new Date(iso).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+
+function enlace(href: string, texto: string, accion: string, detalle: Record<string, string>, principal = false): string {
+	return `<a class="boton${principal ? '' : ' secundario'}" href="${esc(href)}" target="_blank" rel="noopener noreferrer"
+		data-anotar="${esc(accion)}" data-detalle="${esc(JSON.stringify(detalle))}">${esc(texto)}</a>`;
+}
+
+async function pintarPromociones(destino: HTMLElement): Promise<void> {
+	const { data, error } = await sb.from('promociones').select('id, nombre, ubicacion, promotoras(nombre)').order('nombre');
+	if (error) {
+		destino.innerHTML = `<p class="error">${esc(traducir(error))}</p>`;
+		return;
+	}
+	const lista = (data ?? []) as unknown as Promocion[];
+	if (!lista.length) {
+		destino.innerHTML = '<p class="vacio">Todavía no hay promociones.</p>';
+		return;
+	}
+	const versiones = await Promise.all(lista.map(async (p) =>
+		[await leerVersion(ESCAPARATE, p.id), await leerVersion(REVISION, p.id)] as const));
+
+	destino.innerHTML = lista.map((p, i) => {
+		const id = p.id;
+		const [pubL, revL] = versiones[i];
+		const pub = pubL === 'error' ? null : pubL;
+		const rev = revL === 'error' ? null : revL;
+		const pendiente = rev && rev.version !== pub?.version;
+		const estado = pubL === 'error' ? '<span class="estado">Publicada: no se pudo comprobar</span>'
+			: !pub && !rev ? '<span class="estado">Sin versiones todavía</span>'
+			: !pub ? '<span class="estado pendiente">Nueva · pendiente de tu revisión</span>'
+			: pendiente ? `<span class="estado pendiente">${esc(rev.version)} pendiente de tu revisión</span>`
+			: '<span class="estado al-dia">Al día</span>';
+		const acciones = [
+			pub ? enlace(`${ESCAPARATE}/${id}/`, `Ver publicada (${pub.version})`, 'abre la publicada', { id, version: pub.version }) : '',
+			pendiente ? enlace(`${REVISION}/${id}/`, `Ver vista previa (${rev.version})`, 'abre la vista previa', { id, version: rev.version }, true) : '',
+			pendiente ? enlace(PROPUESTAS, 'Aprobar en GitHub', 'va a aprobar en GitHub', { id, version: rev.version }) : '',
+		].join('');
+		const lugar = [p.promotoras?.nombre, p.ubicacion].filter(Boolean).join(' · ');
+		return `<article class="promo">
+			<div class="promo-cabeza">
+				<div><h3>${esc(p.nombre)}</h3><p class="promo-lugar">${esc(lugar)}</p></div>
+				${estado}
+			</div>
+			<p class="promo-versiones">${pub ? `Publicada: <strong>${esc(pub.version)}</strong> · ${esc(fecha(pub.fecha))}` : pubL === 'error' ? 'Publicada: sin comprobar' : 'Sin publicar'}
+				${pendiente ? ` · En revisión: <strong>${esc(rev.version)}</strong> · ${esc(fecha(rev.fecha))}` : ''}</p>
+			${acciones ? `<div class="acciones">${acciones}</div>` : ''}
+		</article>`;
+	}).join('');
+
+	destino.querySelectorAll<HTMLAnchorElement>('a[data-anotar]').forEach((a) => a.addEventListener('click', () => {
+		void anotar(a.dataset.anotar!, JSON.parse(a.dataset.detalle ?? '{}'));
+	}));
+}
+
 async function escritorio(): Promise<void> {
 	const { data: admin, error } = await sb.from('administradores').select('nombre').maybeSingle();
 	if (error) throw error;
@@ -175,8 +253,7 @@ async function escritorio(): Promise<void> {
 		</div>
 		<section class="tarjeta">
 			<h2>Promociones</h2>
-			<p class="aviso">Pendiente de conectar con el taller. Aquí verás cada promoción, la versión publicada,
-			la que está esperando tu revisión, y los botones para revisar, publicar o volver atrás.</p>
+			<div data-promociones><p class="vacio">Consultando el escaparate…</p></div>
 		</section>
 		<section class="tarjeta">
 			<h2>Registro de actividad</h2>
@@ -185,6 +262,7 @@ async function escritorio(): Promise<void> {
 		</section>
 	</div>`);
 	app.querySelector('[data-salir]')!.addEventListener('click', salir);
+	void pintarPromociones(app.querySelector<HTMLElement>('[data-promociones]')!);
 }
 
 // ── Utilidades de sesión ──────────────────────────────────────────────────

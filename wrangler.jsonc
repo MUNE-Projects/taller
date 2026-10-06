@@ -1,0 +1,19 @@
+// Vistas previas del Panel en Cloudflare.
+//
+// La configuración principal del Panel está en panel/wrangler.jsonc (producción
+// se construye desde /panel). Las vistas previas de Cloudflare (función en beta)
+// se ejecutan desde la raíz del taller sin compilar, así que este archivo les
+// indica cómo construir el Panel y dónde está el resultado. Mismo Worker «panel».
+{
+  "$schema": "panel/node_modules/wrangler/config-schema.json",
+  "name": "panel",
+  "compatibility_date": "2026-10-01",
+  "previews": {},
+  "build": {
+    "command": "cd panel && npm ci --no-audit --no-fund && npm run build"
+  },
+  "assets": {
+    "directory": "./panel/dist",
+    "not_found_handling": "single-page-application"
+  }
+}
