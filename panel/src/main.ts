@@ -209,6 +209,7 @@ async function pintarPromociones(destino: HTMLElement): Promise<void> {
 			pub ? enlace(`${ESCAPARATE}/${id}/`, `Ver publicada (${pub.version})`, 'abre la publicada', { id, version: pub.version }) : '',
 			pendiente ? enlace(`${REVISION}/${id}/`, `Ver vista previa (${rev.version})`, 'abre la vista previa', { id, version: rev.version }, true) : '',
 			pendiente ? enlace(PROPUESTAS, 'Aprobar en GitHub', 'va a aprobar en GitHub', { id, version: rev.version }) : '',
+			`<button class="boton secundario" type="button" data-pedir="${esc(id)}" data-version="${esc((rev ?? pub)?.version ?? '')}">Pedir cambios</button>`,
 		].join('');
 		const lugar = [p.promotoras?.nombre, p.ubicacion].filter(Boolean).join(' · ');
 		return `<article class="promo">
@@ -218,12 +219,104 @@ async function pintarPromociones(destino: HTMLElement): Promise<void> {
 			</div>
 			<p class="promo-versiones">${pub ? `Publicada: <strong>${esc(pub.version)}</strong> · ${esc(fecha(pub.fecha))}` : pubL === 'error' ? 'Publicada: sin comprobar' : 'Sin publicar'}
 				${pendiente ? ` · En revisión: <strong>${esc(rev.version)}</strong> · ${esc(fecha(rev.fecha))}` : ''}</p>
-			${acciones ? `<div class="acciones">${acciones}</div>` : ''}
+			<div class="acciones">${acciones}</div>
+			<form class="peticion-form" data-form="${esc(id)}" hidden novalidate>
+				<label>¿Qué quieres cambiar de ${esc(p.nombre)}${(rev ?? pub) ? ` (${esc((rev ?? pub)!.version)})` : ''}?
+					<textarea name="texto" rows="4" maxlength="4000" required
+						placeholder="Por ejemplo: el suelo de la cocina más claro y el sofá del salón en gris."></textarea>
+				</label>
+				<p class="error" role="alert"></p>
+				<div class="acciones">
+					<button class="boton" type="submit">Enviar petición</button>
+					<button class="boton secundario" type="button" data-cancelar>Cancelar</button>
+				</div>
+			</form>
 		</article>`;
 	}).join('');
 
 	destino.querySelectorAll<HTMLAnchorElement>('a[data-anotar]').forEach((a) => a.addEventListener('click', () => {
 		void anotar(a.dataset.anotar!, JSON.parse(a.dataset.detalle ?? '{}'));
+	}));
+
+	destino.querySelectorAll<HTMLButtonElement>('[data-pedir]').forEach((b) => {
+		const form = destino.querySelector<HTMLFormElement>(`form[data-form="${CSS.escape(b.dataset.pedir!)}"]`)!;
+		const cerrar = () => { form.hidden = true; form.reset(); b.hidden = false; };
+		b.addEventListener('click', () => {
+			form.hidden = false;
+			b.hidden = true;
+			form.querySelector('textarea')!.focus();
+		});
+		form.querySelector('[data-cancelar]')!.addEventListener('click', cerrar);
+		alEnviar(form, async (d) => {
+			const texto = String(d.get('texto')).trim();
+			if (texto.length < 3) throw new Error('Escribe qué quieres cambiar.');
+			const { data, error } = await sb.from('peticiones')
+				.insert({ promocion_id: b.dataset.pedir, version: b.dataset.version || null, texto })
+				.select('id').single();
+			if (error) throw error;
+			await anotar('pide cambios', { id: b.dataset.pedir, peticion: data.id });
+			cerrar();
+			form.querySelector<HTMLButtonElement>('button[type=submit]')!.disabled = false;
+			void pintarPeticiones(app.querySelector<HTMLElement>('[data-peticiones]')!);
+		});
+	});
+}
+
+// ── Peticiones de cambios ─────────────────────────────────────────────────
+// Claude las atiende cuando la administradora se lo pide (de momento no hay
+// ninguna tarea automática) y va marcando su estado.
+
+interface Peticion {
+	id: number; promocion_id: string; version: string | null; texto: string; estado: string;
+	nota: string | null; enlace: string | null; creada_en: string; promociones: { nombre: string } | null;
+}
+
+const ESTADOS: Record<string, [string, string]> = {
+	pendiente: ['Pendiente', 'pendiente'],
+	en_curso: ['En curso', 'pendiente'],
+	lista: ['Lista para revisar', 'al-dia'],
+	descartada: ['Descartada', ''],
+};
+
+async function pintarPeticiones(destino: HTMLElement): Promise<void> {
+	const { data, error } = await sb.from('peticiones')
+		.select('id, promocion_id, version, texto, estado, nota, enlace, creada_en, promociones(nombre)')
+		.order('creada_en', { ascending: false }).limit(30);
+	if (error) {
+		destino.innerHTML = `<p class="error">${esc(traducir(error))}</p>`;
+		return;
+	}
+	const lista = (data ?? []) as unknown as Peticion[];
+	if (!lista.length) {
+		destino.innerHTML = '<p class="vacio">No hay peticiones. Usa «Pedir cambios» en una promoción.</p>';
+		return;
+	}
+	destino.innerHTML = lista.map((p) => {
+		const [etiqueta, clase] = ESTADOS[p.estado] ?? [p.estado, ''];
+		return `<article class="peticion">
+			<div class="promo-cabeza">
+				<p class="promo-lugar">${esc(p.promociones?.nombre ?? p.promocion_id)}${p.version ? ` · ${esc(p.version)}` : ''} · ${esc(fecha(p.creada_en))}</p>
+				<span class="estado ${clase}">${esc(etiqueta)}</span>
+			</div>
+			<p class="peticion-texto">${esc(p.texto)}</p>
+			${p.nota ? `<p class="peticion-nota"><strong>Claude:</strong> ${esc(p.nota)}</p>` : ''}
+			<div class="acciones">
+				${p.enlace ? enlace(p.enlace, 'Ver propuesta', 'abre la propuesta de una petición', { peticion: String(p.id) }, true) : ''}
+				${p.estado === 'pendiente' ? `<button class="boton secundario" type="button" data-descartar="${p.id}">Descartar</button>` : ''}
+			</div>
+		</article>`;
+	}).join('');
+
+	destino.querySelectorAll<HTMLAnchorElement>('a[data-anotar]').forEach((a) => a.addEventListener('click', () => {
+		void anotar(a.dataset.anotar!, JSON.parse(a.dataset.detalle ?? '{}'));
+	}));
+	destino.querySelectorAll<HTMLButtonElement>('[data-descartar]').forEach((b) => b.addEventListener('click', async () => {
+		b.disabled = true;
+		const id = Number(b.dataset.descartar);
+		const { error } = await sb.from('peticiones').update({ estado: 'descartada' }).eq('id', id);
+		if (error) { b.disabled = false; alert(traducir(error)); return; }
+		await anotar('descarta una petición', { peticion: id });
+		void pintarPeticiones(destino);
 	}));
 }
 
@@ -256,6 +349,11 @@ async function escritorio(): Promise<void> {
 			<div data-promociones><p class="vacio">Consultando el escaparate…</p></div>
 		</section>
 		<section class="tarjeta">
+			<h2>Peticiones de cambios</h2>
+			<p class="ayuda">Cuando quieras que Claude se ponga con ellas, díselo en Claude Code: «revisa las peticiones del Panel».</p>
+			<div data-peticiones><p class="vacio">Cargando…</p></div>
+		</section>
+		<section class="tarjeta">
 			<h2>Registro de actividad</h2>
 			${filas ? `<table><thead><tr><th>Cuándo</th><th>Qué</th></tr></thead><tbody>${filas}</tbody></table>`
 				: '<p class="vacio">Sin actividad todavía.</p>'}
@@ -263,6 +361,7 @@ async function escritorio(): Promise<void> {
 	</div>`);
 	app.querySelector('[data-salir]')!.addEventListener('click', salir);
 	void pintarPromociones(app.querySelector<HTMLElement>('[data-promociones]')!);
+	void pintarPeticiones(app.querySelector<HTMLElement>('[data-peticiones]')!);
 }
 
 // ── Utilidades de sesión ──────────────────────────────────────────────────
