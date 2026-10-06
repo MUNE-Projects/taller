@@ -27,7 +27,9 @@ $$;
 revoke all on function public.cuenta_por_email(text) from public, anon, authenticated;
 grant execute on function public.cuenta_por_email(text) to service_role;
 
-create or replace function public.accesos(p_promotora uuid)
+-- (Si ya existe con otras columnas, por ejemplo tras 007, se rehace.)
+drop function if exists public.accesos(uuid);
+create function public.accesos(p_promotora uuid)
 returns table (
 	user_id uuid, nombre text, email text, rol text, activo boolean, creado_en timestamptz,
 	aceptada boolean, ultima_entrada timestamptz
