@@ -4,7 +4,10 @@ Centro de control interno (no lo ven los compradores). Fase 0, paso 1: entrada
 con contraseña + código del móvil y registro de actividad.
 
 - Código: `src/main.ts` (TypeScript sin frameworks) + `@supabase/supabase-js`.
-- Base de datos: `supabase/001_panel.sql`, se ejecuta una vez en Supabase → SQL Editor.
+- Base de datos: los archivos de `supabase/` se ejecutan una vez, en orden, en Supabase → SQL Editor:
+  - `001_panel.sql`: administradoras y registro de actividad;
+  - `002_promociones.sql`: lista privada de promotoras y promociones.
+- Versiones: el Panel lee el `version.json` de cada promoción en producción y en la vista previa del escaparate. No existe ninguna lista pública de promociones.
 - Publicación: Cloudflare Workers (`wrangler.jsonc`), solo archivos estáticos.
 
 ## Seguridad
