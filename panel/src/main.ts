@@ -153,8 +153,8 @@ interface Apunte { momento: string; accion: string }
 // La lista de promociones es privada (Supabase). La versión de cada una se lee
 // de su version.json en producción y en la vista previa, y se comparan.
 
-const ESCAPARATE = 'https://escaparate.carolinacplat.workers.dev';
-const REVISION = 'https://revision-escaparate.carolinacplat.workers.dev';
+const ESCAPARATE = 'https://escaparate.mune-projects.workers.dev';
+const REVISION = 'https://revision-escaparate.mune-projects.workers.dev';
 const PROPUESTAS = 'https://github.com/MUNE-Projects/escaparate/pulls';
 
 interface Promocion { id: string; nombre: string; ubicacion: string; promotoras: { nombre: string } | null }
