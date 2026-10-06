@@ -64,12 +64,22 @@
     {
       "version": "v7",
       "fecha": "2026-10-06T11:35:12Z",
-      "estado": "publicada",
+      "estado": "sustituida",
       "taller": "b0e131bbef9cdab2dd56507745c0666fd47f22b7",
       "aprobadoPor": "Carolina (MUNE Projects) — pendiente de revisar la vista previa",
       "cambios": "Corrige el plano estirado",
       "archivos": 6,
       "bytes": 2179308
+    },
+    {
+      "version": "v8",
+      "fecha": "2026-10-06T16:02:36Z",
+      "estado": "publicada",
+      "taller": "dff7f4b2a328b72c9842a687fb430967aa27aed2",
+      "preparadaPor": "Claude",
+      "cambios": "Prueba del brazo ejecutor: misma visita que la v7, solo cambia el número de versión.",
+      "aprobadoPor": "Administradora",
+      "publicadaEl": "2026-10-06T16:12:17Z"
     }
   ],
   "historial": [
@@ -114,6 +124,12 @@
       "accion": "publicar",
       "version": "v7",
       "por": "Carolina (MUNE Projects) — pendiente de revisar la vista previa"
+    },
+    {
+      "fecha": "2026-10-06T16:12:17Z",
+      "accion": "aprobar",
+      "version": "v8",
+      "por": "Administradora"
     }
   ]
 }
