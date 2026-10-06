@@ -1,0 +1,134 @@
+# Brazo ejecutor: publica o vuelve atrás una promoción cuando la administradora
+# pulsa el botón del Panel.
+#
+# Solo lo lanza la función «ejecutar» de Supabase (llave A, que únicamente
+# permite arrancar procesos de este almacén), después de comprobar que quien
+# pulsa es administradora con contraseña + código del móvil.
+#
+# Llaves que usa:
+#  · ESCAPARATE_TOKEN (llave B, secreto de este almacén): escribir en
+#    MUNE-Projects/escaparate y nada más.
+#  · GITHUB_TOKEN (automática de GitHub, solo dura este proceso): guardar el
+#    registro de versiones en este almacén.
+#
+# Toda la lógica y sus comprobaciones están en herramientas/publicacion.mjs.
+
+name: Publicar desde el Panel
+run-name: ${{ inputs.accion }} ${{ inputs.promocion }} ${{ inputs.version }} · ${{ inputs.por }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      accion:
+        description: aprobar (publicar la versión en revisión) o volver (a una versión anterior)
+        required: true
+        type: choice
+        options: [aprobar, volver]
+      promocion:
+        description: identificador de la promoción
+        required: true
+        type: string
+      version:
+        description: «aprobar», la versión revisada en la vista previa; «volver», la versión a la que volver (p. ej. v6)
+        required: false
+        type: string
+        default: ''
+      motivo:
+        description: motivo (obligatorio para «volver»)
+        required: false
+        type: string
+        default: ''
+      por:
+        description: quién lo aprueba
+        required: true
+        type: string
+      solicitud:
+        description: referencia de la solicitud del Panel
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: write
+  issues: write   # cerrar el aviso «lista para revisar» al publicar
+
+# una publicación detrás de otra, nunca dos a la vez
+concurrency:
+  group: publicacion
+  cancel-in-progress: false
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      ACCION: ${{ inputs.accion }}
+      PROMOCION: ${{ inputs.promocion }}
+      VERSION: ${{ inputs.version }}
+      MOTIVO: ${{ inputs.motivo }}
+      POR: ${{ inputs.por }}
+    steps:
+      - name: Comprobar los datos recibidos
+        run: |
+          [[ "$PROMOCION" =~ ^[a-z0-9-]{1,60}$ ]] || { echo "::error::Promoción no válida"; exit 1; }
+          [[ -n "$POR" && ${#POR} -le 120 ]] || { echo "::error::Falta quién aprueba"; exit 1; }
+          [[ ${#MOTIVO} -le 500 ]] || { echo "::error::Motivo demasiado largo"; exit 1; }
+          [[ "$VERSION" =~ ^v[0-9]{1,5}$ ]] || { echo "::error::Versión no válida"; exit 1; }
+          if [[ "$ACCION" == volver ]]; then
+            [[ -n "$MOTIVO" ]] || { echo "::error::Volver atrás exige un motivo"; exit 1; }
+          fi
+
+      - name: Taller
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          path: taller
+
+      - name: Escaparate
+        uses: actions/checkout@v4
+        with:
+          repository: MUNE-Projects/escaparate
+          ref: main
+          fetch-depth: 0
+          path: escaparate
+          token: ${{ secrets.ESCAPARATE_TOKEN }}
+
+      - name: Traer la vista previa (rama revision)
+        run: git -C escaparate fetch --no-tags origin +refs/heads/revision:refs/remotes/origin/revision
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Identidad del ejecutor
+        run: |
+          for r in taller escaparate; do
+            git -C "$r" config user.name "MUNE ejecutor"
+            git -C "$r" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          done
+
+      - name: Publicar o volver
+        working-directory: taller
+        run: |
+          if [[ "$ACCION" == aprobar ]]; then
+            node herramientas/publicacion.mjs aprobar "$PROMOCION" --version "$VERSION" --aprobado-por "$POR" --escaparate ../escaparate --confirmar
+          else
+            node herramientas/publicacion.mjs volver "$PROMOCION" "$VERSION" --motivo "$MOTIVO" --aprobado-por "$POR" --escaparate ../escaparate --confirmar
+          fi
+
+      - name: Enviar a producción y guardar el registro
+        run: |
+          git -C escaparate push origin main --follow-tags
+          git -C taller pull --rebase --no-tags origin main
+          git -C taller push origin main
+
+      - name: Cerrar el aviso «lista para revisar»
+        if: inputs.accion == 'aprobar'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          for n in $(gh issue list --repo "$REPO" --label revision --state open --search "\"$PROMOCION $VERSION\" in:title" --json number --jq '.[].number'); do
+            gh issue close "$n" --repo "$REPO" --comment "Publicada desde el Panel por $POR."
+          done

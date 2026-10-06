@@ -155,7 +155,6 @@ interface Apunte { momento: string; accion: string }
 
 const ESCAPARATE = 'https://escaparate.mune-projects.workers.dev';
 const REVISION = 'https://revision-escaparate.mune-projects.workers.dev';
-const PROPUESTAS = 'https://github.com/MUNE-Projects/escaparate/pulls';
 
 interface Promocion { id: string; nombre: string; ubicacion: string; promotoras: { nombre: string } | null }
 interface Version { version: string; fecha: string }
@@ -178,6 +177,49 @@ const fecha = (iso: string) => new Date(iso).toLocaleDateString('es-ES', { day: 
 function enlace(href: string, texto: string, accion: string, detalle: Record<string, string>, principal = false): string {
 	return `<a class="boton${principal ? '' : ' secundario'}" href="${esc(href)}" target="_blank" rel="noopener noreferrer"
 		data-anotar="${esc(accion)}" data-detalle="${esc(JSON.stringify(detalle))}">${esc(texto)}</a>`;
+}
+
+/** Versiones anteriores a la indicada: v1 … v(n-1). */
+function anteriores(version: string): string[] {
+	const n = Number(version.slice(1));
+	return Array.from({ length: Math.max(0, n - 1) }, (_, i) => `v${i + 1}`);
+}
+
+/**
+ * Lanza el brazo ejecutor (función «ejecutar» de Supabase → GitHub Actions) y
+ * sigue el resultado mirando la versión publicada hasta que cambia.
+ */
+async function ejecutar(id: string, orden: Record<string, string>, esperada: string): Promise<boolean> {
+	const aviso = app.querySelector<HTMLElement>(`[data-progreso="${CSS.escape(id)}"]`)!;
+	aviso.hidden = false;
+	aviso.classList.remove('error');
+	aviso.textContent = 'Enviando la orden…';
+	const { error } = await sb.functions.invoke('ejecutar', { body: orden });
+	if (error) {
+		let texto = error.message;
+		try { texto = (await (error as { context?: Response }).context?.json())?.error ?? texto; } catch { /* sin detalle */ }
+		aviso.classList.add('error');
+		aviso.textContent = `No se ha podido iniciar: ${texto}`;
+		return false;
+	}
+	aviso.textContent = `En marcha. GitHub está ${orden.accion === 'aprobar' ? 'publicando' : 'restaurando'} ${esperada}; suele tardar 2–3 minutos. Puedes seguir usando el Panel.`;
+	const inicio = Date.now();
+	const mirar = async (): Promise<void> => {
+		const v = await leerVersion(ESCAPARATE, id);
+		if (v && v !== 'error' && v.version === esperada) {
+			aviso.textContent = `✓ Hecho: los visitantes ya ven ${esperada}.`;
+			setTimeout(() => void pintarPromociones(app.querySelector<HTMLElement>('[data-promociones]')!), 4000);
+			return;
+		}
+		if (Date.now() - inicio > 8 * 60 * 1000) {
+			aviso.classList.add('error');
+			aviso.textContent = `Está tardando más de lo normal. Recarga en unos minutos; si sigue sin cambiar, dímelo en Claude Code.`;
+			return;
+		}
+		setTimeout(() => void mirar(), 15000);
+	};
+	setTimeout(() => void mirar(), 30000);
+	return true;
 }
 
 async function pintarPromociones(destino: HTMLElement): Promise<void> {
@@ -208,8 +250,9 @@ async function pintarPromociones(destino: HTMLElement): Promise<void> {
 		const acciones = [
 			pub ? enlace(`${ESCAPARATE}/${id}/`, `Ver publicada (${pub.version})`, 'abre la publicada', { id, version: pub.version }) : '',
 			pendiente ? enlace(`${REVISION}/${id}/`, `Ver vista previa (${rev.version})`, 'abre la vista previa', { id, version: rev.version }, true) : '',
-			pendiente ? enlace(PROPUESTAS, 'Aprobar en GitHub', 'va a aprobar en GitHub', { id, version: rev.version }) : '',
+			pendiente ? `<button class="boton" type="button" data-publicar="${esc(id)}" data-version="${esc(rev.version)}" data-nombre="${esc(p.nombre)}">Publicar ${esc(rev.version)}</button>` : '',
 			`<button class="boton secundario" type="button" data-pedir="${esc(id)}" data-version="${esc((rev ?? pub)?.version ?? '')}">Pedir cambios</button>`,
+			pub && anteriores(pub.version).length ? `<button class="boton secundario" type="button" data-abrir-volver="${esc(id)}">Volver a una anterior</button>` : '',
 		].join('');
 		const lugar = [p.promotoras?.nombre, p.ubicacion].filter(Boolean).join(' · ');
 		return `<article class="promo">
@@ -220,6 +263,20 @@ async function pintarPromociones(destino: HTMLElement): Promise<void> {
 			<p class="promo-versiones">${pub ? `Publicada: <strong>${esc(pub.version)}</strong> · ${esc(fecha(pub.fecha))}` : pubL === 'error' ? 'Publicada: sin comprobar' : 'Sin publicar'}
 				${pendiente ? ` · En revisión: <strong>${esc(rev.version)}</strong> · ${esc(fecha(rev.fecha))}` : ''}</p>
 			<div class="acciones">${acciones}</div>
+			<p class="aviso" data-progreso="${esc(id)}" role="status" hidden></p>
+			${pub && anteriores(pub.version).length ? `<form class="peticion-form" data-volver="${esc(id)}" data-actual="${esc(pub.version)}" data-nombre="${esc(p.nombre)}" hidden novalidate>
+				<label>Volver la web pública de ${esc(p.nombre)} a la versión
+					<select name="version">${anteriores(pub.version).reverse().map((v) => `<option>${v}</option>`).join('')}</select>
+				</label>
+				<label>Motivo
+					<input name="motivo" maxlength="500" required placeholder="Por ejemplo: la v8 tiene un error en el plano">
+				</label>
+				<p class="error" role="alert"></p>
+				<div class="acciones">
+					<button class="boton" type="submit">Volver</button>
+					<button class="boton secundario" type="button" data-cancelar>Cancelar</button>
+				</div>
+			</form>` : ''}
 			<form class="peticion-form" data-form="${esc(id)}" hidden novalidate>
 				<label>¿Qué quieres cambiar de ${esc(p.nombre)}${(rev ?? pub) ? ` (${esc((rev ?? pub)!.version)})` : ''}?
 					<textarea name="texto" rows="4" maxlength="4000" required
@@ -240,6 +297,33 @@ async function pintarPromociones(destino: HTMLElement): Promise<void> {
 	destino.querySelectorAll<HTMLAnchorElement>('a[data-anotar]').forEach((a) => a.addEventListener('click', () => {
 		void anotar(a.dataset.anotar!, JSON.parse(a.dataset.detalle ?? '{}'));
 	}));
+
+	destino.querySelectorAll<HTMLButtonElement>('[data-publicar]').forEach((b) => b.addEventListener('click', async () => {
+		const { publicar: id, version, nombre } = b.dataset as Record<string, string>;
+		if (!confirm(`¿Publicar ${version} de ${nombre}?\n\nSustituirá a la versión que ven ahora los visitantes.`)) return;
+		b.disabled = true;
+		const ok = await ejecutar(id, { accion: 'aprobar', promocion: id, version }, version);
+		if (!ok) b.disabled = false;
+	}));
+
+	destino.querySelectorAll<HTMLButtonElement>('[data-abrir-volver]').forEach((b) => {
+		const form = destino.querySelector<HTMLFormElement>(`form[data-volver="${CSS.escape(b.dataset.abrirVolver!)}"]`)!;
+		const cerrar = () => { form.hidden = true; form.reset(); b.hidden = false; };
+		b.addEventListener('click', () => { form.hidden = false; b.hidden = true; form.querySelector('select')!.focus(); });
+		form.querySelector('[data-cancelar]')!.addEventListener('click', cerrar);
+		alEnviar(form, async (d) => {
+			const id = form.dataset.volver!;
+			const version = String(d.get('version'));
+			const motivo = String(d.get('motivo')).trim();
+			if (motivo.length < 3) throw new Error('Indica el motivo.');
+			if (!confirm(`¿Volver ${form.dataset.nombre} de ${form.dataset.actual} a ${version}?\n\nLos visitantes verán ${version}. La ${form.dataset.actual} se conserva y se puede recuperar.`)) {
+				form.querySelector<HTMLButtonElement>('button[type=submit]')!.disabled = false;
+				return;
+			}
+			const ok = await ejecutar(id, { accion: 'volver', promocion: id, version, motivo }, version);
+			if (ok) cerrar(); else throw new Error('No se ha podido iniciar. Mira el aviso de arriba.');
+		});
+	});
 
 	destino.querySelectorAll<HTMLButtonElement>('[data-pedir]').forEach((b) => {
 		const form = destino.querySelector<HTMLFormElement>(`form[data-form="${CSS.escape(b.dataset.pedir!)}"]`)!;
