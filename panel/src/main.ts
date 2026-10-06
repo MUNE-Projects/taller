@@ -150,23 +150,26 @@ function pantallaCodigo(factor: Factor): void {
 interface Apunte { momento: string; accion: string }
 
 // ── Promociones: lo publicado y lo que espera revisión ───────────────────
-// El escaparate publica un índice (promociones.json) con datos que ya son
-// públicos. Se lee de producción y de la vista previa y se comparan.
+// La lista de promociones es privada (Supabase). La versión de cada una se lee
+// de su version.json en producción y en la vista previa, y se comparan.
 
 const ESCAPARATE = 'https://escaparate.carolinacplat.workers.dev';
 const REVISION = 'https://revision-escaparate.carolinacplat.workers.dev';
 const PROPUESTAS = 'https://github.com/MUNE-Projects/escaparate/pulls';
 
-interface Ficha { id: string; nombre: string; ubicacion: string; version: string; fecha: string }
+interface Promocion { id: string; nombre: string; ubicacion: string; promotoras: { nombre: string } | null }
+interface Version { version: string; fecha: string }
 
-async function leerIndice(base: string): Promise<Ficha[] | null> {
+/** Versión de una promoción en un entorno; null si no está o no se pudo leer. */
+async function leerVersion(base: string, id: string): Promise<Version | null | 'error'> {
 	try {
-		const r = await fetch(`${base}/promociones.json`, { cache: 'no-store' });
-		if (!r.ok) return null;
-		const datos = await r.json() as { promociones?: Ficha[] };
-		return Array.isArray(datos.promociones) ? datos.promociones : null;
+		const r = await fetch(`${base}/${encodeURIComponent(id)}/version.json`, { cache: 'no-store' });
+		if (r.status === 404) return null;
+		if (!r.ok) return 'error';
+		const v = await r.json() as Version;
+		return typeof v.version === 'string' ? v : 'error';
 	} catch {
-		return null;
+		return 'error';
 	}
 }
 
@@ -178,23 +181,27 @@ function enlace(href: string, texto: string, accion: string, detalle: Record<str
 }
 
 async function pintarPromociones(destino: HTMLElement): Promise<void> {
-	const [publicadas, enRevision] = await Promise.all([leerIndice(ESCAPARATE), leerIndice(REVISION)]);
-	if (!publicadas && !enRevision) {
-		destino.innerHTML = '<p class="error">No se ha podido leer el escaparate. Vuelve a probar en un momento.</p>';
+	const { data, error } = await sb.from('promociones').select('id, nombre, ubicacion, promotoras(nombre)').order('nombre');
+	if (error) {
+		destino.innerHTML = `<p class="error">${esc(traducir(error))}</p>`;
 		return;
 	}
-	const ids = [...new Set([...(publicadas ?? []), ...(enRevision ?? [])].map((f) => f.id))].sort();
-	if (!ids.length) {
+	const lista = (data ?? []) as unknown as Promocion[];
+	if (!lista.length) {
 		destino.innerHTML = '<p class="vacio">Todavía no hay promociones.</p>';
 		return;
 	}
+	const versiones = await Promise.all(lista.map(async (p) =>
+		[await leerVersion(ESCAPARATE, p.id), await leerVersion(REVISION, p.id)] as const));
 
-	destino.innerHTML = ids.map((id) => {
-		const pub = publicadas?.find((f) => f.id === id);
-		const rev = enRevision?.find((f) => f.id === id);
-		const f = (rev ?? pub)!;
+	destino.innerHTML = lista.map((p, i) => {
+		const id = p.id;
+		const [pubL, revL] = versiones[i];
+		const pub = pubL === 'error' ? null : pubL;
+		const rev = revL === 'error' ? null : revL;
 		const pendiente = rev && rev.version !== pub?.version;
-		const estado = !pub && !publicadas ? '<span class="estado">Publicada: no se pudo comprobar</span>'
+		const estado = pubL === 'error' ? '<span class="estado">Publicada: no se pudo comprobar</span>'
+			: !pub && !rev ? '<span class="estado">Sin versiones todavía</span>'
 			: !pub ? '<span class="estado pendiente">Nueva · pendiente de tu revisión</span>'
 			: pendiente ? `<span class="estado pendiente">${esc(rev.version)} pendiente de tu revisión</span>`
 			: '<span class="estado al-dia">Al día</span>';
@@ -203,14 +210,15 @@ async function pintarPromociones(destino: HTMLElement): Promise<void> {
 			pendiente ? enlace(`${REVISION}/${id}/`, `Ver vista previa (${rev.version})`, 'abre la vista previa', { id, version: rev.version }, true) : '',
 			pendiente ? enlace(PROPUESTAS, 'Aprobar en GitHub', 'va a aprobar en GitHub', { id, version: rev.version }) : '',
 		].join('');
+		const lugar = [p.promotoras?.nombre, p.ubicacion].filter(Boolean).join(' · ');
 		return `<article class="promo">
 			<div class="promo-cabeza">
-				<div><h3>${esc(f.nombre)}</h3><p class="promo-lugar">${esc(f.ubicacion)}</p></div>
+				<div><h3>${esc(p.nombre)}</h3><p class="promo-lugar">${esc(lugar)}</p></div>
 				${estado}
 			</div>
-			<p class="promo-versiones">${pub ? `Publicada: <strong>${esc(pub.version)}</strong> · ${esc(fecha(pub.fecha))}` : publicadas ? 'Sin publicar' : 'Publicada: sin comprobar'}
+			<p class="promo-versiones">${pub ? `Publicada: <strong>${esc(pub.version)}</strong> · ${esc(fecha(pub.fecha))}` : pubL === 'error' ? 'Publicada: sin comprobar' : 'Sin publicar'}
 				${pendiente ? ` · En revisión: <strong>${esc(rev.version)}</strong> · ${esc(fecha(rev.fecha))}` : ''}</p>
-			<div class="acciones">${acciones}</div>
+			${acciones ? `<div class="acciones">${acciones}</div>` : ''}
 		</article>`;
 	}).join('');
 
