@@ -88,4 +88,13 @@ Panel (botón) → función «ejecutar» de Supabase → GitHub Actions «public
 | Llave B `ESCAPARATE_TOKEN` | Secreto del almacén `taller` (Settings → Secrets → Actions) | Solo escribir en `escaparate` (Contents: lectura y escritura). Caduca a los 90 días |
 | `GITHUB_TOKEN` | Automática de GitHub | Guardar el registro de versiones en el taller; solo dura ese proceso |
 
-Flujo de versiones: Claude **prepara** una versión en la rama `revision` del escaparate (vista previa). La administradora la **publica** desde el Panel, y la versión pasa a `main`. El registro `promociones/<id>/publicaciones.json` solo lo escribe el ejecutor, en `main`.
+Flujo de versiones:
+
+1. Claude **prepara** una versión (`publicacion.mjs preparar`) en la rama `revision` del escaparate, que es la vista previa.
+2. Claude lanza el proceso `avisar.yml`. GitHub abre un aviso «<promoción> vN · lista para revisar» con los enlaces a la vista previa y al Panel, y **envía el email**. Lo crea github-actions, no la propia cuenta, porque GitHub no avisa de lo que hace uno mismo.
+3. La administradora revisa la vista previa y pulsa **Publicar vN** en el Panel. **Solo se publica la versión revisada:** si la vista previa ha cambiado entretanto, el ejecutor se niega.
+4. El ejecutor pasa la versión a `main`, guarda el registro y cierra el aviso.
+
+El registro `promociones/<id>/publicaciones.json` solo lo escribe el ejecutor, en `main`.
+
+Para recibir los emails, la cuenta de la administradora debe **vigilar** el almacén `taller` (botón *Watch* → *All Activity*, o al menos *Issues*), con el email activado en las notificaciones de GitHub.

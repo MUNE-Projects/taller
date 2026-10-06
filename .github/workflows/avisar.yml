@@ -1,0 +1,50 @@
+# Aviso «versión lista para revisar»: abre una incidencia en el taller con el
+# enlace a la vista previa y al Panel. La crea GitHub (github-actions), así que
+# GitHub envía el email de aviso a quien vigila el almacén. Al publicar desde el
+# Panel, publicar.yml la cierra.
+#
+# Lo lanza Claude al preparar una versión (receta 9).
+
+name: Avisar de una versión lista para revisar
+run-name: aviso ${{ inputs.promocion }} ${{ inputs.version }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      promocion:
+        required: true
+        type: string
+      version:
+        required: true
+        type: string
+      cambios:
+        required: true
+        type: string
+
+permissions:
+  issues: write
+
+jobs:
+  avisar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      PROMOCION: ${{ inputs.promocion }}
+      VERSION: ${{ inputs.version }}
+      CAMBIOS: ${{ inputs.cambios }}
+    steps:
+      - name: Abrir el aviso
+        run: |
+          [[ "$PROMOCION" =~ ^[a-z0-9-]{1,60}$ ]] || { echo "::error::Promoción no válida"; exit 1; }
+          [[ "$VERSION" =~ ^v[0-9]{1,5}$ ]] || { echo "::error::Versión no válida"; exit 1; }
+          [[ ${#CAMBIOS} -le 2000 ]] || { echo "::error::Texto de cambios demasiado largo"; exit 1; }
+          cuerpo=$(printf '%s\n' \
+            "## 👉 Revisa antes de publicar" "" \
+            "**Vista previa:** https://revision-escaparate.mune-projects.workers.dev/$PROMOCION/" "" \
+            "**Publicar o pedir cambios, en tu Panel:** https://panel.mune-projects.workers.dev" "" \
+            "## Qué cambia" "" "$CAMBIOS" "" \
+            "_Este aviso se cierra solo cuando publiques $VERSION desde el Panel._")
+          gh issue create --repo "$REPO" --label revision \
+            --title "$PROMOCION $VERSION · lista para revisar" --body "$cuerpo"

@@ -10,7 +10,7 @@
 //
 //   node herramientas/publicacion.mjs construir <promoción>
 //   node herramientas/publicacion.mjs preparar  <promoción> --cambios "Texto" [--preparado-por "Nombre"] [--confirmar]
-//   node herramientas/publicacion.mjs aprobar   <promoción> --aprobado-por "Nombre" [--confirmar]
+//   node herramientas/publicacion.mjs aprobar   <promoción> --version vN --aprobado-por "Nombre" [--confirmar]
 //   node herramientas/publicacion.mjs volver    <promoción> <vN> --motivo "Texto" [--aprobado-por "Nombre"] [--confirmar]
 //   node herramientas/publicacion.mjs estado    <promoción>
 //
@@ -69,7 +69,7 @@ const opcion = ( nombre ) => {
 
 };
 const bandera = ( nombre ) => args.includes( `--${ nombre }` );
-const CON_VALOR = [ '--escaparate', '--aprobado-por', '--preparado-por', '--cambios', '--motivo' ];
+const CON_VALOR = [ '--escaparate', '--aprobado-por', '--preparado-por', '--cambios', '--motivo', '--version' ];
 const posicionales = args.filter( ( a, i ) => ! a.startsWith( '--' ) && ! CON_VALOR.includes( args[ i - 1 ] ) );
 
 const fallo = ( texto ) => {
@@ -245,6 +245,10 @@ function aprobar( id ) {
 	const publicada = versionEn( esc, 'HEAD', id );
 	if ( ! enRevision ) fallo( `No hay ninguna versión de ${ id } en la vista previa (rama revision)` );
 	if ( enRevision === publicada ) fallo( `${ enRevision } ya es la versión publicada: no hay nada pendiente` );
+	// solo se publica exactamente la versión que la administradora ha revisado
+	const revisada = opcion( 'version' );
+	if ( ! revisada ) fallo( 'Falta --version: la versión que se ha revisado en la vista previa' );
+	if ( revisada !== enRevision ) fallo( `La vista previa ha cambiado: ahora contiene ${ enRevision }, no ${ revisada }. Revísala antes de publicar.` );
 
 	// datos de la preparación: version.json y el mensaje del commit en «revision»
 	const datosV = JSON.parse( git( esc, 'show', `origin/revision:${ PUBLICO }/${ id }/version.json` ) );

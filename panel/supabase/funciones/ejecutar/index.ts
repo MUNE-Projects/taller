@@ -55,9 +55,10 @@ Deno.serve(async (req) => {
 	const motivo = String(cuerpo.motivo ?? '').trim();
 	if (accion !== 'aprobar' && accion !== 'volver') return responder(400, { error: 'Acción no válida' });
 	if (!/^[a-z0-9-]{1,60}$/.test(promocion)) return responder(400, { error: 'Promoción no válida' });
-	if (accion === 'volver') {
-		if (!/^v[0-9]{1,5}$/.test(version)) return responder(400, { error: 'Versión no válida' });
-		if (motivo.length < 3 || motivo.length > 500) return responder(400, { error: 'Indica el motivo (entre 3 y 500 caracteres)' });
+	// «aprobar»: la versión revisada en la vista previa (el ejecutor comprueba que sigue siendo esa)
+	if (!/^v[0-9]{1,5}$/.test(version)) return responder(400, { error: 'Versión no válida' });
+	if (accion === 'volver' && (motivo.length < 3 || motivo.length > 500)) {
+		return responder(400, { error: 'Indica el motivo (entre 3 y 500 caracteres)' });
 	}
 
 	const { data: promo } = await sb.from('promociones').select('id').eq('id', promocion).maybeSingle();
@@ -88,7 +89,7 @@ Deno.serve(async (req) => {
 
 	await sb.from('registro').insert({
 		accion: accion === 'aprobar' ? 'publica desde el Panel' : 'vuelve a una versión anterior',
-		detalle: { promocion, version: version || null, motivo: motivo || null, solicitud },
+		detalle: { promocion, version, motivo: motivo || null, solicitud },
 	});
 	return responder(202, { ok: true, solicitud });
 });

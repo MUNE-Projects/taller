@@ -302,7 +302,7 @@ async function pintarPromociones(destino: HTMLElement): Promise<void> {
 		const { publicar: id, version, nombre } = b.dataset as Record<string, string>;
 		if (!confirm(`¿Publicar ${version} de ${nombre}?\n\nSustituirá a la versión que ven ahora los visitantes.`)) return;
 		b.disabled = true;
-		const ok = await ejecutar(id, { accion: 'aprobar', promocion: id }, version);
+		const ok = await ejecutar(id, { accion: 'aprobar', promocion: id, version }, version);
 		if (!ok) b.disabled = false;
 	}));
 

@@ -29,7 +29,7 @@ on:
         required: true
         type: string
       version:
-        description: versión a la que volver (solo para «volver»), p. ej. v6
+        description: «aprobar», la versión revisada en la vista previa; «volver», la versión a la que volver (p. ej. v6)
         required: false
         type: string
         default: ''
@@ -50,6 +50,7 @@ on:
 
 permissions:
   contents: write
+  issues: write   # cerrar el aviso «lista para revisar» al publicar
 
 # una publicación detrás de otra, nunca dos a la vez
 concurrency:
@@ -72,8 +73,8 @@ jobs:
           [[ "$PROMOCION" =~ ^[a-z0-9-]{1,60}$ ]] || { echo "::error::Promoción no válida"; exit 1; }
           [[ -n "$POR" && ${#POR} -le 120 ]] || { echo "::error::Falta quién aprueba"; exit 1; }
           [[ ${#MOTIVO} -le 500 ]] || { echo "::error::Motivo demasiado largo"; exit 1; }
+          [[ "$VERSION" =~ ^v[0-9]{1,5}$ ]] || { echo "::error::Versión no válida"; exit 1; }
           if [[ "$ACCION" == volver ]]; then
-            [[ "$VERSION" =~ ^v[0-9]{1,5}$ ]] || { echo "::error::Versión no válida"; exit 1; }
             [[ -n "$MOTIVO" ]] || { echo "::error::Volver atrás exige un motivo"; exit 1; }
           fi
 
@@ -111,7 +112,7 @@ jobs:
         working-directory: taller
         run: |
           if [[ "$ACCION" == aprobar ]]; then
-            node herramientas/publicacion.mjs aprobar "$PROMOCION" --aprobado-por "$POR" --escaparate ../escaparate --confirmar
+            node herramientas/publicacion.mjs aprobar "$PROMOCION" --version "$VERSION" --aprobado-por "$POR" --escaparate ../escaparate --confirmar
           else
             node herramientas/publicacion.mjs volver "$PROMOCION" "$VERSION" --motivo "$MOTIVO" --aprobado-por "$POR" --escaparate ../escaparate --confirmar
           fi
@@ -121,3 +122,13 @@ jobs:
           git -C escaparate push origin main --follow-tags
           git -C taller pull --rebase --no-tags origin main
           git -C taller push origin main
+
+      - name: Cerrar el aviso «lista para revisar»
+        if: inputs.accion == 'aprobar'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          for n in $(gh issue list --repo "$REPO" --label revision --state open --search "\"$PROMOCION $VERSION\" in:title" --json number --jq '.[].number'); do
+            gh issue close "$n" --repo "$REPO" --comment "Publicada desde el Panel por $POR."
+          done
