@@ -5,3 +5,4 @@ dist
 accesos-privados*.csv
 dist-artefacto/
 salida/
+deno.lock

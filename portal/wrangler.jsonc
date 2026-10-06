@@ -1,0 +1,13 @@
+// Portal de las promotoras: solo archivos estáticos. Los datos viven en Supabase
+// y solo se entregan a una persona con acceso, y únicamente los de su promotora.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "portal",
+  "compatibility_date": "2026-10-01",
+  // Cada propuesta en GitHub recibe su propia vista previa para revisarla antes de aprobar.
+  "previews": {},
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  }
+}
