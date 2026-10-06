@@ -10,6 +10,7 @@
 //   node herramientas/publicacion.mjs publicar  <promoción> --aprobado-por "Nombre" --cambios "Texto" [--confirmar]
 //   node herramientas/publicacion.mjs volver    <promoción> <vN> --motivo "Texto" [--confirmar]
 //   node herramientas/publicacion.mjs estado    <promoción>
+//   node herramientas/publicacion.mjs indice    (regenera publico/promociones.json para el Panel)
 //
 // Opciones comunes: --escaparate <ruta> (por defecto ../escaparate).
 // Sin --confirmar, publicar y volver solo muestran lo que harían (no cambian nada).
@@ -136,6 +137,30 @@ function construir( id ) {
 
 }
 
+// ---------------------------------------------------------------- índice para el Panel
+
+// publico/promociones.json: qué promociones hay en esta rama del escaparate y en
+// qué versión. El Panel lo lee de producción y de la vista previa para saber qué
+// está publicado y qué espera revisión. Solo datos que ya son públicos.
+function actualizarIndice( esc ) {
+
+	const base = join( esc, PUBLICO );
+	const promociones = readdirSync( base, { withFileTypes: true } )
+		.filter( ( e ) => e.isDirectory() && existsSync( join( base, e.name, 'version.json' ) ) )
+		.map( ( e ) => {
+
+			const v = JSON.parse( readFileSync( join( base, e.name, 'version.json' ), 'utf8' ) );
+			const datos = join( RAIZ, 'promociones', e.name, 'promocion.json' );
+			const p = existsSync( datos ) ? JSON.parse( readFileSync( datos, 'utf8' ) ).promocion ?? {} : {};
+			return { id: e.name, nombre: p.nombre ?? e.name, ubicacion: p.ubicacion ?? '', version: v.version, fecha: v.fecha };
+
+		} )
+		.sort( ( a, b ) => a.id.localeCompare( b.id ) );
+	escribirJSON( join( base, 'promociones.json' ), { actualizado: hoy(), promociones } );
+	git( esc, 'add', join( PUBLICO, 'promociones.json' ) );
+
+}
+
 // ---------------------------------------------------------------- publicar
 
 function publicar( id ) {
@@ -177,6 +202,7 @@ function publicar( id ) {
 	const fecha = hoy();
 	escribirJSON( join( carpeta, 'version.json' ), { promocion: id, version, fecha, taller: motor } );
 	git( esc, 'add', '-A', join( PUBLICO, id ) );
+	actualizarIndice( esc );
 	git( esc, 'commit', '-q', '-m', `Publica ${ id } ${ version }\n\n${ cambios }\nAprobado por: ${ aprobadoPor }\nTaller: ${ motor }` );
 	git( esc, 'tag', '-a', etiqueta, '-m', `${ id } ${ version } · ${ fecha }` );
 	ok( `Escaparate: ${ PUBLICO }/${ id }/ actualizado y etiquetado ${ etiqueta }` );
@@ -224,6 +250,7 @@ function volver( id, version ) {
 	const fecha = hoy();
 	git( esc, 'rm', '-r', '-q', '--ignore-unmatch', join( PUBLICO, id ) );
 	git( esc, 'checkout', etiqueta, '--', join( PUBLICO, id ) );
+	actualizarIndice( esc );
 	git( esc, 'commit', '-q', '-m', `Vuelve ${ id } a ${ version }\n\nMotivo: ${ motivo }` );
 	ok( `Escaparate: ${ PUBLICO }/${ id }/ restaurado a ${ version }` );
 
@@ -259,6 +286,7 @@ switch ( orden ) {
 	case 'publicar': publicar( id ); break;
 	case 'volver': volver( id, extra ); break;
 	case 'estado': estado( id ); break;
-	default: fallo( 'Orden desconocida. Usa: construir | publicar | volver | estado' );
+	case 'indice': actualizarIndice( rutaEscaparate() ); ok( 'publico/promociones.json actualizado (falta commit en el escaparate)' ); break;
+	default: fallo( 'Orden desconocida. Usa: construir | publicar | volver | estado | indice' );
 
 }

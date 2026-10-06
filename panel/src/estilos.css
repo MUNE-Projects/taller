@@ -106,6 +106,19 @@ th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line
 th { color: var(--tinta-3); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
 .vacio { color: var(--tinta-3); }
 
+/* Promociones */
+.promo { display: grid; gap: 10px; padding: 16px 0; border-top: 1px solid var(--linea); }
+.promo:first-child { border-top: 0; padding-top: 4px; }
+.promo-cabeza { display: flex; justify-content: space-between; align-items: start; gap: 12px; flex-wrap: wrap; }
+h3 { margin: 0; font-size: 16px; font-weight: 600; }
+.promo-lugar { font-size: 13px; color: var(--tinta-3); }
+.promo-versiones { font-size: 14px; }
+.estado { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--linea); color: var(--tinta-2); white-space: nowrap; }
+.estado.al-dia { background: var(--acento-suave); color: var(--acento); }
+.estado.pendiente { background: #f6ead6; color: #7a4d10; }
+.acciones { display: flex; gap: 8px; flex-wrap: wrap; }
+a.boton { text-decoration: none; display: inline-block; font-size: 14px; }
+
 @media (prefers-reduced-motion: reduce) {
 	.boton { transition: none; }
 }

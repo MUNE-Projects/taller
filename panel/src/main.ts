@@ -149,6 +149,76 @@ function pantallaCodigo(factor: Factor): void {
 
 interface Apunte { momento: string; accion: string }
 
+// ── Promociones: lo publicado y lo que espera revisión ───────────────────
+// El escaparate publica un índice (promociones.json) con datos que ya son
+// públicos. Se lee de producción y de la vista previa y se comparan.
+
+const ESCAPARATE = 'https://escaparate.carolinacplat.workers.dev';
+const REVISION = 'https://revision-escaparate.carolinacplat.workers.dev';
+const PROPUESTAS = 'https://github.com/MUNE-Projects/escaparate/pulls';
+
+interface Ficha { id: string; nombre: string; ubicacion: string; version: string; fecha: string }
+
+async function leerIndice(base: string): Promise<Ficha[] | null> {
+	try {
+		const r = await fetch(`${base}/promociones.json`, { cache: 'no-store' });
+		if (!r.ok) return null;
+		const datos = await r.json() as { promociones?: Ficha[] };
+		return Array.isArray(datos.promociones) ? datos.promociones : null;
+	} catch {
+		return null;
+	}
+}
+
+const fecha = (iso: string) => new Date(iso).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+
+function enlace(href: string, texto: string, accion: string, detalle: Record<string, string>, principal = false): string {
+	return `<a class="boton${principal ? '' : ' secundario'}" href="${esc(href)}" target="_blank" rel="noopener noreferrer"
+		data-anotar="${esc(accion)}" data-detalle="${esc(JSON.stringify(detalle))}">${esc(texto)}</a>`;
+}
+
+async function pintarPromociones(destino: HTMLElement): Promise<void> {
+	const [publicadas, enRevision] = await Promise.all([leerIndice(ESCAPARATE), leerIndice(REVISION)]);
+	if (!publicadas && !enRevision) {
+		destino.innerHTML = '<p class="error">No se ha podido leer el escaparate. Vuelve a probar en un momento.</p>';
+		return;
+	}
+	const ids = [...new Set([...(publicadas ?? []), ...(enRevision ?? [])].map((f) => f.id))].sort();
+	if (!ids.length) {
+		destino.innerHTML = '<p class="vacio">Todavía no hay promociones.</p>';
+		return;
+	}
+
+	destino.innerHTML = ids.map((id) => {
+		const pub = publicadas?.find((f) => f.id === id);
+		const rev = enRevision?.find((f) => f.id === id);
+		const f = (rev ?? pub)!;
+		const pendiente = rev && rev.version !== pub?.version;
+		const estado = !pub && !publicadas ? '<span class="estado">Publicada: no se pudo comprobar</span>'
+			: !pub ? '<span class="estado pendiente">Nueva · pendiente de tu revisión</span>'
+			: pendiente ? `<span class="estado pendiente">${esc(rev.version)} pendiente de tu revisión</span>`
+			: '<span class="estado al-dia">Al día</span>';
+		const acciones = [
+			pub ? enlace(`${ESCAPARATE}/${id}/`, `Ver publicada (${pub.version})`, 'abre la publicada', { id, version: pub.version }) : '',
+			pendiente ? enlace(`${REVISION}/${id}/`, `Ver vista previa (${rev.version})`, 'abre la vista previa', { id, version: rev.version }, true) : '',
+			pendiente ? enlace(PROPUESTAS, 'Aprobar en GitHub', 'va a aprobar en GitHub', { id, version: rev.version }) : '',
+		].join('');
+		return `<article class="promo">
+			<div class="promo-cabeza">
+				<div><h3>${esc(f.nombre)}</h3><p class="promo-lugar">${esc(f.ubicacion)}</p></div>
+				${estado}
+			</div>
+			<p class="promo-versiones">${pub ? `Publicada: <strong>${esc(pub.version)}</strong> · ${esc(fecha(pub.fecha))}` : publicadas ? 'Sin publicar' : 'Publicada: sin comprobar'}
+				${pendiente ? ` · En revisión: <strong>${esc(rev.version)}</strong> · ${esc(fecha(rev.fecha))}` : ''}</p>
+			<div class="acciones">${acciones}</div>
+		</article>`;
+	}).join('');
+
+	destino.querySelectorAll<HTMLAnchorElement>('a[data-anotar]').forEach((a) => a.addEventListener('click', () => {
+		void anotar(a.dataset.anotar!, JSON.parse(a.dataset.detalle ?? '{}'));
+	}));
+}
+
 async function escritorio(): Promise<void> {
 	const { data: admin, error } = await sb.from('administradores').select('nombre').maybeSingle();
 	if (error) throw error;
@@ -175,8 +245,7 @@ async function escritorio(): Promise<void> {
 		</div>
 		<section class="tarjeta">
 			<h2>Promociones</h2>
-			<p class="aviso">Pendiente de conectar con el taller. Aquí verás cada promoción, la versión publicada,
-			la que está esperando tu revisión, y los botones para revisar, publicar o volver atrás.</p>
+			<div data-promociones><p class="vacio">Consultando el escaparate…</p></div>
 		</section>
 		<section class="tarjeta">
 			<h2>Registro de actividad</h2>
@@ -185,6 +254,7 @@ async function escritorio(): Promise<void> {
 		</section>
 	</div>`);
 	app.querySelector('[data-salir]')!.addEventListener('click', salir);
+	void pintarPromociones(app.querySelector<HTMLElement>('[data-promociones]')!);
 }
 
 // ── Utilidades de sesión ──────────────────────────────────────────────────
