@@ -444,6 +444,86 @@ await caso( DEBE_FUNCIONAR, 'La administradora ve todo y el registro anota subid
 
 } );
 
+// ─── Accesos e invitaciones (función «invitar», receta 14) ──────────────────
+
+const invitar = ( sb, cuerpo ) => sb.functions.invoke( 'invitar', { body: cuerpo } );
+// Código HTTP de la respuesta de la función (200 si fue bien).
+const estadoHttp = ( r ) => r.error ? r.error.context?.status : 200;
+const BUZON = process.env.BUZON_URL;
+
+// Último email recibido en el buzón de pruebas para esa dirección.
+async function ultimoEmail( para ) {
+
+	for ( let i = 0; i < 20; i ++ ) {
+
+		const r = await fetch( `${ BUZON }/api/v1/search?query=${ encodeURIComponent( `to:${ para }` ) }` );
+		const { messages } = await r.json();
+		if ( messages?.length ) return ( await fetch( `${ BUZON }/api/v1/message/${ messages[ 0 ].ID }` ) ).json();
+		await new Promise( ( ok ) => setTimeout( ok, 500 ) );
+
+	}
+	throw new Error( `no llega ningún email a ${ para }` );
+
+}
+
+await caso( DEBE_FALLAR, '22. Una promotora intenta dar acceso a alguien (o llamar sin sesión)', async () => {
+
+	const r1 = await invitar( aprobA, { accion: 'invitar', promotora_id: pA.id, nombre: 'Intrusa', email: 'intrusa@prueba.local', rol: 'aprobador' } );
+	const r2 = await invitar( anonimo, { accion: 'invitar', promotora_id: pA.id, nombre: 'Intrusa', email: 'intrusa@prueba.local', rol: 'aprobador' } );
+	const cuenta = await servicio.rpc( 'cuenta_por_email', { p_email: 'intrusa@prueba.local' } );
+	if ( estadoHttp( r1 ) !== 403 || ! [ 401, 403 ].includes( estadoHttp( r2 ) ) ) throw new Error( `respuestas ${ estadoHttp( r1 ) } y ${ estadoHttp( r2 ) }` );
+	return cuenta.data.length === 0;
+
+} );
+
+await caso( DEBE_FALLAR, '23. Una promotora intenta averiguar cuentas por su correo o ver la lista de accesos', async () =>
+	falla( await aprobA.rpc( 'cuenta_por_email', { p_email: 'aprobadora.b@prueba.local' } ) )
+	&& falla( await anonimo.rpc( 'cuenta_por_email', { p_email: 'aprobadora.b@prueba.local' } ) )
+	&& falla( await robot.rpc( 'cuenta_por_email', { p_email: 'aprobadora.b@prueba.local' } ) )
+	&& falla( await aprobA.rpc( 'accesos', { p_promotora: pA.id } ) )
+	&& falla( await robot.rpc( 'accesos', { p_promotora: pB.id } ) ) );
+
+await caso( DEBE_FALLAR, '24. Dar acceso de promotora a una cuenta interna (administradora o robot)', async () =>
+	estadoHttp( await invitar( admin, { accion: 'invitar', promotora_id: pA.id, nombre: 'Robot', email: 'robot@prueba.local', rol: 'aprobador' } ) ) === 409
+	&& estadoHttp( await invitar( admin, { accion: 'invitar', promotora_id: pA.id, nombre: 'Admin', email: 'ADMIN@prueba.local', rol: 'gestor' } ) ) === 409 );
+
+let nuevaInvitada = false;
+await caso( DEBE_FUNCIONAR, 'La administradora invita a una persona: recibe el email, elige su contraseña y entra', async () => {
+
+	const email = 'nueva.a@prueba.local';
+	const r = await invitar( admin, { accion: 'invitar', promotora_id: pA.id, nombre: 'Nueva de A', email, rol: 'gestor' } );
+	if ( r.error ) throw new Error( `invitar: ${ await r.error.context?.text?.() ?? r.error.message }` );
+	const mensaje = await ultimoEmail( email );
+	const enlace = mensaje.Text.match( /https?:\/\/\S+verify\S+/ )?.[ 0 ];
+	if ( ! enlace ) throw new Error( 'el email no trae el enlace' );
+	// El enlace lleva al portal con la sesión de la invitación (como al pulsarlo).
+	const destino = ( await fetch( enlace.replace( /&amp;/g, '&' ), { redirect: 'manual' } ) ).headers.get( 'location' ) ?? '';
+	const datos = new URLSearchParams( destino.split( '#' )[ 1 ] ?? '' );
+	if ( ! destino.startsWith( 'http://127.0.0.1:5174/' ) || datos.get( 'type' ) !== 'invite' ) throw new Error( `destino inesperado: ${ destino.slice( 0, 80 ) }` );
+	const sb = nuevo();
+	await exigir( sb.auth.setSession( { access_token: datos.get( 'access_token' ), refresh_token: datos.get( 'refresh_token' ) } ), 'sesión de invitación' );
+	await exigir( sb.auth.updateUser( { password: CLAVE } ), 'elegir contraseña' );
+	const nueva = await entrar( email );
+	const { data } = await nueva.from( 'promociones' ).select( 'id' );
+	const accesos = await exigir( admin.rpc( 'accesos', { p_promotora: pA.id } ), 'accesos' );
+	nuevaInvitada = true;
+	return data.length === 1 && data[ 0 ].id === 'prueba-a' && accesos.some( ( a ) => a.email === email && a.aceptada && a.rol === 'gestor' );
+
+} );
+
+await caso( DEBE_FUNCIONAR, 'Volver a invitar el mismo correo no duplica, y «Reenviar acceso» envía otro email', async () => {
+
+	if ( ! nuevaInvitada ) throw new Error( 'depende del caso anterior' );
+	const r = await invitar( admin, { accion: 'invitar', promotora_id: pA.id, nombre: 'Otra vez', email: 'nueva.a@prueba.local', rol: 'gestor' } );
+	const { data: [ cuenta ] } = await servicio.rpc( 'cuenta_por_email', { p_email: 'nueva.a@prueba.local' } );
+	const antes = ( await ( await fetch( `${ BUZON }/api/v1/search?query=${ encodeURIComponent( 'to:nueva.a@prueba.local' ) }` ) ).json() ).messages.length;
+	const re = await invitar( admin, { accion: 'reenviar', promotora_id: pA.id, user_id: cuenta.user_id } );
+	await new Promise( ( ok ) => setTimeout( ok, 1500 ) );
+	const despues = ( await ( await fetch( `${ BUZON }/api/v1/search?query=${ encodeURIComponent( 'to:nueva.a@prueba.local' ) }` ) ).json() ).messages.length;
+	return estadoHttp( r ) === 409 && ! re.error && despues === antes + 1;
+
+} );
+
 // ─── Resumen ────────────────────────────────────────────────────────────────
 
 const fallidos = resultados.filter( ( r ) => ! r.ok );

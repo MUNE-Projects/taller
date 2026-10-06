@@ -64,6 +64,7 @@ Muebles, materiales y texturas disponibles, con la **licencia registrada** de ca
 | Cuándo | Qué | Qué necesita |
 |---|---|---|
 | **Hecho** | Entrada con doble verificación, promociones con estado, pedir cambios con fotos de referencia, registro, **Publicar** y **Volver a una anterior** desde el Panel | Brazo ejecutor (ver abajo) |
+| **Fase 1 · hecho** | Promotoras y accesos (dar, quitar, devolver, reenviar, cambiar rol), promociones de cada promotora (alta, estado visible, activar), lista de documentos que debe entregar; portal con documentación, entregables y versión publicada | Función `invitar`, portal en Cloudflare |
 | **Fase 1** | Inicio, Promotoras y accesos, Documentación, Validación de planos, códigos de comprador, copias de seguridad | Portal de promotoras, almacén de archivos en Supabase, copias en un almacén privado de GitHub (`copias`) |
 | **Fase 2** | Mobiliario y acabados (catálogo y estilo a partir de foto), Personalización, Entregables, Marca, Biblioteca | Catálogo de estilos y recetas automáticas |
 | **Fase 3** | Renders premium bajo demanda | Prueba piloto y decisión sobre costes |
@@ -73,6 +74,7 @@ Muebles, materiales y texturas disponibles, con la **licencia registrada** de ca
 - Código: `panel/` (TypeScript sin frameworks + `@supabase/supabase-js`). Web estática en Cloudflare Workers (`panel`), con vista previa por cada propuesta desde la rama `revision`.
 - Base de datos y reglas: `panel/supabase/00N_*.sql`, ejecutados en orden en el SQL Editor de Supabase.
 - Portal (Fase 1): `panel/supabase/005_portal.sql` crea miembros (gestor o aprobador), requisitos, documentos, entregables, validaciones y los almacenes privados `documentos` y `entregables`, con las reglas de aislamiento.
+- Portal de promotoras: `portal/` (TypeScript sin frameworks + supabase-js), proyecto `portal` de Cloudflare Workers. Accesos desde la sección *Promotoras* del Panel con la función `invitar` (`panel/supabase/funciones/invitar`) y `006_accesos.sql`.
 - Prueba de aislamiento: `panel/pruebas/aislamiento.mjs`, sobre un Supabase local (`bash panel/pruebas/lanzar.sh`), y en cada propuesta con `.github/workflows/aislamiento.yml`. Si sale en rojo, la propuesta no se aprueba.
 - Herramienta del robot: `herramientas/peticiones.mjs` (`listar`, `fotos <id>`, `estado <id> …`), con credenciales en las variables del entorno de Claude (`ROBOT_EMAIL`, `ROBOT_CLAVE`).
 

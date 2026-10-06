@@ -57,6 +57,7 @@ Claude se usa **solo en producción** (preparar, interpretar, revisar), **nunca 
 | Web pública | https://escaparate.mune-projects.workers.dev/residencial-demo/ |
 | Vista previa | https://revision-escaparate.mune-projects.workers.dev/residencial-demo/ |
 | Panel | https://panel.mune-projects.workers.dev (vista previa: https://revision-panel.mune-projects.workers.dev) |
+| Portal de promotoras | https://portal.mune-projects.workers.dev (vista previa: https://revision-portal.mune-projects.workers.dev), código en `portal/` |
 | Base de datos y usuarios | Supabase, proyecto `mune-inmobiliarias` (UE, Irlanda), plan gratuito: `https://iowtdenlkxjqzlpwizgb.supabase.co` |
 | Alojamiento | Cloudflare Workers (cuenta con subdominio `mune-projects`), plan gratuito |
 
@@ -103,8 +104,8 @@ Ahora la web pública está en **v7**, y la **v8** (de prueba, idéntica) sigue 
 
 **Ahora: Fase 1 · Portal seguro**, aprobada por etapas (decisiones 17–25 de `docs/arquitectura.md`, que prevalecen):
 
-1. cimientos de datos y prueba de aislamiento (`005_portal.sql`, `panel/pruebas/`, `aislamiento.yml`);
-2. portal de promotoras y accesos (receta 14);
+1. ✔ cimientos de datos y prueba de aislamiento (`005_portal.sql`, `panel/pruebas/`, `aislamiento.yml`);
+2. portal de promotoras y accesos (receta 14): `portal/`, sección *Promotoras* del Panel, función `invitar`, `006_accesos.sql`;
 3. documentación (recetas 2 y 13, email de subida);
 4. validación de planos;
 5. códigos de comprador (receta 24), desde el botón que ya existe en la web pública;

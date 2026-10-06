@@ -1,53 +1,12 @@
-import { createClient, type Factor } from '@supabase/supabase-js';
-
-// Datos públicos del proyecto de Supabase. La clave «publishable» está pensada
-// para ir en el navegador: por sí sola no da acceso a nada, las reglas de la
-// base de datos (supabase/001_panel.sql) exigen contraseña + código del móvil.
-const SUPABASE_URL = 'https://iowtdenlkxjqzlpwizgb.supabase.co';
-const SUPABASE_CLAVE_PUBLICA = 'sb_publishable_LLvwP-xexV-Hlz2R585IQQ_H2NfJebR';
-
-// La sesión vive solo en esta pestaña y caduca tras un rato sin actividad.
-const INACTIVIDAD_MAX = 30 * 60 * 1000;
-
-const sb = createClient(SUPABASE_URL, SUPABASE_CLAVE_PUBLICA, {
-	auth: { storage: window.sessionStorage, persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
-});
+import type { Factor } from '@supabase/supabase-js';
+import { alEnviar, anotar, esc, fecha, INACTIVIDAD_MAX, sb, traducir } from './comun';
+import { pintarPromotoras } from './promotoras';
 
 const app = document.getElementById('app')!;
-
-function esc(t: string): string {
-	return t.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
-}
 
 function pintar(html: string): void {
 	app.innerHTML = html;
 	app.querySelector<HTMLElement>('[autofocus]')?.focus();
-}
-
-function traducir(e: unknown): string {
-	const m = e instanceof Error ? e.message : String(e);
-	if (/invalid login credentials/i.test(m)) return 'Correo o contraseña incorrectos.';
-	if (/rate limit|too many/i.test(m)) return 'Demasiados intentos. Espera unos minutos y vuelve a probar.';
-	if (/invalid totp|invalid code|expired/i.test(m)) return 'Código incorrecto o caducado. Prueba con el código que aparece ahora en la app.';
-	if (/failed to fetch|network/i.test(m)) return 'No hay conexión con el servidor. Revisa internet y vuelve a probar.';
-	return 'Algo ha fallado: ' + m;
-}
-
-/** Conecta un formulario: desactiva el botón mientras trabaja y muestra errores. */
-function alEnviar(form: HTMLFormElement, accion: (datos: FormData) => Promise<void>): void {
-	const boton = form.querySelector<HTMLButtonElement>('button[type=submit]')!;
-	const error = form.querySelector<HTMLElement>('.error')!;
-	form.addEventListener('submit', async (ev) => {
-		ev.preventDefault();
-		boton.disabled = true;
-		error.textContent = '';
-		try {
-			await accion(new FormData(form));
-		} catch (e) {
-			error.textContent = traducir(e);
-			boton.disabled = false;
-		}
-	});
 }
 
 const CABECERA = '<p class="marca">MUNE Inmobiliarias · Panel</p>';
@@ -171,8 +130,6 @@ async function leerVersion(base: string, id: string): Promise<Version | null | '
 		return 'error';
 	}
 }
-
-const fecha = (iso: string) => new Date(iso).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
 
 function enlace(href: string, texto: string, accion: string, detalle: Record<string, string>, principal = false): string {
 	return `<a class="boton${principal ? '' : ' secundario'}" href="${esc(href)}" target="_blank" rel="noopener noreferrer"
@@ -474,6 +431,11 @@ async function escritorio(): Promise<void> {
 			<div data-promociones><p class="vacio">Consultando el escaparate…</p></div>
 		</section>
 		<section class="tarjeta">
+			<h2>Promotoras</h2>
+			<p class="ayuda">Quién puede entrar en el portal de cada promotora, qué promociones ve y qué documentos tiene que entregar.</p>
+			<div data-promotoras><p class="vacio">Cargando…</p></div>
+		</section>
+		<section class="tarjeta">
 			<h2>Peticiones de cambios</h2>
 			<p class="ayuda">Cuando quieras que Claude se ponga con ellas, díselo en Claude Code: «revisa las peticiones del Panel».</p>
 			<div data-peticiones><p class="vacio">Cargando…</p></div>
@@ -487,13 +449,10 @@ async function escritorio(): Promise<void> {
 	app.querySelector('[data-salir]')!.addEventListener('click', salir);
 	void pintarPromociones(app.querySelector<HTMLElement>('[data-promociones]')!);
 	void pintarPeticiones(app.querySelector<HTMLElement>('[data-peticiones]')!);
+	void pintarPromotoras(app.querySelector<HTMLElement>('[data-promotoras]')!);
 }
 
 // ── Utilidades de sesión ──────────────────────────────────────────────────
-
-async function anotar(accion: string, detalle: Record<string, unknown> = {}): Promise<void> {
-	await sb.from('registro').insert({ accion, detalle });
-}
 
 async function salir(): Promise<void> {
 	sessionStorage.removeItem('panel:entrada-anotada');
