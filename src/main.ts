@@ -376,6 +376,7 @@ async function iniciar() {
 	// Mientras se compilan shaders en segundo plano, el renderer conserva el
 	// destino y las salidas de esa compilación: cada fotograma los aparta y los
 	// devuelve, para que la compilación y el dibujo no se pisen.
+	let precalentarEfectos = false;
 	let enCompilacion: { destino: THREE.RenderTarget | null; mrt: ReturnType<typeof renderer.getMRT> | null } | null = null;
 	const renderizar = () => {
 
@@ -383,6 +384,28 @@ async function iniciar() {
 
 			renderer.setRenderTarget( null );
 			renderer.setMRT( null );
+
+		}
+
+		if ( precalentarEfectos && modo === 'plano' ) {
+
+			// primer fotograma de la cadena completa con todo visible (compila sus
+			// efectos y las sombras de todos los objetos), tapado en el mismo
+			// fotograma por el plano: así la animación de la vivienda no se atasca
+			precalentarEfectos = false;
+			const ocultos: THREE.Object3D[] = [];
+			escena.traverse( ( o ) => {
+
+				if ( ! o.visible && o !== lucesVentana ) {
+
+					ocultos.push( o );
+					o.visible = true;
+
+				}
+
+			} );
+			pipeline.render();
+			for ( const o of ocultos ) o.visible = false;
 
 		}
 
@@ -408,6 +431,11 @@ async function iniciar() {
 	cam.alLlegar = ( v ) => nav.configurar( modo === 'plano' ? 'planta' : v.interior ? 'interior' : 'exterior' );
 	type Modo = 'plano' | 'vivienda' | 'personalizar';
 	let modo: Modo = 'vivienda';
+	// La visita se abre en el plano (rápido de preparar); la vivienda 3D se
+	// prepara mientras tanto. Si se pide antes de estar lista, se recuerda y se
+	// abre en cuanto lo esté.
+	let viviendaLista = false;
+	let modoPendiente: Modo | null = null;
 
 	const botonesModo = [ ...document.querySelectorAll<HTMLButtonElement>( '.modos [data-modo]' ) ];
 	const barraVistas = $( '.vistas' );
@@ -568,6 +596,14 @@ async function iniciar() {
 		if ( m === 'personalizar' && ! comprador ) {
 
 			abrirAcceso();
+			return;
+
+		}
+
+		if ( m !== 'plano' && ! viviendaLista ) {
+
+			modoPendiente = m;
+			avisar( 'Preparando la vista 3D de la vivienda…' );
 			return;
 
 		}
@@ -1256,7 +1292,8 @@ async function iniciar() {
 		proyAnterior.copy( camara.projectionMatrix );
 		quietos = cambia ? 0 : quietos + 1;
 		diagnostico = { orbitando, cam: cam.animando, est: est.animando, conf: conf.animando, mat: ! matAnterior.equals( camara.matrixWorld ), exposicion, expObjetivo, desplazamiento, objetivo, piscinaT, quietos };
-		if ( quietos > FOTOGRAMAS_ESTABLES ) return; // imagen estable: no se vuelve a pintar
+		// imagen estable: no se vuelve a pintar (en el plano no hay efectos que se asienten: bastan 3 fotogramas)
+		if ( quietos > ( modo === 'plano' && ! precalentarEfectos ? 3 : FOTOGRAMAS_ESTABLES ) ) return;
 		renderizar();
 		etiquetas.render( escena, camara );
 
@@ -1265,9 +1302,9 @@ async function iniciar() {
 	// ---------------------------------------------------------------- arranque
 	cargarGeometriaTipologia();
 	cargarVivienda( fichaVivienda );
-	cam.ir( 'aerea', true );
-	marcarVista( 'aerea' );
-	irModo( 'vivienda' );
+	// se abre en el plano: es lo más rápido de preparar y da tiempo a la vivienda 3D
+	irModo( 'plano' );
+	cam.ir( 'planta', true );
 
 	// ---------------------------------------------------------------- compilación de shaders
 	// El navegador necesita un programa de dibujo por tipo de material y por
@@ -1277,90 +1314,136 @@ async function iniciar() {
 	//  1. vista inicial sin luces de ventana (pantalla de carga con progreso);
 	//  2. con la vivienda ya navegable: luces de ventana y modo Plano, en segundo plano.
 	const TANDAS = Math.max( 2, Math.min( 8, navigator.hardwareConcurrency || 4 ) );
-	const compilar = async ( paso: { destino: THREE.RenderTarget; mrt: ReturnType<typeof renderer.getMRT> | null }, conVentanas: boolean, progreso?: ( f: number ) => void ) => {
+	// Inactividad: la segunda fase solo trabaja cuando el visitante no está
+	// moviéndose, para que la navegación nunca se interrumpa.
+	let ultimaInteraccion = performance.now();
+	const interactuar = () => ( ultimaInteraccion = performance.now() );
+	for ( const ev of [ 'pointerdown', 'wheel', 'keydown', 'touchstart' ] ) addEventListener( ev, interactuar, { passive: true } );
+	addEventListener( 'pointermove', ( e ) => e.buttons && interactuar(), { passive: true } );
+	const esperarInactividad = async ( ms = 2500 ) => {
 
-		// todo visible durante la parte síncrona (lista de objetos y luces): los
-		// estados de construcción ocultan partes que se verán más tarde
-		const ocultos: THREE.Object3D[] = [];
-		escena.traverse( ( o ) => {
+		while ( performance.now() - ultimaInteraccion < ms || cam.animando || nav.activo ) await new Promise( ( r ) => setTimeout( r, 250 ) );
 
-			if ( ! o.visible && o !== lucesVentana ) {
+	};
+	const compilar = async ( paso: { destino: THREE.RenderTarget; mrt: ReturnType<typeof renderer.getMRT> | null }, conVentanas: boolean, progreso?: ( f: number ) => void, paciente = false, soloVisibles = false ) => {
 
-				ocultos.push( o );
-				o.visible = true;
-
-			}
-
-		} );
-		const ventanasAntes = lucesVentana.visible;
-		lucesVentana.visible = conVentanas;
-		const previo = { destino: renderer.getRenderTarget(), mrt: renderer.getMRT() };
-		renderer.setRenderTarget( paso.destino );
-		renderer.setMRT( paso.mrt );
-		enCompilacion = paso;
 		// La librería prepara los objetos de uno en uno, esperando a cada programa.
 		// Repartirlos en varias tandas simultáneas permite al navegador compilar
 		// varios programas a la vez (en paralelo en los núcleos del procesador).
 		const tandas: THREE.Object3D[][] = Array.from( { length: TANDAS }, () => [] );
 		let n = 0;
-		escena.traverse( ( o ) => {
+		// solo lo visible: la escena se recorre respetando la visibilidad de los grupos
+		const recorrer = soloVisibles ? escena.traverseVisible.bind( escena ) : escena.traverse.bind( escena );
+		recorrer( ( o ) => {
 
 			if ( ( o as THREE.Mesh ).isMesh ) tandas[ n ++ % TANDAS ].push( o );
 
 		} );
-		const hechos = new Array( TANDAS ).fill( 0 ), totales = new Array( TANDAS ).fill( 1 );
-		const trabajo = Promise.all( tandas.filter( ( t ) => t.length ).map( ( objetos, i ) => {
+		const llenas = tandas.filter( ( t ) => t.length );
+		const hechos = new Array( llenas.length ).fill( 0 ), totales = new Array( llenas.length ).fill( 1 );
 
-			const grupo = new THREE.Group();
-			// grupo de compilación: referencia a los objetos sin sacarlos de la escena
-			( grupo as unknown as { children: THREE.Object3D[] } ).children = objetos;
-			grupo.matrixWorldAutoUpdate = false;
-			return renderer.compileAsync( grupo, camara, escena, ( e ) => {
+		/** Compila unas tandas: prepara el estado del renderer, lanza la compilación y lo restaura al terminar. */
+		const compilarTandas = async ( indices: number[] ) => {
 
-				hechos[ i ] = e.loaded;
-				totales[ i ] = Math.max( 1, e.total );
-				progreso?.( hechos.reduce( ( a, b ) => a + b, 0 ) / totales.reduce( ( a, b ) => a + b, 0 ) );
+			// todo visible durante la parte síncrona (lista de objetos y luces): los
+			// estados de construcción ocultan partes que se verán más tarde
+			const ocultos: THREE.Object3D[] = [];
+			if ( ! soloVisibles ) escena.traverse( ( o ) => {
+
+				if ( ! o.visible && o !== lucesVentana ) {
+
+					ocultos.push( o );
+					o.visible = true;
+
+				}
 
 			} );
+			const ventanasAntes = lucesVentana.visible;
+			lucesVentana.visible = conVentanas;
+			const previo = { destino: renderer.getRenderTarget(), mrt: renderer.getMRT() };
+			renderer.setRenderTarget( paso.destino );
+			renderer.setMRT( paso.mrt );
+			enCompilacion = paso;
+		const trabajos = indices.map( ( i ) => {
 
-		} ) );
-		for ( const o of ocultos ) o.visible = false;
-		lucesVentana.visible = ventanasAntes;
-		try {
+				const grupo = new THREE.Group();
+				// grupo de compilación: referencia a los objetos sin sacarlos de la escena
+				( grupo as unknown as { children: THREE.Object3D[] } ).children = llenas[ i ];
+				grupo.matrixWorldAutoUpdate = false;
+				return renderer.compileAsync( grupo, camara, escena, ( e ) => {
 
-			await trabajo;
+					hechos[ i ] = e.loaded;
+					totales[ i ] = Math.max( 1, e.total );
+					progreso?.( hechos.reduce( ( x, y ) => x + y, 0 ) / totales.reduce( ( x, y ) => x + y, 0 ) );
 
-		} finally {
+				} );
 
-			enCompilacion = null;
-			renderer.setRenderTarget( previo.destino );
-			renderer.setMRT( previo.mrt );
+			} );
+			for ( const o of ocultos ) o.visible = false;
+			lucesVentana.visible = ventanasAntes;
+			try {
+
+				await Promise.all( trabajos );
+
+			} finally {
+
+				enCompilacion = null;
+				renderer.setRenderTarget( previo.destino );
+				renderer.setMRT( previo.mrt );
+
+			}
+
+		};
+
+		if ( ! paciente ) return compilarTandas( llenas.map( ( _, i ) => i ) );
+		// segunda fase: de una tanda en una y solo cuando el visitante no interactúa
+		for ( let i = 0; i < llenas.length; i ++ ) {
+
+			await esperarInactividad();
+			await compilarTandas( [ i ] );
 
 		}
 
 	};
 	const barra = $( '.carga-barra span' );
-	await compilar( { destino: escenaPass.renderTarget, mrt: escenaPass.getMRT() }, false, ( f ) => ( barra.style.width = `${ Math.round( f * 100 ) }%` ) );
+	// 1. plano: solo lo visible en planta (pocos programas, sin efectos de imagen)
+	await compilar( { destino: escenaPlano.renderTarget, mrt: null }, false, ( f ) => ( barra.style.width = `${ Math.round( f * 100 ) }%` ), false, true );
 	preparado = true;
 	despertar();
-	// el primer fotograma (sombras y efectos) se pinta tras la pantalla de carga
 	await new Promise( requestAnimationFrame );
 	await new Promise( requestAnimationFrame );
 	document.body.classList.add( 'listo' );
+	const tListo = performance.now();
 	void ( async () => {
 
 		const aviso = $( '#calidad' );
-		aviso.hidden = false;
 		try {
 
-			await compilar( { destino: escenaPass.renderTarget, mrt: escenaPass.getMRT() }, true );
+			// 2. vivienda 3D, mientras se mira el plano
+			await compilar( { destino: escenaPass.renderTarget, mrt: escenaPass.getMRT() }, false );
+			precalentarEfectos = true;
+			despertar();
+			await new Promise( requestAnimationFrame );
+			await new Promise( requestAnimationFrame );
+			viviendaLista = true;
+			// si se pidió la vivienda, se abre; si nadie ha tocado el plano, la vivienda
+			// «se construye» sola desde el plano; si se está usando el plano, se respeta
+			const destino = modoPendiente ?? ( ultimaInteraccion <= tListo ? 'vivienda' : null );
+			modoPendiente = null;
+			if ( destino && ( modo as Modo ) === 'plano' ) irModo( destino );
+
+			// 3. luces de ventana y plano completo, solo en los momentos sin interacción
+			await esperarInactividad();
+			aviso.hidden = false;
+			await compilar( { destino: escenaPass.renderTarget, mrt: escenaPass.getMRT() }, true, undefined, true );
 			ventanasListas = true;
 			despertar();
-			await compilar( { destino: escenaPlano.renderTarget, mrt: null }, false );
+			await compilar( { destino: escenaPlano.renderTarget, mrt: null }, false, undefined, true );
 
 		} catch ( e ) {
 
 			console.warn( 'Compilación en segundo plano:', e );
+			viviendaLista = true;
 			ventanasListas = true;
 
 		} finally {
