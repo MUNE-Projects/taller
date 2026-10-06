@@ -44,12 +44,22 @@
     {
       "version": "v5",
       "fecha": "2026-10-06T11:06:07Z",
-      "estado": "publicada",
+      "estado": "sustituida",
       "taller": "815b05fd5292c0bef8dffd1d8096ed6bf2be690a",
       "aprobadoPor": "Carolina (MUNE Projects) — pendiente de revisar la vista previa",
       "cambios": "Se abre en el plano; la vivienda 3D se prepara mientras tanto",
       "archivos": 6,
       "bytes": 2179286
+    },
+    {
+      "version": "v6",
+      "fecha": "2026-10-06T11:26:06Z",
+      "estado": "publicada",
+      "taller": "9125e592415dd96ed779cc93fc91d1120d97e79a",
+      "aprobadoPor": "Carolina (MUNE Projects) — pendiente de revisar la vista previa",
+      "cambios": "Empieza en el plano y solo pasa a la vivienda al pulsar Vivienda",
+      "archivos": 6,
+      "bytes": 2179235
     }
   ],
   "historial": [
@@ -81,6 +91,12 @@
       "fecha": "2026-10-06T11:06:07Z",
       "accion": "publicar",
       "version": "v5",
+      "por": "Carolina (MUNE Projects) — pendiente de revisar la vista previa"
+    },
+    {
+      "fecha": "2026-10-06T11:26:06Z",
+      "accion": "publicar",
+      "version": "v6",
       "por": "Carolina (MUNE Projects) — pendiente de revisar la vista previa"
     }
   ]
