@@ -1,7 +1,6 @@
 // Puertas, balconeras y barandilla, generadas a partir de los huecos del JSON.
 
 import * as THREE from 'three/webgpu';
-import { abs, fract, mix, positionLocal, smoothstep } from 'three/tsl';
 import type { Hueco, Vivienda } from '../modelo/tipos';
 import { caja, unir } from '../util/geo';
 import { alturaHueco } from './muros';
@@ -14,21 +13,12 @@ let MAT: ReturnType<typeof materiales> | null = null;
 function materiales() {
 
 	// hoja lacada con pantografiado horizontal (patrón supuesto: 4 ranuras)
-	const y = positionLocal.y;
-	const ranura = smoothstep( 0.0035, 0.0015, abs( fract( y.div( 0.42 ) ).sub( 0.5 ) ).mul( 0.42 ) )
-		.mul( smoothstep( 0.3, 0.35, y ) ).mul( smoothstep( 1.95, 1.9, y ) );
-	const hoja = M.material( {
-		acabado: mix( M.color( '#f2f0eb' ), M.color( '#d9d6cf' ), ranura ),
-		rugosidad: 0.4,
-		relieve: ranura.oneMinus(),
-		relieveEscala: 0.6,
-		fisico: { clearcoat: 0.3, clearcoatRoughness: 0.25 },
-	} );
+	const hoja = M.puertaRanurada( '#f2f0eb', '#d9d6cf' );
 	return {
 		hoja,
 		lacado: M.lacado( '#f2f0eb', 0.42 ),
 		cromo: M.metalico( '#c4c6c7', 0.32 ),
-		aluminio: M.material( { acabado: M.color( '#3a3d3f' ), rugosidad: 0.34, metal: 0.8, fisico: { clearcoat: 0.3, clearcoatRoughness: 0.25 } } ),
+		aluminio: M.liso( '#3a3d3f', 0.34, 0.8 ),
 		vidrio: M.vidrio(),
 		sate: M.sate( '#f1efea', false ),
 	};

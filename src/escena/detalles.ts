@@ -96,7 +96,7 @@ export function construirRodapies( v: Vivienda ) {
 /** Downlights empotrados: rejilla regular dentro de cada estancia interior. */
 export function construirDownlights( v: Vivienda ) {
 
-	matAro ??= M.material( { acabado: M.color( '#e9e8e4' ), rugosidad: 0.35 } );
+	matAro ??= M.liso( '#e9e8e4', 0.35 );
 	matLuz ??= M.emisivo( '#fff3e0', 1.4 );
 	const H = v.alturas.libre.valor;
 	const aros: THREE.BufferGeometry[] = [], luces: THREE.BufferGeometry[] = [];
@@ -142,7 +142,7 @@ let matTecla: THREE.Material | null = null;
 export function construirMecanismos( v: Vivienda ) {
 
 	matMecanismo ??= M.lacado( '#f6f5f2', 0.35 );
-	matTecla ??= M.material( { acabado: M.color( '#e4e2dd' ), rugosidad: 0.4 } );
+	matTecla ??= M.liso( '#e4e2dd', 0.4 );
 	const placas: THREE.BufferGeometry[] = [], teclas: THREE.BufferGeometry[] = [];
 	for ( const h of v.huecos.filter( ( x ) => x.tipo !== 'balconera' ) ) {
 
