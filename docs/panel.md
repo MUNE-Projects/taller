@@ -63,8 +63,7 @@ Muebles, materiales y texturas disponibles, con la **licencia registrada** de ca
 
 | Cuándo | Qué | Qué necesita |
 |---|---|---|
-| **Hecho** | Entrada con doble verificación, promociones con estado, pedir cambios con fotos de referencia, registro | — |
-| **Cierre de Fase 0** | Pestaña Versiones con Publicar y Volver desde el Panel | Brazo ejecutor (GitHub Actions + llave limitada). Se presentan sus permisos antes de crearlo |
+| **Hecho** | Entrada con doble verificación, promociones con estado, pedir cambios con fotos de referencia, registro, **Publicar** y **Volver a una anterior** desde el Panel | Brazo ejecutor (ver abajo) |
 | **Fase 1** | Inicio, Promotoras y accesos, Documentación, Validación de planos, códigos de comprador, copias de seguridad | Portal de promotoras, almacén de archivos en Supabase. Copias en R2: puede pedir tarjeta, se consulta antes |
 | **Fase 2** | Mobiliario y acabados (catálogo y estilo a partir de foto), Personalización, Entregables, Marca, Biblioteca | Catálogo de estilos y recetas automáticas |
 | **Fase 3** | Renders premium bajo demanda | Prueba piloto y decisión sobre costes |
@@ -74,3 +73,19 @@ Muebles, materiales y texturas disponibles, con la **licencia registrada** de ca
 - Código: `panel/` (TypeScript sin frameworks + `@supabase/supabase-js`). Web estática en Cloudflare Workers (`panel`), con vista previa por cada propuesta desde la rama `revision`.
 - Base de datos y reglas: `panel/supabase/00N_*.sql`, ejecutados en orden en el SQL Editor de Supabase.
 - Herramienta del robot: `herramientas/peticiones.mjs` (`listar`, `fotos <id>`, `estado <id> …`), con credenciales en las variables del entorno de Claude (`ROBOT_EMAIL`, `ROBOT_CLAVE`).
+
+## Brazo ejecutor (Publicar y Volver)
+
+```
+Panel (botón) → función «ejecutar» de Supabase → GitHub Actions «publicar.yml» del taller → escaparate (main) → Cloudflare
+```
+
+| Pieza | Dónde | Qué comprueba o permite |
+|---|---|---|
+| Función `ejecutar` | `panel/supabase/funciones/ejecutar/index.ts`, en Supabase → Edge Functions | Que quien pulsa es administradora con doble verificación (`es_admin()`); valida la orden; anota en el registro |
+| Llave A `GITHUB_EJECUTOR` | Secreto de Supabase (Edge Functions → Secrets) | Solo arrancar procesos del almacén `taller` (Actions: lectura y escritura). Caduca a los 90 días |
+| Proceso `publicar.yml` | `.github/workflows/publicar.yml` | Ejecuta `herramientas/publicacion.mjs aprobar` o `volver`; uno detrás de otro, nunca dos a la vez |
+| Llave B `ESCAPARATE_TOKEN` | Secreto del almacén `taller` (Settings → Secrets → Actions) | Solo escribir en `escaparate` (Contents: lectura y escritura). Caduca a los 90 días |
+| `GITHUB_TOKEN` | Automática de GitHub | Guardar el registro de versiones en el taller; solo dura ese proceso |
+
+Flujo de versiones: Claude **prepara** una versión en la rama `revision` del escaparate (vista previa). La administradora la **publica** desde el Panel, y la versión pasa a `main`. El registro `promociones/<id>/publicaciones.json` solo lo escribe el ejecutor, en `main`.

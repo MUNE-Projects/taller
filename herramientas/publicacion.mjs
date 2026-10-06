@@ -1,15 +1,22 @@
 #!/usr/bin/env node
-// Publicación de promociones: construir, publicar una versión numerada y volver atrás.
+// Publicación de promociones: construir, preparar una versión numerada para
+// revisión, aprobarla (publicarla) y volver atrás.
 //
 // Es la lógica estable que hay debajo de las recetas 9 (preview), 10 (publicar) y
-// 11 (volver a una versión anterior). Hoy la ejecuta Claude; más adelante la
-// ejecutará el «brazo ejecutor» (GitHub Actions) cuando pulses el botón del Panel.
-// Las garantías son las mismas en ambos casos porque las comprueba este script.
+// 11 (volver a una versión anterior). «preparar» la ejecuta Claude; «aprobar» y
+// «volver» las ejecuta el brazo ejecutor (GitHub Actions, .github/workflows/
+// publicar.yml) cuando la administradora pulsa el botón del Panel. Las garantías
+// son las mismas en todos los casos porque las comprueba este script.
 //
 //   node herramientas/publicacion.mjs construir <promoción>
-//   node herramientas/publicacion.mjs publicar  <promoción> --aprobado-por "Nombre" --cambios "Texto" [--confirmar]
-//   node herramientas/publicacion.mjs volver    <promoción> <vN> --motivo "Texto" [--confirmar]
+//   node herramientas/publicacion.mjs preparar  <promoción> --cambios "Texto" [--preparado-por "Nombre"] [--confirmar]
+//   node herramientas/publicacion.mjs aprobar   <promoción> --aprobado-por "Nombre" [--confirmar]
+//   node herramientas/publicacion.mjs volver    <promoción> <vN> --motivo "Texto" [--aprobado-por "Nombre"] [--confirmar]
 //   node herramientas/publicacion.mjs estado    <promoción>
+//
+// Flujo: «preparar» deja la versión en la rama «revision» del escaparate (vista
+// previa, estado «en_revision»); «aprobar» la copia a «main» (producción, estado
+// «publicada»). «volver» restaura en «main» una versión anterior.
 //
 // Opciones comunes: --escaparate <ruta> (por defecto ../escaparate).
 // Sin --confirmar, publicar y volver solo muestran lo que harían (no cambian nada).
@@ -62,7 +69,7 @@ const opcion = ( nombre ) => {
 
 };
 const bandera = ( nombre ) => args.includes( `--${ nombre }` );
-const CON_VALOR = [ '--escaparate', '--aprobado-por', '--cambios', '--motivo' ];
+const CON_VALOR = [ '--escaparate', '--aprobado-por', '--preparado-por', '--cambios', '--motivo' ];
 const posicionales = args.filter( ( a, i ) => ! a.startsWith( '--' ) && ! CON_VALOR.includes( args[ i - 1 ] ) );
 
 const fallo = ( texto ) => {
@@ -94,6 +101,40 @@ function rutaEscaparate() {
 	const ruta = resolve( opcion( 'escaparate' ) ?? join( RAIZ, '..', 'escaparate' ) );
 	if ( ! existsSync( join( ruta, '.git' ) ) ) fallo( `No encuentro el escaparate en ${ ruta } (usa --escaparate <ruta>)` );
 	return ruta;
+
+}
+
+const ramaActual = ( cwd ) => git( cwd, 'rev-parse', '--abbrev-ref', 'HEAD' );
+
+function exigirRama( esc, rama ) {
+
+	const actual = ramaActual( esc );
+	if ( actual !== rama ) fallo( `El escaparate debe estar en la rama «${ rama }» (está en «${ actual }»)` );
+
+}
+
+/** Versión de una promoción en una referencia del escaparate (null si no está). */
+function versionEn( esc, ref, id ) {
+
+	try {
+
+		return JSON.parse( git( esc, 'show', `${ ref }:${ PUBLICO }/${ id }/version.json` ) ).version;
+
+	} catch {
+
+		return null;
+
+	}
+
+}
+
+/** Commit del escaparate con la versión indicada: su etiqueta o, si no existe, buscándola en el historial. */
+function commitDeVersion( esc, id, version ) {
+
+	const etiqueta = `${ id }/${ version }`;
+	if ( git( esc, 'tag', '--list', etiqueta ) ) return etiqueta;
+	const commits = git( esc, 'log', '--all', '--format=%H', '--', `${ PUBLICO }/${ id }/version.json` ).split( '\n' ).filter( Boolean );
+	return commits.find( ( c ) => versionEn( esc, c, id ) === version ) ?? null;
 
 }
 
@@ -138,33 +179,36 @@ function construir( id ) {
 
 // ---------------------------------------------------------------- publicar
 
-function publicar( id ) {
+function preparar( id ) {
 
 	comprobarPromocion( id );
 	const esc = rutaEscaparate();
-	const aprobadoPor = opcion( 'aprobado-por' );
+	exigirRama( esc, 'revision' );
+	const preparadoPor = opcion( 'preparado-por' ) ?? 'Claude';
 	const cambios = opcion( 'cambios' );
-	if ( ! aprobadoPor ) fallo( 'Falta --aprobado-por: ninguna publicación sin aprobación explícita' );
 	if ( ! cambios ) fallo( 'Falta --cambios: cada versión debe explicar qué cambia' );
 	if ( git( RAIZ, 'status', '--porcelain' ) ) fallo( 'El taller tiene cambios sin guardar. Lo publicado debe ser exactamente lo guardado (haz commit primero).' );
 	if ( git( esc, 'status', '--porcelain' ) ) fallo( 'El escaparate tiene cambios sin guardar.' );
 
+	// número siguiente: el mayor entre el registro, la vista previa y producción
 	const registro = leerRegistro( id );
-	const numero = registro.versiones.reduce( ( m, v ) => Math.max( m, Number( v.version.slice( 1 ) ) ), 0 ) + 1;
+	const numeros = [ ...registro.versiones.map( ( v ) => v.version ), versionEn( esc, 'HEAD', id ), versionEn( esc, 'origin/main', id ) ]
+		.filter( Boolean ).map( ( v ) => Number( v.slice( 1 ) ) );
+	const numero = Math.max( 0, ...numeros ) + 1;
 	const version = `v${ numero }`;
 	const motor = git( RAIZ, 'rev-parse', 'HEAD' );
 	const etiqueta = `${ id }/${ version }`;
 	if ( git( RAIZ, 'tag', '--list', etiqueta ) ) fallo( `La etiqueta ${ etiqueta } ya existe en el taller` );
 
-	console.log( `\nPublicación de «${ id }» ${ version }` );
+	console.log( `\nPreparación de «${ id }» ${ version } (vista previa, pendiente de aprobación)` );
 	console.log( `  commit del taller: ${ motor.slice( 0, 10 ) }` );
-	console.log( `  aprobado por:      ${ aprobadoPor }` );
+	console.log( `  preparada por:     ${ preparadoPor }` );
 	console.log( `  cambios:           ${ cambios }\n` );
 
-	const { destino, archivos, bytes } = construir( id );
+	const { destino } = construir( id );
 	if ( ! bandera( 'confirmar' ) ) {
 
-		console.log( '\nSimulación: no se ha publicado nada. Repite con --confirmar para publicar.\n' );
+		console.log( '\nSimulación: no se ha preparado nada. Repite con --confirmar.\n' );
 		return;
 
 	}
@@ -177,20 +221,67 @@ function publicar( id ) {
 	const fecha = hoy();
 	escribirJSON( join( carpeta, 'version.json' ), { promocion: id, version, fecha, taller: motor } );
 	git( esc, 'add', '-A', join( PUBLICO, id ) );
-	git( esc, 'commit', '-q', '-m', `Publica ${ id } ${ version }\n\n${ cambios }\nAprobado por: ${ aprobadoPor }\nTaller: ${ motor }` );
-	git( esc, 'tag', '-a', etiqueta, '-m', `${ id } ${ version } · ${ fecha }` );
-	ok( `Escaparate: ${ PUBLICO }/${ id }/ actualizado y etiquetado ${ etiqueta }` );
-
-	// taller: etiqueta inmutable en el commit publicado + registro de versiones
+	// los cambios viajan en el mensaje (privado): el registro lo escribe «aprobar»
+	git( esc, 'commit', '-q', '-m', `Prepara ${ id } ${ version }\n\nCambios: ${ cambios }\nPreparada por: ${ preparadoPor }\nTaller: ${ motor }` );
+	ok( `Escaparate (rama revision): ${ PUBLICO }/${ id }/ en ${ version }` );
 	git( RAIZ, 'tag', '-a', etiqueta, motor, '-m', `${ id } ${ version } · ${ fecha }` );
-	for ( const v of registro.versiones ) if ( v.estado === 'publicada' ) v.estado = 'sustituida';
-	registro.versiones.push( { version, fecha, estado: 'publicada', taller: motor, aprobadoPor, cambios, archivos, bytes } );
-	registro.historial = [ ...( registro.historial ?? [] ), { fecha, accion: 'publicar', version, por: aprobadoPor } ];
+	ok( `Taller: etiqueta ${ etiqueta } en el commit usado` );
+	console.log( '\nFalta enviar a GitHub (push) la rama «revision» del escaparate. Se publica al aprobarla en el Panel.\n' );
+
+}
+
+// ---------------------------------------------------------------- aprobar (publicar)
+
+function aprobar( id ) {
+
+	comprobarPromocion( id );
+	const esc = rutaEscaparate();
+	exigirRama( esc, 'main' );
+	const aprobadoPor = opcion( 'aprobado-por' );
+	if ( ! aprobadoPor ) fallo( 'Falta --aprobado-por: ninguna publicación sin aprobación explícita' );
+	if ( git( esc, 'status', '--porcelain' ) ) fallo( 'El escaparate tiene cambios sin guardar.' );
+
+	const enRevision = versionEn( esc, 'origin/revision', id );
+	const publicada = versionEn( esc, 'HEAD', id );
+	if ( ! enRevision ) fallo( `No hay ninguna versión de ${ id } en la vista previa (rama revision)` );
+	if ( enRevision === publicada ) fallo( `${ enRevision } ya es la versión publicada: no hay nada pendiente` );
+
+	// datos de la preparación: version.json y el mensaje del commit en «revision»
+	const datosV = JSON.parse( git( esc, 'show', `origin/revision:${ PUBLICO }/${ id }/version.json` ) );
+	const mensaje = git( esc, 'log', '-1', '--format=%B', 'origin/revision', '--', `${ PUBLICO }/${ id }/version.json` );
+	const campo = ( nombre ) => mensaje.match( new RegExp( `^${ nombre }: (.*)$`, 'm' ) )?.[ 1 ]?.trim() ?? null;
+
+	console.log( `\nAprobar «${ id }» ${ enRevision } (sustituye a ${ publicada ?? '—' })\n  aprobado por: ${ aprobadoPor }\n  cambios: ${ campo( 'Cambios' ) ?? '—' }` );
+	if ( ! bandera( 'confirmar' ) ) {
+
+		console.log( '\nSimulación: no se ha publicado nada. Repite con --confirmar.\n' );
+		return;
+
+	}
+
+	const fecha = hoy();
+	git( esc, 'rm', '-r', '-q', '--ignore-unmatch', join( PUBLICO, id ) );
+	git( esc, 'checkout', 'origin/revision', '--', join( PUBLICO, id ) );
+	git( esc, 'commit', '-q', '-m', `Publica ${ id } ${ enRevision }\n\nAprobada en el Panel por: ${ aprobadoPor }` );
+	const etiqueta = `${ id }/${ enRevision }`;
+	if ( ! git( esc, 'tag', '--list', etiqueta ) ) git( esc, 'tag', '-a', etiqueta, '-m', `${ id } ${ enRevision } · ${ fecha }` );
+	ok( `Escaparate: ${ PUBLICO }/${ id }/ publicado en ${ enRevision }` );
+
+	// el registro del taller solo lo escribe el ejecutor (aprobar y volver), en main
+	const registro = leerRegistro( id );
+	for ( const x of registro.versiones ) if ( x.estado === 'publicada' ) x.estado = 'sustituida';
+	const entrada = {
+		version: enRevision, fecha: datosV.fecha, estado: 'publicada', taller: datosV.taller,
+		preparadaPor: campo( 'Preparada por' ), cambios: campo( 'Cambios' ), aprobadoPor, publicadaEl: fecha,
+	};
+	const previa = registro.versiones.findIndex( ( x ) => x.version === enRevision );
+	if ( previa >= 0 ) registro.versiones[ previa ] = { ...registro.versiones[ previa ], ...entrada };
+	else registro.versiones.push( entrada );
+	registro.historial = [ ...( registro.historial ?? [] ), { fecha, accion: 'aprobar', version: enRevision, por: aprobadoPor } ];
 	escribirJSON( rutaRegistro( id ), registro );
 	git( RAIZ, 'add', rutaRegistro( id ) );
-	git( RAIZ, 'commit', '-q', '-m', `Registro: ${ id } ${ version } publicada` );
-	ok( `Taller: etiqueta ${ etiqueta } y registro de versiones actualizado` );
-	console.log( '\nFalta enviar a GitHub (push) el taller, el escaparate y sus etiquetas.\n' );
+	git( RAIZ, 'commit', '-q', '-m', `Registro: ${ id } ${ enRevision } publicada (aprobada por ${ aprobadoPor })` );
+	ok( 'Taller: registro de versiones actualizado' );
 
 }
 
@@ -204,14 +295,16 @@ function volver( id, version ) {
 	if ( ! /^v\d+$/.test( version ?? '' ) ) fallo( 'Indica la versión, por ejemplo: v2' );
 	if ( ! motivo ) fallo( 'Falta --motivo' );
 	if ( git( RAIZ, 'status', '--porcelain' ) || git( esc, 'status', '--porcelain' ) ) fallo( 'Hay cambios sin guardar en el taller o el escaparate.' );
+	exigirRama( esc, 'main' );
 
 	const registro = leerRegistro( id );
 	const destinoV = registro.versiones.find( ( v ) => v.version === version );
 	const vigente = registro.versiones.find( ( v ) => v.estado === 'publicada' );
 	if ( ! destinoV ) fallo( `No existe la versión ${ version } de ${ id }` );
-	if ( vigente?.version === version ) fallo( `${ version } ya es la versión publicada` );
-	const etiqueta = `${ id }/${ version }`;
-	if ( ! git( esc, 'tag', '--list', etiqueta ) ) fallo( `El escaparate no tiene la etiqueta ${ etiqueta }` );
+	if ( versionEn( esc, 'HEAD', id ) === version ) fallo( `${ version } ya es la versión publicada` );
+	const origen = commitDeVersion( esc, id, version );
+	if ( ! origen ) fallo( `No encuentro ${ version } de ${ id } en el historial del escaparate` );
+	const aprobadoPor = opcion( 'aprobado-por' ) ?? 'sin indicar';
 
 	console.log( `\nVolver «${ id }» de ${ vigente?.version ?? '—' } a ${ version }\n  motivo: ${ motivo }` );
 	if ( ! bandera( 'confirmar' ) ) {
@@ -223,13 +316,13 @@ function volver( id, version ) {
 
 	const fecha = hoy();
 	git( esc, 'rm', '-r', '-q', '--ignore-unmatch', join( PUBLICO, id ) );
-	git( esc, 'checkout', etiqueta, '--', join( PUBLICO, id ) );
-	git( esc, 'commit', '-q', '-m', `Vuelve ${ id } a ${ version }\n\nMotivo: ${ motivo }` );
+	git( esc, 'checkout', origen, '--', join( PUBLICO, id ) );
+	git( esc, 'commit', '-q', '-m', `Vuelve ${ id } a ${ version }\n\nMotivo: ${ motivo }\nAprobado por: ${ aprobadoPor }` );
 	ok( `Escaparate: ${ PUBLICO }/${ id }/ restaurado a ${ version }` );
 
 	if ( vigente ) vigente.estado = 'retirada';
 	destinoV.estado = 'publicada';
-	registro.historial = [ ...( registro.historial ?? [] ), { fecha, accion: 'volver', desde: vigente?.version ?? null, a: version, motivo } ];
+	registro.historial = [ ...( registro.historial ?? [] ), { fecha, accion: 'volver', desde: vigente?.version ?? null, a: version, motivo, por: aprobadoPor } ];
 	escribirJSON( rutaRegistro( id ), registro );
 	git( RAIZ, 'add', rutaRegistro( id ) );
 	git( RAIZ, 'commit', '-q', '-m', `Registro: ${ id } vuelve a ${ version }` );
@@ -246,7 +339,7 @@ function estado( id ) {
 	const r = leerRegistro( id );
 	if ( ! r.versiones.length ) return console.log( `${ id }: sin versiones publicadas` );
 	console.log( `${ id }:` );
-	for ( const v of r.versiones ) console.log( `  ${ v.version.padEnd( 4 ) } ${ v.estado.padEnd( 11 ) } ${ v.fecha }  ${ v.aprobadoPor } · ${ v.cambios }` );
+	for ( const v of r.versiones ) console.log( `  ${ v.version.padEnd( 4 ) } ${ v.estado.padEnd( 11 ) } ${ v.fecha }  ${ v.aprobadoPor ?? v.preparadaPor ?? '' } · ${ v.cambios }` );
 
 }
 
@@ -256,9 +349,10 @@ const [ orden, id, extra ] = posicionales;
 switch ( orden ) {
 
 	case 'construir': construir( id ); break;
-	case 'publicar': publicar( id ); break;
+	case 'preparar': preparar( id ); break;
+	case 'aprobar': aprobar( id ); break;
 	case 'volver': volver( id, extra ); break;
 	case 'estado': estado( id ); break;
-	default: fallo( 'Orden desconocida. Usa: construir | publicar | volver | estado' );
+	default: fallo( 'Orden desconocida. Usa: construir | preparar | aprobar | volver | estado' );
 
 }

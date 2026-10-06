@@ -9,7 +9,8 @@ con contraseña + código del móvil y registro de actividad.
   - `002_promociones.sql`: lista privada de promotoras y promociones;
   - `003_peticiones.sql`: peticiones de cambios y usuario robot de Claude;
   - `004_referencias.sql`: almacén privado de fotos de referencia.
-- Mapa completo del Panel: `docs/panel.md`.
+- Función de Supabase `ejecutar` (`supabase/funciones/ejecutar/index.ts`): botones Publicar y Volver, a través de `.github/workflows/publicar.yml`.
+- Mapa completo del Panel y brazo ejecutor: `docs/panel.md`.
 - Versiones: el Panel lee el `version.json` de cada promoción en producción y en la vista previa del escaparate. No existe ninguna lista pública de promociones.
 - Publicación: Cloudflare Workers (`wrangler.jsonc`), solo archivos estáticos.
 
