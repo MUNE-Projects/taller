@@ -54,12 +54,22 @@
     {
       "version": "v6",
       "fecha": "2026-10-06T11:26:06Z",
-      "estado": "publicada",
+      "estado": "sustituida",
       "taller": "9125e592415dd96ed779cc93fc91d1120d97e79a",
       "aprobadoPor": "Carolina (MUNE Projects) — pendiente de revisar la vista previa",
       "cambios": "Empieza en el plano y solo pasa a la vivienda al pulsar Vivienda",
       "archivos": 6,
       "bytes": 2179235
+    },
+    {
+      "version": "v7",
+      "fecha": "2026-10-06T11:35:12Z",
+      "estado": "publicada",
+      "taller": "b0e131bbef9cdab2dd56507745c0666fd47f22b7",
+      "aprobadoPor": "Carolina (MUNE Projects) — pendiente de revisar la vista previa",
+      "cambios": "Corrige el plano estirado",
+      "archivos": 6,
+      "bytes": 2179308
     }
   ],
   "historial": [
@@ -97,6 +107,12 @@
       "fecha": "2026-10-06T11:26:06Z",
       "accion": "publicar",
       "version": "v6",
+      "por": "Carolina (MUNE Projects) — pendiente de revisar la vista previa"
+    },
+    {
+      "fecha": "2026-10-06T11:35:12Z",
+      "accion": "publicar",
+      "version": "v7",
       "por": "Carolina (MUNE Projects) — pendiente de revisar la vista previa"
     }
   ]
