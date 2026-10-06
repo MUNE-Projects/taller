@@ -415,6 +415,36 @@ await caso( DEBE_FUNCIONAR, 'Cualquier persona del equipo rellena los datos fisc
 
 } );
 
+await caso( DEBE_FUNCIONAR, 'El equipo rellena la ficha de su promoción (dirección, tipo, viviendas…); no la de otra', async () => {
+
+	const ficha = ( p ) => ( {
+		p_promocion: p, p_direccion: 'Calle de las Eras 3', p_codigo_postal: '19208', p_municipio: 'Alovera', p_provincia: 'Guadalajara',
+		p_referencia_catastral: '1234567 VK7913S', p_tipo: 'plurifamiliar', p_num_viviendas: 48, p_num_portales: 2, p_num_plantas: 5, p_fecha_entrega: '2028-06-30',
+	} );
+	await exigir( gestorA.rpc( 'guardar_ficha_promocion', ficha( 'prueba-a' ) ), 'ficha' );
+	const p = await filaDe( 'promociones', 'prueba-a' );
+	const ajena = await gestorA.rpc( 'guardar_ficha_promocion', ficha( 'prueba-a2' ) );
+	const mala = await gestorA.rpc( 'guardar_ficha_promocion', { ...ficha( 'prueba-a' ), p_tipo: 'chalet' } );
+	return p.num_viviendas === 48 && p.referencia_catastral === '1234567VK7913S' && p.tipo === 'plurifamiliar'
+		&& falla( ajena ) && falla( mala ) && ( await filaDe( 'promociones', 'prueba-a2' ) ).num_viviendas === null;
+
+} );
+
+await caso( DEBE_FUNCIONAR, 'Lista estándar de documentos: solo la administradora la aplica, y lo quitado deja de verse', async () => {
+
+	await exigir( admin.from( 'promociones' ).insert( { id: 'prueba-a3', promotora_id: pA.id, nombre: 'Residencial A3 (lista estándar)' } ), 'promoción nueva' );
+	const intruso = await aprobA.rpc( 'aplicar_lista_estandar', { p_promocion: 'prueba-a3' } );
+	const n = await exigir( admin.rpc( 'aplicar_lista_estandar', { p_promocion: 'prueba-a3' } ), 'lista estándar' );
+	const repetida = await admin.rpc( 'aplicar_lista_estandar', { p_promocion: 'prueba-a3' } );
+	const { data: lista } = await admin.from( 'requisitos' ).select( 'id, plantilla' ).eq( 'promocion_id', 'prueba-a3' ).eq( 'activo', true ).order( 'orden' );
+	await exigir( admin.from( 'requisitos' ).update( { activo: false } ).eq( 'id', lista.at( -1 ).id ), 'quitar' );
+	const quitarIntruso = await aprobA.from( 'requisitos' ).update( { activo: false } ).eq( 'id', lista[ 0 ].id ).select();
+	const vista = ( await aprobA.from( 'requisitos' ).select( 'id' ).eq( 'promocion_id', 'prueba-a3' ) ).data;
+	return falla( intruso ) && falla( repetida ) && n === 11 && lista.some( ( r ) => r.plantilla === '/plantillas/tabla-viviendas.xlsx' )
+		&& ( falla( quitarIntruso ) || vacio( quitarIntruso ) ) && vista.length === lista.length - 1;
+
+} );
+
 await caso( DEBE_FUNCIONAR, 'A ve su lista de documentos por entregar', async () =>
 	( await gestorA.from( 'requisitos' ).select( 'id' ).eq( 'promocion_id', 'prueba-a' ) ).data?.length === 1 );
 

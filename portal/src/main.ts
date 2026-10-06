@@ -194,15 +194,56 @@ function formFiscal(d: DatosFiscales & { contacto?: string | null }, conContacto
 	</form>`;
 }
 
-/** Conecta el formulario de datos fiscales a la función que los guarda. */
-function conectarFiscal(guardar: (d: FormData) => PromiseLike<{ error: unknown }>): void {
-	const form = app.querySelector<HTMLFormElement>('[data-fiscal]')!;
+function formFicha(p: Ficha): string {
+	const num = (n: number | null) => n === null ? '' : String(n);
+	return `<form class="peticion-form" data-ficha novalidate>
+		<label>Dirección <input name="direccion" maxlength="200" autocomplete="street-address" value="${esc(p.direccion ?? '')}"></label>
+		<label>Código postal <input name="codigo_postal" inputmode="numeric" maxlength="5" value="${esc(p.codigo_postal ?? '')}"></label>
+		<label>Municipio <input name="municipio" maxlength="120" value="${esc(p.municipio ?? '')}"></label>
+		<label>Provincia <input name="provincia" maxlength="120" value="${esc(p.provincia ?? '')}"></label>
+		<label>Referencia catastral de la parcela <input name="referencia_catastral" maxlength="40" value="${esc(p.referencia_catastral ?? '')}"></label>
+		<label>Tipo <select name="tipo"><option value="">Elige una opción</option>
+			<option value="plurifamiliar" ${p.tipo === 'plurifamiliar' ? 'selected' : ''}>Plurifamiliar (edificio de viviendas)</option>
+			<option value="unifamiliar" ${p.tipo === 'unifamiliar' ? 'selected' : ''}>Unifamiliar (viviendas independientes)</option></select></label>
+		<label>Número de viviendas <input name="num_viviendas" type="number" min="1" max="5000" value="${num(p.num_viviendas)}"></label>
+		<label>Número de portales o bloques <input name="num_portales" type="number" min="1" max="500" value="${num(p.num_portales)}"></label>
+		<label>Número de plantas <input name="num_plantas" type="number" min="1" max="100" value="${num(p.num_plantas)}"></label>
+		<label>Fecha prevista de entrega (opcional) <input name="fecha_entrega" type="date" value="${esc(p.fecha_entrega ?? '')}"></label>
+		<p class="error" role="alert"></p>
+		<div class="acciones"><button class="boton" type="submit">Guardar ficha</button></div>
+		<p class="ok" data-guardado role="status"></p>
+	</form>`;
+}
+
+function datosFicha(promocion: string, d: FormData): Record<string, unknown> {
+	const entero = (k: string) => { const v = String(d.get(k) ?? '').trim(); return v ? Number(v) : null; };
+	const cp = String(d.get('codigo_postal') ?? '').trim();
+	if (cp && !/^[0-9]{5}$/.test(cp)) throw new Error('El código postal tiene que tener 5 cifras.');
+	return {
+		p_promocion: promocion,
+		p_direccion: String(d.get('direccion') ?? ''), p_codigo_postal: cp,
+		p_municipio: String(d.get('municipio') ?? ''), p_provincia: String(d.get('provincia') ?? ''),
+		p_referencia_catastral: String(d.get('referencia_catastral') ?? ''), p_tipo: String(d.get('tipo') ?? ''),
+		p_num_viviendas: entero('num_viviendas'), p_num_portales: entero('num_portales'), p_num_plantas: entero('num_plantas'),
+		p_fecha_entrega: String(d.get('fecha_entrega') ?? '') || null,
+	};
+}
+
+/** Conecta un formulario de datos a la función que los guarda y muestra «Guardado». */
+function conectarFormulario(selector: string, guardar: (d: FormData) => PromiseLike<{ error: unknown }>): HTMLFormElement {
+	const form = app.querySelector<HTMLFormElement>(selector)!;
 	alEnviar(form, async (d) => {
 		const { error } = await guardar(d);
 		if (error) throw error;
 		form.querySelector<HTMLElement>('[data-guardado]')!.textContent = '✓ Datos guardados.';
 		form.querySelector<HTMLButtonElement>('button[type=submit]')!.disabled = false;
 	});
+	return form;
+}
+
+/** Conecta el formulario de datos fiscales a la función que los guarda. */
+function conectarFiscal(guardar: (d: FormData) => PromiseLike<{ error: unknown }>): void {
+	const form = conectarFormulario('[data-fiscal]', guardar);
 	form.querySelector('[data-copiar]')?.addEventListener('click', () => {
 		const po = acceso?.promotoras;
 		if (!po) return;
@@ -263,7 +304,12 @@ async function navegarSinPintar(): Promise<void> {
 
 // ── Una promoción: documentación, planos y entregables, versión publicada ─
 
-interface Requisito { id: number; bloque: string; elemento: string; descripcion: string; obligatorio: boolean; orden: number }
+interface Requisito { id: number; bloque: string; elemento: string; descripcion: string; obligatorio: boolean; orden: number; plantilla: string | null }
+interface Ficha {
+	direccion: string | null; codigo_postal: string | null; municipio: string | null; provincia: string | null;
+	referencia_catastral: string | null; tipo: string | null; num_viviendas: number | null; num_portales: number | null;
+	num_plantas: number | null; fecha_entrega: string | null;
+}
 interface Documento { id: number; requisito_id: number; nombre: string; ruta: string; version: number; estado: string; nota: string | null; subido_en: string }
 interface Entregable { id: number; version: string; tipo: string; tipologia: string | null; nombre: string; ruta: string }
 interface Validacion { entregable_id: number; decision: string; comentario: string | null; momento: string }
@@ -273,8 +319,9 @@ const numVersion = (v: string) => Number(v.slice(1));
 
 async function pantallaPromocion(id: string): Promise<void> {
 	const [promo, reqs, docs, entr, vals] = await Promise.all([
-		sb.from('promociones').select('id, nombre, ubicacion, promotora_id, razon_social, cif, domicilio_fiscal').eq('id', id).maybeSingle(),
-		sb.from('requisitos').select('id, bloque, elemento, descripcion, obligatorio, orden').eq('promocion_id', id).order('orden').order('id'),
+		sb.from('promociones').select(`id, nombre, ubicacion, promotora_id, razon_social, cif, domicilio_fiscal, direccion, codigo_postal,
+			municipio, provincia, referencia_catastral, tipo, num_viviendas, num_portales, num_plantas, fecha_entrega`).eq('id', id).maybeSingle(),
+		sb.from('requisitos').select('id, bloque, elemento, descripcion, obligatorio, orden, plantilla').eq('promocion_id', id).order('orden').order('id'),
 		sb.from('documentos').select('id, requisito_id, nombre, ruta, version, estado, nota, subido_en').eq('promocion_id', id).order('version', { ascending: false }),
 		sb.from('entregables').select('id, version, tipo, tipologia, nombre, ruta').eq('promocion_id', id).order('creado_en', { ascending: false }),
 		sb.from('validaciones').select('entregable_id, decision, comentario, momento').eq('promocion_id', id),
@@ -306,6 +353,7 @@ async function pantallaPromocion(id: string): Promise<void> {
 				<span class="estado ${estado[1]}">${esc(estado[0])}</span>
 			</div>
 			${r.descripcion ? `<p class="requisito-desc">${esc(r.descripcion)}</p>` : ''}
+			${r.plantilla ? `<a class="enlace" href="${esc(r.plantilla)}" download>Descargar la plantilla</a>` : ''}
 			${ultimo?.estado === 'rechazado' && ultimo.nota ? `<p class="requisito-nota">${esc(ultimo.nota)}</p>` : ''}
 			${versiones.length ? `<div class="historial">${versiones.map((d) => `<div class="historial-fila">
 				<span>v${d.version} · ${esc(d.nombre)} · ${esc(fecha(d.subido_en))}</span>
@@ -348,6 +396,11 @@ async function pantallaPromocion(id: string): Promise<void> {
 			<p class="promo-versiones" data-publicada>Comprobando la versión publicada…</p>
 		</section>
 		<section class="tarjeta">
+			<h2>Ficha de la promoción</h2>
+			<p class="ayuda">Los datos básicos del proyecto. La referencia catastral nos sirve para recrear el entorno de la parcela.</p>
+			${formFicha(p as unknown as Ficha)}
+		</section>
+		<section class="tarjeta">
 			<h2>Documentación</h2>
 			<p class="ayuda">Lo que necesitamos para preparar la promoción. Puedes subir archivos de hasta 50 MB; si te equivocas, sube una versión nueva: las anteriores se conservan.</p>
 			${htmlDocs || '<p class="vacio">MUNE Projects todavía no ha preparado la lista de documentos de esta promoción.</p>'}
@@ -363,6 +416,7 @@ async function pantallaPromocion(id: string): Promise<void> {
 		</section>
 	</div>`);
 	app.querySelector('[data-salir]')!.addEventListener('click', salir);
+	conectarFormulario('[data-ficha]', (d) => sb.rpc('guardar_ficha_promocion', datosFicha(p.id, d)));
 	conectarFiscal((d) => sb.rpc('guardar_datos_promocion', {
 		p_promocion: p.id, p_razon_social: String(d.get('razon_social')), p_cif: String(d.get('cif')), p_domicilio_fiscal: String(d.get('domicilio_fiscal')),
 	}));

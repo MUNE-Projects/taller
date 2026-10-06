@@ -17,12 +17,17 @@ import { alEnviar, anotar, esc, fecha, sb, traducir } from './comun';
 
 interface DatosFiscales { razon_social: string | null; cif: string | null; domicilio_fiscal: string | null }
 interface Promotora extends DatosFiscales { id: string; nombre: string; activa: boolean; contacto: string | null }
-interface Promocion extends DatosFiscales { id: string; nombre: string; ubicacion: string; estado: string; activa: boolean; promotora_id: string }
+interface Ficha {
+	direccion: string | null; codigo_postal: string | null; municipio: string | null; provincia: string | null;
+	referencia_catastral: string | null; tipo: string | null; num_viviendas: number | null; num_portales: number | null;
+	num_plantas: number | null; fecha_entrega: string | null;
+}
+interface Promocion extends DatosFiscales, Ficha { id: string; nombre: string; ubicacion: string; estado: string; activa: boolean; promotora_id: string }
 interface Acceso {
 	id: number; user_id: string; promocion_id: string | null; nombre: string; email: string; cargo: string;
 	activo: boolean; aceptada: boolean; ultima_entrada: string | null;
 }
-interface Requisito { id: number; bloque: string; elemento: string; descripcion: string; obligatorio: boolean }
+interface Requisito { id: number; bloque: string; elemento: string; descripcion: string; obligatorio: boolean; activo: boolean }
 
 const ESTADOS: Record<string, string> = {
 	documentacion: 'Recogiendo documentación',
@@ -50,6 +55,57 @@ async function errorDeFuncion(error: unknown): Promise<Error> {
 	return error instanceof Error ? error : new Error(String(error));
 }
 
+/** Resumen de la ficha de la promoción, o aviso si no está rellenada. */
+function resumenFicha(p: Ficha): string {
+	const lugar = [p.direccion, [p.codigo_postal, p.municipio].filter(Boolean).join(' '), p.provincia].filter(Boolean).join(', ');
+	const partes = [
+		lugar,
+		p.tipo ? (p.tipo === 'plurifamiliar' ? 'Plurifamiliar' : 'Unifamiliar') : null,
+		p.num_viviendas ? `${p.num_viviendas} viviendas` : null,
+		p.referencia_catastral ? `Ref. catastral ${p.referencia_catastral}` : null,
+		p.fecha_entrega ? `Entrega prevista: ${fecha(p.fecha_entrega)}` : null,
+	].filter(Boolean) as string[];
+	return partes.length ? esc(partes.join(' · ')) : '<span class="vacio">Ficha sin rellenar (la rellena la promotora en su portal)</span>';
+}
+
+function formFicha(p: Promocion): string {
+	const num = (n: number | null) => n === null ? '' : String(n);
+	return `<form class="peticion-form" data-ficha="${esc(p.id)}" data-plegable="ficha-${esc(p.id)}" novalidate hidden>
+		<label>Dirección <input name="direccion" maxlength="200" value="${esc(p.direccion ?? '')}"></label>
+		<label>Código postal <input name="codigo_postal" inputmode="numeric" maxlength="5" value="${esc(p.codigo_postal ?? '')}"></label>
+		<label>Municipio <input name="municipio" maxlength="120" value="${esc(p.municipio ?? '')}"></label>
+		<label>Provincia <input name="provincia" maxlength="120" value="${esc(p.provincia ?? '')}"></label>
+		<label>Referencia catastral <input name="referencia_catastral" maxlength="40" value="${esc(p.referencia_catastral ?? '')}"></label>
+		<label>Tipo <select name="tipo"><option value="">Sin indicar</option>
+			<option value="plurifamiliar" ${p.tipo === 'plurifamiliar' ? 'selected' : ''}>Plurifamiliar</option>
+			<option value="unifamiliar" ${p.tipo === 'unifamiliar' ? 'selected' : ''}>Unifamiliar</option></select></label>
+		<label>Número de viviendas <input name="num_viviendas" type="number" min="1" max="5000" value="${num(p.num_viviendas)}"></label>
+		<label>Número de portales o bloques <input name="num_portales" type="number" min="1" max="500" value="${num(p.num_portales)}"></label>
+		<label>Número de plantas <input name="num_plantas" type="number" min="1" max="100" value="${num(p.num_plantas)}"></label>
+		<label>Fecha prevista de entrega (opcional) <input name="fecha_entrega" type="date" value="${esc(p.fecha_entrega ?? '')}"></label>
+		<p class="error" role="alert"></p>
+		<div class="acciones">
+			<button class="boton" type="submit">Guardar</button>
+			<button class="boton secundario" type="button" data-cerrar>Cancelar</button>
+		</div>
+	</form>`;
+}
+
+/** Datos de la ficha leídos de un formulario, listos para guardar_ficha_promocion. */
+function datosFicha(promocion: string, d: FormData): Record<string, unknown> {
+	const entero = (k: string) => { const v = String(d.get(k) ?? '').trim(); return v ? Number(v) : null; };
+	const cp = String(d.get('codigo_postal') ?? '').trim();
+	if (cp && !/^[0-9]{5}$/.test(cp)) throw new Error('El código postal tiene que tener 5 cifras.');
+	return {
+		p_promocion: promocion,
+		p_direccion: String(d.get('direccion') ?? ''), p_codigo_postal: cp,
+		p_municipio: String(d.get('municipio') ?? ''), p_provincia: String(d.get('provincia') ?? ''),
+		p_referencia_catastral: String(d.get('referencia_catastral') ?? ''), p_tipo: String(d.get('tipo') ?? ''),
+		p_num_viviendas: entero('num_viviendas'), p_num_portales: entero('num_portales'), p_num_plantas: entero('num_plantas'),
+		p_fecha_entrega: String(d.get('fecha_entrega') ?? '') || null,
+	};
+}
+
 /** «Razón social · CIF · domicilio», o aviso si no está rellenado. */
 function resumenFiscal(d: DatosFiscales): string {
 	const partes = [d.razon_social, d.cif ? `CIF ${d.cif}` : null, d.domicilio_fiscal].filter(Boolean) as string[];
@@ -59,7 +115,8 @@ function resumenFiscal(d: DatosFiscales): string {
 export async function pintarPromotoras(destino: HTMLElement): Promise<void> {
 	const [pos, pcs] = await Promise.all([
 		sb.from('promotoras').select('id, nombre, activa, razon_social, cif, domicilio_fiscal, contacto').order('nombre'),
-		sb.from('promociones').select('id, nombre, ubicacion, estado, activa, promotora_id, razon_social, cif, domicilio_fiscal').order('nombre'),
+		sb.from('promociones').select(`id, nombre, ubicacion, estado, activa, promotora_id, razon_social, cif, domicilio_fiscal,
+			direccion, codigo_postal, municipio, provincia, referencia_catastral, tipo, num_viviendas, num_portales, num_plantas, fecha_entrega`).order('nombre'),
 	]);
 	if (pos.error || pcs.error) {
 		destino.innerHTML = `<p class="error">${esc(traducir(pos.error ?? pcs.error))}</p>`;
@@ -225,15 +282,18 @@ async function pintarDetalle(po: Promotora, promociones: Promocion[], det: HTMLE
 			<label class="en-linea">Estado que ve la promotora
 				<select data-estado-promo>${Object.entries(ESTADOS).map(([e, t]) => `<option value="${e}" ${p.estado === e ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select>
 			</label>
+			<p class="promo-versiones">${resumenFicha(p)}</p>
 			<p class="promo-versiones">${resumenFiscal(p)}</p>
 			<p class="etiqueta">Equipo de la promoción</p>
 			${tablaPersonas(accesos.filter((a) => a.promocion_id === p.id))}
 			${po.activa ? formAcceso(p.id, 'Añadir persona al equipo') : ''}
 			<div class="acciones">
 				<button class="boton secundario pequeno" type="button" data-requisitos>Documentos que debe entregar</button>
+				<button class="boton secundario pequeno" type="button" data-abrir="ficha-${esc(p.id)}">Editar ficha</button>
 				<button class="boton secundario pequeno" type="button" data-abrir="fiscal-${esc(p.id)}">Editar datos fiscales</button>
 				<button class="boton secundario pequeno" type="button" data-activa-promo>${p.activa ? 'Desactivar' : 'Activar'}</button>
 			</div>
+			${formFicha(p)}
 			${formFiscal(p.id, p, false)}
 			<div data-lista-requisitos hidden></div>
 		</div>`).join('') || '<p class="vacio">Esta promotora no tiene promociones.</p>'}
@@ -317,6 +377,13 @@ async function pintarDetalle(po: Promotora, promociones: Promocion[], det: HTMLE
 		await repintar();
 	}));
 
+	// Ficha de cada promoción
+	det.querySelectorAll<HTMLFormElement>('[data-ficha]').forEach((form) => alEnviar(form, async (d) => {
+		const { error: e } = await sb.rpc('guardar_ficha_promocion', datosFicha(form.dataset.ficha!, d));
+		if (e) throw e;
+		await repintar();
+	}));
+
 	// Nombre y activar/desactivar la promotora
 	alEnviar(det.querySelector<HTMLFormElement>('[data-nombre]')!, async (d) => {
 		const nombre = String(d.get('nombre')).trim();
@@ -365,12 +432,15 @@ async function pintarDetalle(po: Promotora, promociones: Promocion[], det: HTMLE
 		const { error: e } = await sb.from('promociones').insert({ id, promotora_id: po.id, nombre, ubicacion: String(d.get('ubicacion')).trim() });
 		if (e) throw e.code === '23505' ? new Error(`Ya existe una promoción con el identificador «${id}». Cambia un poco el nombre.`) : e;
 		await anotar('da de alta una promoción', { promocion: id, promotora: po.id });
+		// Lista estándar de documentos, que luego se puede ajustar.
+		const { error: eLista } = await sb.rpc('aplicar_lista_estandar', { p_promocion: id });
+		if (eLista) throw new Error(`La promoción está creada, pero no se ha podido preparar su lista de documentos: ${traducir(eLista)}`);
 		await repintar();
 	});
 }
 
 async function pintarRequisitos(p: Promocion, destino: HTMLElement): Promise<void> {
-	const { data, error } = await sb.from('requisitos').select('id, bloque, elemento, descripcion, obligatorio')
+	const { data, error } = await sb.from('requisitos').select('id, bloque, elemento, descripcion, obligatorio, activo')
 		.eq('promocion_id', p.id).order('orden').order('id');
 	if (error) {
 		destino.innerHTML = `<p class="error">${esc(traducir(error))}</p>`;
@@ -379,9 +449,12 @@ async function pintarRequisitos(p: Promocion, destino: HTMLElement): Promise<voi
 	const reqs = (data ?? []) as Requisito[];
 	const bloques = [...new Set([...BLOQUES, ...reqs.map((r) => r.bloque)])];
 	destino.innerHTML = `<div class="requisitos">
-		${reqs.length ? `<ul>${reqs.map((r) => `<li><strong>${esc(r.bloque)}</strong> · ${esc(r.elemento)}${r.obligatorio ? '' : ' <span class="promo-lugar">(opcional)</span>'}
-			${r.descripcion ? `<br><span class="promo-lugar">${esc(r.descripcion)}</span>` : ''}</li>`).join('')}</ul>`
-			: '<p class="vacio">La lista está vacía: la promotora no verá nada que entregar.</p>'}
+		${reqs.length ? `<ul>${reqs.map((r) => `<li class="${r.activo ? '' : 'quitado'}"><strong>${esc(r.bloque)}</strong> · ${esc(r.elemento)}${r.obligatorio ? '' : ' <span class="promo-lugar">(opcional)</span>'}
+			${r.activo ? '' : ' <span class="promo-lugar">(quitado de la lista)</span>'}
+			<button class="enlace" type="button" data-requisito="${r.id}" data-activo="${r.activo}">${r.activo ? 'Quitar' : 'Volver a poner'}</button>
+			${r.descripcion ? `<br><span class="promo-lugar">${esc(r.descripcion)}</span>` : ''}</li>`).join('')}</ul>` : ''}
+		${reqs.some((r) => r.activo) ? '' : `<p class="vacio">La lista está vacía: la promotora no verá nada que entregar.</p>
+			<div class="acciones"><button class="boton secundario pequeno" type="button" data-estandar>Añadir la lista estándar</button></div>`}
 		<form class="peticion-form" novalidate>
 			<label>Bloque <input name="bloque" list="bloques-${esc(p.id)}" maxlength="80" required placeholder="Por ejemplo: Planos"></label>
 			<datalist id="bloques-${esc(p.id)}">${bloques.map((b) => `<option value="${esc(b)}">`).join('')}</datalist>
@@ -392,6 +465,20 @@ async function pintarRequisitos(p: Promocion, destino: HTMLElement): Promise<voi
 			<div class="acciones"><button class="boton secundario pequeno" type="submit">Añadir a la lista</button></div>
 		</form>
 	</div>`;
+	destino.querySelectorAll<HTMLButtonElement>('[data-requisito]').forEach((b) => b.addEventListener('click', async () => {
+		const activo = b.dataset.activo !== 'true';
+		b.disabled = true;
+		const { error: e } = await sb.from('requisitos').update({ activo }).eq('id', Number(b.dataset.requisito));
+		if (e) { b.disabled = false; alert(traducir(e)); return; }
+		await anotar(activo ? 'vuelve a poner un documento en la lista' : 'quita un documento de la lista', { promocion: p.id, requisito: Number(b.dataset.requisito) });
+		await pintarRequisitos(p, destino);
+	}));
+	destino.querySelector<HTMLButtonElement>('[data-estandar]')?.addEventListener('click', async (ev) => {
+		(ev.target as HTMLButtonElement).disabled = true;
+		const { error: e } = await sb.rpc('aplicar_lista_estandar', { p_promocion: p.id });
+		if (e) alert(traducir(e));
+		await pintarRequisitos(p, destino);
+	});
 	alEnviar(destino.querySelector('form')!, async (d) => {
 		const fila = {
 			promocion_id: p.id,

@@ -1278,3 +1278,11 @@ Pendiente: «Pedir cambios» (cola de tareas en Supabase) y «Aprobar y publicar
     - Cada persona pertenece a **una sola promotora**.
     - **Datos fiscales** (razón social, CIF y domicilio): los de la promotora y los de cada promoción, porque cada proyecto puede ser una sociedad distinta. Los rellena la propia promotora en su portal; en cada promoción hay un botón «Copiar los datos de la promotora». Cualquier persona con acceso puede editar los datos de su promotora y de sus promociones.
     - **Marca (Fase 2, receta 16):** los colores, las tipografías y el logo de la marca son de la promotora y valen para todas sus promociones. Cada promoción tiene su nombre (obligatorio) y su logo (opcional). Todo ello aparecerá en lo que vean los interesados y los compradores.
+29. **Ficha de la promoción y lista estándar de documentos (Etapa 2):**
+    - **Ficha** (la rellena la promotora en su portal): dirección, código postal, municipio y provincia, referencia catastral (para el entorno desde el Catastro), tipo (plurifamiliar o unifamiliar), número de viviendas, portales y plantas, y fecha prevista de entrega (opcional).
+    - **Lista estándar de documentos**, que se aplica sola al crear una promoción y luego se ajusta (quitar o volver a poner, añadir):
+      - Planos: situación o emplazamiento; urbanización o implantación; cada tipología, **acotados**; plantas generales (opcional, plurifamiliar); alzados y secciones; garajes y trasteros (opcional); cubiertas (opcional). En PDF y, si lo tienen, en DWG.
+      - Viviendas y superficies: tabla de viviendas y tipologías en Excel, con **plantilla para descargar** (`portal/public/plantillas/tabla-viviendas.xlsx`, generada con `herramientas/plantilla_viviendas.py`); cuadro de superficies oficial.
+      - Calidades: memoria de calidades vigente.
+      - Proyecto: básico o de ejecución (opcional, como referencia).
+    - **No se piden** fotografías ni infografías: las infografías las hace MUNE. La personalización y la marca tienen sus propias secciones (Fase 2).
