@@ -24,12 +24,22 @@
     {
       "version": "v3",
       "fecha": "2026-10-05T20:47:06Z",
-      "estado": "publicada",
+      "estado": "sustituida",
       "taller": "0eb7e9a5e83eec8383929e4ee4cca70d2bc94aef",
       "aprobadoPor": "Carolina (MUNE Projects) — pendiente de revisar la vista previa",
       "cambios": "Carga más rápida: familias de materiales, ruido pre-generado, compilación en paralelo",
       "archivos": 6,
       "bytes": 2177313
+    },
+    {
+      "version": "v4",
+      "fecha": "2026-10-06T09:51:37Z",
+      "estado": "publicada",
+      "taller": "251bd13846da653d88a166bdfb5567a92f34028c",
+      "aprobadoPor": "Carolina (MUNE Projects) — pendiente de revisar la vista previa",
+      "cambios": "Carga más rápida: material único por grupos de acabados",
+      "archivos": 6,
+      "bytes": 2178270
     }
   ],
   "historial": [
@@ -49,6 +59,12 @@
       "fecha": "2026-10-05T20:47:06Z",
       "accion": "publicar",
       "version": "v3",
+      "por": "Carolina (MUNE Projects) — pendiente de revisar la vista previa"
+    },
+    {
+      "fecha": "2026-10-06T09:51:37Z",
+      "accion": "publicar",
+      "version": "v4",
       "por": "Carolina (MUNE Projects) — pendiente de revisar la vista previa"
     }
   ]
