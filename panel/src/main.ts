@@ -11,7 +11,7 @@ function pintar(html: string): void {
 	app.querySelector<HTMLElement>('[autofocus]')?.focus();
 }
 
-const CABECERA = '<p class="marca">MUNE Inmobiliarias · Panel</p>';
+const CABECERA = '<p class="marca">MUNE · Panel</p>';
 const CAMPO_CODIGO = `<label>Código de 6 cifras
 	<input class="codigo" name="codigo" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required autofocus>
 </label>`;

@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Panel de administración interno de MUNE Inmobiliarias.",
+  "description": "Panel de administración interno de MUNE.",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
