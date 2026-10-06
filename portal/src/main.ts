@@ -65,7 +65,7 @@ function alEnviar(form: HTMLFormElement, accion: (datos: FormData) => Promise<vo
 	});
 }
 
-const CABECERA = '<p class="marca">MUNE Inmobiliarias · Portal de promotoras</p>';
+const CABECERA = '<p class="marca">MUNE · Portal de promotoras</p>';
 const fecha = (iso: string) => new Date(iso).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
 
 // ── Decide qué pantalla toca ──────────────────────────────────────────────

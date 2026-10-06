@@ -155,3 +155,22 @@ input[type=checkbox] { width: auto; }
 .requisitos li.quitado { opacity: 0.55; }
 .requisitos .enlace { margin-left: 6px; font-size: 13px; }
 .enlace { background: none; border: 0; padding: 0; color: var(--acento); cursor: pointer; text-decoration: underline; }
+
+/* Menú, migas y pestañas */
+.escritorio .cabecera { align-items: center; }
+.menu { display: flex; gap: 4px; flex-wrap: wrap; flex: 1; justify-content: center; }
+.menu a { padding: 8px 14px; border-radius: 8px; color: var(--tinta-2); text-decoration: none; font-weight: 500; }
+.menu a:hover { background: var(--acento-suave); }
+.menu a[aria-current="page"] { background: var(--acento); color: #fff; }
+.contenido { display: grid; gap: 20px; }
+.migas { font-size: 13px; color: var(--tinta-3); }
+.migas a { color: var(--acento); text-decoration: none; }
+.migas a:hover { text-decoration: underline; }
+.pestanas { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--linea); }
+.pestanas a { padding: 8px 12px; color: var(--tinta-2); text-decoration: none; font-size: 14px; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.pestanas a[aria-current="page"] { color: var(--acento); border-bottom-color: var(--acento); font-weight: 600; }
+.lista-enlaces { display: grid; gap: 8px; margin-bottom: 12px; }
+.fila-enlace { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--linea); border-radius: 10px; background: #fff; color: inherit; text-decoration: none; }
+.fila-enlace:hover { border-color: var(--acento); }
+h2.separado { margin-top: 22px; }
+.tarjeta > .acciones, .tarjeta > .peticion-form { margin-top: 10px; }

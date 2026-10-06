@@ -1286,3 +1286,4 @@ Pendiente: «Pedir cambios» (cola de tareas en Supabase) y «Aprobar y publicar
       - Calidades: memoria de calidades vigente.
       - Proyecto: básico o de ejecución (opcional, como referencia).
     - **No se piden** fotografías ni infografías: las infografías las hace MUNE. La personalización y la marca tienen sus propias secciones (Fase 2).
+30. **Nombres:** **MUNE** es el nombre del portal y de la plataforma que ven promotoras, interesados y compradores. **MUNE Projects** es la empresa. En los emails y en el portal se usa «MUNE»; «MUNE Projects» solo cuando se habla de la empresa.
