@@ -41,7 +41,8 @@ Claude se usa **solo en producción** (preparar, interpretar, revisar), **nunca 
    En el navegador solo van la URL de Supabase y la clave *publishable*.
 4. **El robot de Claude** (usuario normal de Supabase, sin clave maestra):
    - puede leer peticiones, fotos de referencia y promociones; cambiar el estado, la nota y el enlace de una petición; y anotar en el registro;
-   - **no** puede borrar, publicar, crear administradores, cambiar reglas ni ver usuarios;
+   - desde la Fase 1 (aprobado el 6/10/2026), también leer requisitos, documentos subidos y entregables, y marcar documentos como vigentes o rechazados, con nota (preguntándole antes, en la receta 2);
+   - **no** puede borrar, subir archivos, validar planos, publicar, crear administradores, cambiar reglas ni ver usuarios;
    - todo lo que hace queda registrado y se revoca al instante.
 5. **No hay lista pública de promociones ni de promotoras.** Es información del negocio y vive en Supabase.
 6. **Independencia de Claude:** todo debe poder operarse y entregarse sin Claude (recetas documentadas, Panel, ejecutor en GitHub Actions).
@@ -100,15 +101,15 @@ Ahora la web pública está en **v7**, y la **v8** (de prueba, idéntica) sigue 
 - La protección de ramas en almacenes privados es de pago: no está activada.
 - El plan gratuito de Supabase se duerme tras 7 días sin uso. Se despierta gratis desde el panel de Supabase.
 
-**Siguiente: Fase 1 · Portal seguro.** Según `docs/arquitectura.md` (apartado 21) y `docs/panel.md`, incluye:
+**Ahora: Fase 1 · Portal seguro**, aprobada por etapas (decisiones 17–25 de `docs/arquitectura.md`, que prevalecen):
 
-- portal de promotoras con accesos y roles;
-- documentación (almacén de archivos);
-- validación de planos;
-- códigos de comprador;
-- bandeja de Inicio del Panel;
-- copias de seguridad y simulacro (R2 puede pedir tarjeta: **consultar antes**);
-- prueba automática de aislamiento entre promotoras;
-- recetas 1, 2, 13, 14 y 18.
+1. cimientos de datos y prueba de aislamiento (`005_portal.sql`, `panel/pruebas/`, `aislamiento.yml`);
+2. portal de promotoras y accesos (receta 14);
+3. documentación (recetas 2 y 13, email de subida);
+4. validación de planos;
+5. códigos de comprador (receta 24), desde el botón que ya existe en la web pública;
+6. bandeja de Inicio y avisos del sistema;
+7. copias en el almacén privado `copias` de GitHub y simulacro (receta 18);
+8. alta de promoción (receta 1) y ensayo con una promotora ficticia.
 
-Presenta el plan de la fase y pide su aprobación antes de construir.
+Cada etapa es una propuesta con su OK. Decisiones clave: Supabase gratuito hasta el primer cliente; promotoras con usuario y contraseña; emails con un Gmail dedicado; la prueba de aislamiento corre en un Supabase local dentro de GitHub (sin segundo proyecto ni llaves).

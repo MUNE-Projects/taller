@@ -1,0 +1,30 @@
+# Supabase local, solo para la prueba de aislamiento (panel/pruebas).
+# Se levanta dentro de GitHub Actions (o en el ordenador de quien desarrolla)
+# con datos inventados. No tiene nada que ver con el proyecto real.
+project_id = "prueba-aislamiento"
+
+[auth]
+site_url = "http://127.0.0.1:3000"
+enable_signup = false
+
+[auth.email]
+enable_confirmations = false
+
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
+
+[studio]
+enabled = false
+
+[local_smtp]
+enabled = false
+
+[realtime]
+enabled = false
+
+[analytics]
+enabled = false
+
+[edge_runtime]
+enabled = false
