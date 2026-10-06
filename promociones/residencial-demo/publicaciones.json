@@ -34,12 +34,22 @@
     {
       "version": "v4",
       "fecha": "2026-10-06T09:51:37Z",
-      "estado": "publicada",
+      "estado": "sustituida",
       "taller": "251bd13846da653d88a166bdfb5567a92f34028c",
       "aprobadoPor": "Carolina (MUNE Projects) — pendiente de revisar la vista previa",
       "cambios": "Carga más rápida: material único por grupos de acabados",
       "archivos": 6,
       "bytes": 2178270
+    },
+    {
+      "version": "v5",
+      "fecha": "2026-10-06T11:06:07Z",
+      "estado": "publicada",
+      "taller": "815b05fd5292c0bef8dffd1d8096ed6bf2be690a",
+      "aprobadoPor": "Carolina (MUNE Projects) — pendiente de revisar la vista previa",
+      "cambios": "Se abre en el plano; la vivienda 3D se prepara mientras tanto",
+      "archivos": 6,
+      "bytes": 2179286
     }
   ],
   "historial": [
@@ -65,6 +75,12 @@
       "fecha": "2026-10-06T09:51:37Z",
       "accion": "publicar",
       "version": "v4",
+      "por": "Carolina (MUNE Projects) — pendiente de revisar la vista previa"
+    },
+    {
+      "fecha": "2026-10-06T11:06:07Z",
+      "accion": "publicar",
+      "version": "v5",
       "por": "Carolina (MUNE Projects) — pendiente de revisar la vista previa"
     }
   ]
