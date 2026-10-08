@@ -36,13 +36,13 @@ Bandeja con lo pendiente de todas las promociones:
 - Lista, datos y contacto.
 - Personas con acceso: por promoción (su equipo) o a todas las promociones de la promotora, con su cargo. Sin roles: todas pueden hacer lo mismo. Dar y quitar acceso al instante (receta 14).
 - Datos fiscales de la promotora y de cada promoción (los suele rellenar la promotora en su portal).
-- Activar o desactivar.
+- *Exportar todo (ZIP)* con todas sus promociones. Activar o desactivar; si está desactivada, *Borrar definitivamente* con todas sus promociones (antes descarga la exportación y escribe su nombre).
 
 ### 3. Ficha de cada promoción
 
 | Pestaña | Contenido y acciones |
 |---|---|
-| **Resumen** | Estado, versión publicada, versión pendiente, enlaces a la visita y a la vista previa. Desactivar o activar; si está desactivada, *Borrar definitivamente* (escribiendo su nombre) |
+| **Resumen** | Estado, versión publicada, versión pendiente, enlaces a la visita y a la vista previa. *Exportar todo (ZIP)*. Desactivar o activar; si está desactivada, *Borrar definitivamente* (antes descarga la exportación y escribe su nombre) |
 | **Documentación** | Lista de lo que tiene que entregar la promotora, con lo recibido, versiones y estado (por revisar, vigente, rechazado con nota). Descargar, marcar como vigente o rechazar. Ajustar la lista. «Revisa lo nuevo de X» → Claude (receta 2) |
 | **Tipologías y viviendas** | Tipología → Variante → Unidad, superficies. Códigos de comprador: generar, regenerar y revocar (Fase 1, receta 24) |
 | **Mobiliario y acabados** | Por tipología y estancia, estilos y piezas del catálogo (por ejemplo «Nórdico claro» o «Contemporáneo»; sofá A o sofá B; suelo roble o gris) con vista previa automática, sin Claude (receta 21). **«Estilo a partir de una foto»**: se adjuntan fotos de referencia y llega a Claude como petición de interiorismo |

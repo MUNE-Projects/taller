@@ -521,7 +521,7 @@ await caso( DEBE_FALLAR, '26. Pedir el aviso de un documento ajeno, o repetir el
 
 } );
 
-// ─── Borrar una promoción (010_borrar_promocion.sql) ────────────────────────
+// ─── Borrar una promoción o una promotora (010_borrar.sql) ──────────────────
 
 // Una promoción de A con de todo: documento, plano validado, acceso, petición con foto.
 await exigir( admin.from( 'promociones' ).insert( { id: 'prueba-borrar', promotora_id: pA.id, nombre: 'Residencial que se borra' } ), 'alta prueba-borrar' );
@@ -578,6 +578,51 @@ await caso( DEBE_FUNCIONAR, 'La administradora borra una promoción desactivada:
 		&& ! await existe( 'documentos', docBorrar.ruta ) && ! await existe( 'entregables', planoBorrar.ruta ) && ! await existe( 'referencias', fotoBorrar )
 		&& await existe( 'documentos', docA.ruta ) && await existe( 'documentos', docB.ruta ) && await existe( 'entregables', planoA.ruta )
 		&& !! ( await filaDe( 'promociones', 'prueba-a' ) ) && anotado?.[ 0 ]?.detalle?.documentos === 1;
+
+} );
+
+// Una promotora C con una promoción activa, un documento y un acceso a todas.
+const [ pC ] = await exigir( admin.from( 'promotoras' ).insert( { nombre: 'Promotora C (se borra)' } ).select( 'id' ), 'alta promotora C' );
+await exigir( admin.from( 'promociones' ).insert( { id: 'prueba-c', promotora_id: pC.id, nombre: 'Residencial C' } ), 'alta prueba-c' );
+const [ reqC ] = await exigir( admin.from( 'requisitos' ).insert( { promocion_id: 'prueba-c', bloque: 'Planos', elemento: 'Planta tipo' } ).select( 'id' ), 'requisito prueba-c' );
+req[ 'prueba-c' ] = reqC.id;
+const idEquipoC = await crearUsuario( 'equipo.c@prueba.local' );
+await exigir( admin.from( 'miembros' ).insert( { user_id: idEquipoC, promotora_id: pC.id, promocion_id: null, nombre: 'Equipo C', email: 'equipo.c@prueba.local' } ), 'acceso C' );
+const equipoC = await entrar( 'equipo.c@prueba.local' );
+const docC = await subirDocumento( equipoC, pC.id, 'prueba-c', 'documento de C' );
+
+await caso( DEBE_FALLAR, '28. Borrar una promotora: alguien que no es la administradora, una promotora activa, o con el nombre mal escrito', async () => {
+
+	const intentos = [
+		await equipoC.rpc( 'borrar_promotora', { p_id: pC.id, p_nombre: 'Promotora C (se borra)' } ),
+		await robot.rpc( 'borrar_promotora', { p_id: pC.id, p_nombre: 'Promotora C (se borra)' } ),
+		await adminSinMovil.rpc( 'borrar_promotora', { p_id: pC.id, p_nombre: 'Promotora C (se borra)' } ),
+		await admin.rpc( 'borrar_promotora', { p_id: pC.id, p_nombre: 'Promotora C (se borra)' } ), // aún activa
+		await equipoC.rpc( 'archivos_de_promotora', { p_id: pC.id } ),
+	];
+	await admin.storage.from( 'documentos' ).remove( [ docC.ruta ] ); // promotora y promoción activas
+	await exigir( admin.from( 'promotoras' ).update( { activa: false } ).eq( 'id', pC.id ), 'desactivar C' );
+	await equipoC.storage.from( 'documentos' ).remove( [ docC.ruta ] );
+	const malNombre = await admin.rpc( 'borrar_promotora', { p_id: pC.id, p_nombre: 'Promotora C' } );
+	const conArchivos = await admin.rpc( 'borrar_promotora', { p_id: pC.id, p_nombre: 'Promotora C (se borra)' } );
+	return intentos.every( falla ) && falla( malNombre ) && falla( conArchivos )
+		&& await existe( 'documentos', docC.ruta ) && !! ( await filaDe( 'promotoras', pC.id ) );
+
+} );
+
+await caso( DEBE_FUNCIONAR, 'La administradora borra una promotora desactivada con sus promociones (aunque sigan activas), sin tocar las demás', async () => {
+
+	const lista = await exigir( admin.rpc( 'archivos_de_promotora', { p_id: pC.id } ), 'lista de archivos de C' );
+	if ( lista.length !== 1 ) throw new Error( `esperaba 1 archivo y hay ${ lista.length }` );
+	await exigir( admin.storage.from( 'documentos' ).remove( lista.map( ( a ) => a.nombre ) ), 'borrar archivos de C' );
+	await exigir( admin.rpc( 'borrar_promotora', { p_id: pC.id, p_nombre: 'Promotora C (se borra)' } ), 'borrar promotora C' );
+	const { count: miembrosC } = await servicio.from( 'miembros' ).select( '*', { count: 'exact', head: true } ).eq( 'promotora_id', pC.id );
+	const { count: docsC } = await servicio.from( 'documentos' ).select( '*', { count: 'exact', head: true } ).eq( 'promocion_id', 'prueba-c' );
+	const { data: anotado } = await admin.from( 'registro' ).select( 'detalle' ).eq( 'accion', 'borra una promotora' );
+	return ! ( await filaDe( 'promotoras', pC.id ) ) && ! ( await filaDe( 'promociones', 'prueba-c' ) ) && miembrosC === 0 && docsC === 0
+		&& ! await existe( 'documentos', docC.ruta ) && !! ( await filaDe( 'promotoras', pA.id ) ) && await existe( 'documentos', docA.ruta )
+		&& vacio( await equipoC.from( 'promociones' ).select( 'id' ) )
+		&& anotado?.[ 0 ]?.detalle?.promociones === 1 && anotado[ 0 ].detalle.documentos === 1;
 
 } );
 
