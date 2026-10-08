@@ -413,6 +413,67 @@ export async function pantallaPromotora(destino: HTMLElement, id: string): Promi
 	});
 }
 
+// ── Borrar una promoción (010_borrar_promocion.sql) ─────────────────────────
+
+/** Solo para promociones desactivadas: borra todo lo suyo, tras escribir su nombre. */
+async function pintarBorrado(zona: HTMLElement, p: Promocion): Promise<void> {
+	const contar = (tabla: string) => sb.from(tabla).select('id', { count: 'exact', head: true }).eq('promocion_id', p.id);
+	const [docs, equipo, peticiones, planos, archivos, versiones] = await Promise.all([
+		contar('documentos'), contar('miembros'), contar('peticiones'), contar('entregables'),
+		sb.rpc('archivos_de_promocion', { p_id: p.id }), estadoVersiones(p.id),
+	]);
+	const web = versiones.pub ?? versiones.rev;
+	zona.innerHTML = `
+		<h2>Borrar definitivamente</h2>
+		<p>Se borrará para siempre todo lo de <strong>${esc(p.nombre)}</strong>: ${docs.count ?? 0} documento(s) subido(s),
+			${planos.count ?? 0} plano(s) entregado(s), ${(archivos.data as unknown[] | null)?.length ?? 0} archivo(s) guardado(s),
+			${equipo.count ?? 0} acceso(s) de su equipo y ${peticiones.count ?? 0} petición(es) de cambios. No se puede deshacer.</p>
+		<p>Las personas del equipo conservan su cuenta (por si tienen otras promociones). El registro de actividad se conserva.</p>
+		${web ? `<p class="aviso">Esta promoción tiene web (${esc(web.version)}). Borrarla aquí <strong>no la quita de internet</strong> ni borra sus datos 3D del taller: pídeselo a Claude («retira la web de ${esc(p.id)}»).</p>` : ''}
+		<form class="peticion-form" data-form-borrar>
+			<label>Para confirmar, escribe el nombre de la promoción: <strong>${esc(p.nombre)}</strong>
+				<input name="nombre" autocomplete="off" required>
+			</label>
+			<p class="error" data-error-borrar role="alert"></p>
+			<div class="acciones"><button class="boton peligro" type="submit" disabled>Borrar para siempre</button></div>
+		</form>`;
+	const form = zona.querySelector<HTMLFormElement>('[data-form-borrar]')!;
+	const boton = form.querySelector<HTMLButtonElement>('button')!;
+	const campo = form.querySelector<HTMLInputElement>('input')!;
+	const error = zona.querySelector<HTMLElement>('[data-error-borrar]')!;
+	campo.addEventListener('input', () => { boton.disabled = campo.value.trim() !== p.nombre.trim(); });
+	form.addEventListener('submit', async (ev) => {
+		ev.preventDefault();
+		if (campo.value.trim() !== p.nombre.trim()) return;
+		if (!confirm(`¿Borrar ${p.nombre} para siempre?\n\nNo se puede deshacer.`)) return;
+		boton.disabled = true;
+		error.textContent = '';
+		boton.textContent = 'Borrando archivos…';
+		try {
+			// 1. Los archivos, con la API de almacenamiento (de 100 en 100).
+			const { data: lista, error: e1 } = await sb.rpc('archivos_de_promocion', { p_id: p.id });
+			if (e1) throw e1;
+			const porAlmacen = new Map<string, string[]>();
+			for (const a of (lista ?? []) as { bucket: string; nombre: string }[]) porAlmacen.set(a.bucket, [...(porAlmacen.get(a.bucket) ?? []), a.nombre]);
+			for (const [almacen, nombres] of porAlmacen) {
+				for (let i = 0; i < nombres.length; i += 100) {
+					const { error: e2 } = await sb.storage.from(almacen).remove(nombres.slice(i, i + 100));
+					if (e2) throw e2;
+				}
+			}
+			// 2. Las fichas y la promoción (comprueba que no queda ningún archivo).
+			boton.textContent = 'Borrando la promoción…';
+			const { error: e3 } = await sb.rpc('borrar_promocion', { p_id: p.id, p_nombre: campo.value });
+			if (e3) throw e3;
+			location.hash = `#/promotora/${p.promotora_id}`;
+		} catch (e) {
+			error.textContent = traducir(e as { message: string });
+			boton.textContent = 'Borrar para siempre';
+			boton.disabled = false;
+		}
+	});
+}
+
 // ── #/promocion/<id>/<pestaña> ────────────────────────────────────────────
 
 export async function pantallaPromocion(destino: HTMLElement, id: string, pestana: string): Promise<void> {
@@ -448,8 +509,11 @@ export async function pantallaPromocion(destino: HTMLElement, id: string, pestan
 			<p class="promo-versiones">${resumenFicha(p)}</p>
 			<div class="acciones">
 				<button class="boton secundario pequeno" type="button" data-activa-promo>${p.activa ? 'Desactivar promoción' : 'Activar promoción'}</button>
-			</div>`;
+			</div>
+			${p.activa ? '' : `<div class="zona-peligro" data-borrar></div>`}`;
 		void pintarVersiones(caja.querySelector<HTMLElement>('[data-versiones]')!, p);
+		const zonaBorrar = caja.querySelector<HTMLElement>('[data-borrar]');
+		if (zonaBorrar) void pintarBorrado(zonaBorrar, p);
 		caja.querySelector<HTMLSelectElement>('[data-estado-promo]')!.addEventListener('change', async (ev) => {
 			const sel = ev.target as HTMLSelectElement;
 			const { error: e } = await sb.from('promociones').update({ estado: sel.value }).eq('id', id);

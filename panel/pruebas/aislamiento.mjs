@@ -521,6 +521,66 @@ await caso( DEBE_FALLAR, '26. Pedir el aviso de un documento ajeno, o repetir el
 
 } );
 
+// ─── Borrar una promoción (010_borrar_promocion.sql) ────────────────────────
+
+// Una promoción de A con de todo: documento, plano validado, acceso, petición con foto.
+await exigir( admin.from( 'promociones' ).insert( { id: 'prueba-borrar', promotora_id: pA.id, nombre: 'Residencial que se borra' } ), 'alta prueba-borrar' );
+const [ reqBorrar ] = await exigir( admin.from( 'requisitos' ).insert( { promocion_id: 'prueba-borrar', bloque: 'Planos', elemento: 'Planta tipo' } ).select( 'id' ), 'requisito prueba-borrar' );
+req[ 'prueba-borrar' ] = reqBorrar.id;
+const docBorrar = await subirDocumento( aprobA, pA.id, 'prueba-borrar', 'documento que se borra' );
+const planoBorrar = await entregable( 'prueba-borrar', 'plano que se borra' );
+await exigir( aprobA.from( 'validaciones' ).insert( { entregable_id: planoBorrar.id, decision: 'aprobado', confirmado: true } ), 'validar plano prueba-borrar' );
+const idEquipoBorrar = await crearUsuario( 'equipo.borrar@prueba.local' );
+await exigir( admin.from( 'miembros' ).insert( { user_id: idEquipoBorrar, promotora_id: pA.id, promocion_id: 'prueba-borrar', nombre: 'Equipo', email: 'equipo.borrar@prueba.local' } ), 'acceso prueba-borrar' );
+const peticionBorrar = await exigir( admin.from( 'peticiones' ).insert( { promocion_id: 'prueba-borrar', texto: 'Cambiar el suelo' } ).select( 'id' ).single(), 'petición prueba-borrar' );
+const fotoBorrar = `${ peticionBorrar.id }/foto.png`;
+await exigir( admin.storage.from( 'referencias' ).upload( fotoBorrar, Buffer.from( 'png' ), { contentType: 'image/png' } ), 'foto prueba-borrar' );
+const existe = async ( almacen, ruta ) => ! ( await servicio.storage.from( almacen ).download( ruta ) ).error;
+
+await caso( DEBE_FALLAR, '27. Borrar una promoción: alguien que no es la administradora, una promoción activa, o con el nombre mal escrito', async () => {
+
+	const intentos = [
+		await aprobA.rpc( 'borrar_promocion', { p_id: 'prueba-borrar', p_nombre: 'Residencial que se borra' } ),
+		await robot.rpc( 'borrar_promocion', { p_id: 'prueba-borrar', p_nombre: 'Residencial que se borra' } ),
+		await anonimo.rpc( 'borrar_promocion', { p_id: 'prueba-borrar', p_nombre: 'Residencial que se borra' } ),
+		await adminSinMovil.rpc( 'borrar_promocion', { p_id: 'prueba-borrar', p_nombre: 'Residencial que se borra' } ),
+		await admin.rpc( 'borrar_promocion', { p_id: 'prueba-borrar', p_nombre: 'Residencial que se borra' } ), // aún activa
+		await aprobA.rpc( 'archivos_de_promocion', { p_id: 'prueba-borrar' } ),
+	];
+	// Ni la administradora puede borrar archivos de una promoción activa.
+	await admin.storage.from( 'documentos' ).remove( [ docBorrar.ruta, docA.ruta ] );
+	await exigir( admin.from( 'promociones' ).update( { activa: false } ).eq( 'id', 'prueba-borrar' ), 'desactivar prueba-borrar' );
+	// Desactivada: sigue sin poder la promotora, ni la administradora con el nombre mal.
+	await aprobA.storage.from( 'documentos' ).remove( [ docBorrar.ruta ] );
+	const malNombre = await admin.rpc( 'borrar_promocion', { p_id: 'prueba-borrar', p_nombre: 'Residencial' } );
+	// …ni borrar mientras queden archivos.
+	const conArchivos = await admin.rpc( 'borrar_promocion', { p_id: 'prueba-borrar', p_nombre: 'Residencial que se borra' } );
+	return intentos.every( falla ) && falla( malNombre ) && falla( conArchivos )
+		&& await existe( 'documentos', docBorrar.ruta ) && await existe( 'documentos', docA.ruta )
+		&& !! ( await filaDe( 'promociones', 'prueba-borrar' ) );
+
+} );
+
+await caso( DEBE_FUNCIONAR, 'La administradora borra una promoción desactivada: desaparece todo lo suyo y nada de las demás', async () => {
+
+	const lista = await exigir( admin.rpc( 'archivos_de_promocion', { p_id: 'prueba-borrar' } ), 'lista de archivos' );
+	if ( lista.length !== 3 ) throw new Error( `esperaba 3 archivos y hay ${ lista.length }` );
+	for ( const almacen of [ 'documentos', 'entregables', 'referencias' ] ) {
+
+		await exigir( admin.storage.from( almacen ).remove( lista.filter( ( a ) => a.bucket === almacen ).map( ( a ) => a.nombre ) ), `borrar ${ almacen }` );
+
+	}
+	await exigir( admin.rpc( 'borrar_promocion', { p_id: 'prueba-borrar', p_nombre: ' Residencial que se borra ' } ), 'borrar promoción' );
+	const quedan = await Promise.all( [ 'requisitos', 'documentos', 'entregables', 'validaciones', 'miembros', 'peticiones' ].map( async ( t ) =>
+		( await servicio.from( t ).select( '*', { count: 'exact', head: true } ).eq( 'promocion_id', 'prueba-borrar' ) ).count ) );
+	const { data: anotado } = await admin.from( 'registro' ).select( 'detalle' ).eq( 'accion', 'borra una promoción' );
+	return ! ( await filaDe( 'promociones', 'prueba-borrar' ) ) && quedan.every( ( n ) => n === 0 )
+		&& ! await existe( 'documentos', docBorrar.ruta ) && ! await existe( 'entregables', planoBorrar.ruta ) && ! await existe( 'referencias', fotoBorrar )
+		&& await existe( 'documentos', docA.ruta ) && await existe( 'documentos', docB.ruta ) && await existe( 'entregables', planoA.ruta )
+		&& !! ( await filaDe( 'promociones', 'prueba-a' ) ) && anotado?.[ 0 ]?.detalle?.documentos === 1;
+
+} );
+
 // ─── Accesos e invitaciones (función «invitar», receta 14) ──────────────────
 
 const invitar = ( sb, cuerpo ) => sb.functions.invoke( 'invitar', { body: cuerpo } );

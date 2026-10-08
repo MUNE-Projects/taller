@@ -14,6 +14,7 @@ con contraseña + código del móvil y registro de actividad.
   - `007_equipos.sql`: equipos por promoción (o acceso a todas las de la promotora), sin roles, y datos fiscales de promotoras y promociones;
   - `008_ficha_promocion.sql`: ficha de la promoción y lista estándar de documentos;
   - `009_aviso_subida.sql`: aviso por email de cada documento subido (una sola vez por documento).
+  - `010_borrar_promocion.sql`: borrar una promoción desactivada y todo lo suyo, desde el Panel.
 
   Ojo: volver a lanzar `002` después de `005` quita los permisos de escritura de la administradora; en ese caso, relanzar `005`.
 - Prueba de aislamiento entre promotoras: `bash pruebas/lanzar.sh` (necesita Docker y psql). Levanta un Supabase local vacío, aplica estos archivos y hace las comprobaciones. En GitHub se lanza sola en cada propuesta (`.github/workflows/aislamiento.yml`).

@@ -185,3 +185,9 @@ h2.separado { margin-top: 22px; }
 .historial .estado { font-size: 11px; padding: 2px 8px; }
 .nota-doc { font-size: 13px; margin: -2px 0 4px; }
 .estado.rechazado { background: #f8e6e6; color: var(--error); }
+
+/* Borrar una promoción: zona aparte, en rojo */
+.zona-peligro { display: grid; gap: 10px; margin-top: 22px; padding: 16px; border: 1px solid rgb(155 44 44 / 0.35); border-radius: 10px; }
+.zona-peligro h2 { color: var(--error); }
+.boton.peligro { background: var(--error); }
+.boton.peligro:disabled { opacity: 0.4; cursor: not-allowed; }
