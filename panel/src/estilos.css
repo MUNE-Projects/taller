@@ -174,3 +174,21 @@ input[type=checkbox] { width: auto; }
 .fila-enlace:hover { border-color: var(--acento); }
 h2.separado { margin-top: 22px; }
 .tarjeta > .acciones, .tarjeta > .peticion-form { margin-top: 10px; }
+
+/* Documentación */
+.resumen-docs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.bloque-docs { margin-top: 16px; }
+.bloque-docs h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--tinta-3); font-weight: 600; margin-bottom: 4px; }
+.requisito-doc { display: grid; gap: 8px; padding: 12px 0; border-top: 1px solid var(--linea); }
+.historial { display: grid; gap: 4px; font-size: 13px; padding-left: 12px; border-left: 2px solid var(--linea); }
+.historial-fila { display: flex; justify-content: space-between; gap: 8px; align-items: center; flex-wrap: wrap; color: var(--tinta-2); }
+.historial .estado { font-size: 11px; padding: 2px 8px; }
+.nota-doc { font-size: 13px; margin: -2px 0 4px; }
+.estado.rechazado { background: #f8e6e6; color: var(--error); }
+
+/* Borrar una promoción: zona aparte, en rojo */
+.zona-peligro { display: grid; gap: 10px; margin-top: 22px; padding: 16px; border: 1px solid rgb(155 44 44 / 0.35); border-radius: 10px; }
+.zona-peligro h2 { color: var(--error); }
+.boton.peligro { background: var(--error); }
+.boton.peligro:disabled { opacity: 0.4; cursor: not-allowed; }
+.zona-peligro .pasos { margin: 0; padding-left: 20px; display: grid; gap: 14px; color: var(--tinta-2); }

@@ -487,10 +487,12 @@ async function subir(promocion: string, promotora: string, requisito: number, ar
 			sb.storage.from('documentos').upload(ruta, archivo, { contentType: tipo, upsert: false }),
 		]);
 		if (subida.error) throw subida.error;
-		const { error } = await sb.from('documentos').insert({
+		const { data: subido, error } = await sb.from('documentos').insert({
 			promocion_id: promocion, requisito_id: requisito, nombre: archivo.name.slice(0, 200), ruta, tipo: tipo.slice(0, 120), tamano: archivo.size, huella: firma,
-		});
+		}).select('id').single();
 		if (error) throw error;
+		// Aviso por email a MUNE Projects (si falla, el documento ya está subido igualmente).
+		void sb.functions.invoke('aviso-subida', { body: { documento_id: subido.id } }).catch(() => undefined);
 		await pantallaPromocion(promocion);
 		const nuevo = app.querySelector<HTMLElement>(`[data-progreso="${requisito}"]`);
 		if (nuevo) {

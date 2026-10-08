@@ -13,6 +13,10 @@ export async function pantallaInicio(destino: HTMLElement): Promise<void> {
 			<div data-versiones><p class="vacio">Consultando el escaparate…</p></div>
 		</section>
 		<section class="tarjeta">
+			<h2>Documentación por revisar</h2>
+			<div data-documentos><p class="vacio">Cargando…</p></div>
+		</section>
+		<section class="tarjeta">
 			<h2>Peticiones de cambios abiertas</h2>
 			<p class="ayuda">Cuando quieras que Claude se ponga con ellas, díselo en Claude Code: «revisa las peticiones del Panel».</p>
 			<div data-peticiones><p class="vacio">Cargando…</p></div>
@@ -32,6 +36,24 @@ export async function pantallaInicio(destino: HTMLElement): Promise<void> {
 				<span class="estado pendiente">${esc(e.rev!.version)} por revisar</span>
 			</a>`).join('')}</div>` : '<p class="vacio">Nada pendiente: todas las promociones están al día.</p>';
 	});
+
+	void sb.from('documentos').select('id, promocion_id, requisito_id, version, subido_en, promociones(nombre)')
+		.eq('estado', 'pendiente').order('subido_en', { ascending: false }).limit(200).then(({ data: docs }) => {
+			const caja = destino.querySelector<HTMLElement>('[data-documentos]');
+			if (!caja) return;
+			// Por promoción: cuántos documentos esperan revisión y desde cuándo.
+			const grupos = new Map<string, { nombre: string; n: number; ultimo: string }>();
+			for (const d of (docs ?? []) as unknown as { promocion_id: string; subido_en: string; promociones: { nombre: string } | null }[]) {
+				const g = grupos.get(d.promocion_id) ?? { nombre: d.promociones?.nombre ?? d.promocion_id, n: 0, ultimo: d.subido_en };
+				g.n += 1;
+				grupos.set(d.promocion_id, g);
+			}
+			caja.innerHTML = grupos.size ? `<div class="lista-enlaces">${[...grupos].map(([id, g]) => `
+				<a class="fila-enlace" href="#/promocion/${esc(id)}/documentacion">
+					<span><strong>${esc(g.nombre)}</strong><br><span class="promo-lugar">Última subida: ${esc(fecha(g.ultimo))}</span></span>
+					<span class="estado pendiente">${g.n} por revisar</span>
+				</a>`).join('')}</div>` : '<p class="vacio">No hay documentación nueva.</p>';
+		});
 
 	const peticiones = await peticionesAbiertas();
 	const caja = destino.querySelector<HTMLElement>('[data-peticiones]');

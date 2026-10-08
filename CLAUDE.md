@@ -71,6 +71,7 @@ Claude se usa **solo en producción** (preparar, interpretar, revisar), **nunca 
   4. **Ella publica desde el Panel**: botón *Publicar vN* → función `ejecutar` de Supabase → `publicar.yml` → escaparate `main` → Cloudflare. Solo se publica la versión revisada.
 - **Volver atrás:** también desde el Panel (*Volver a una anterior*, con motivo).
 - **El registro de versiones** (`promociones/<id>/publicaciones.json`) solo lo escribe el ejecutor, en `main`.
+- **Documentación de las promotoras** (recetas 2 y 13, `docs/recetas/`): «revisa lo nuevo de X» → `node herramientas/documentos.mjs pendientes | bajar <id> | estado <id> vigente|rechazado --nota "…"`; «¿hay algo nuevo?» → `node herramientas/documentos.mjs novedades`. **Nunca marques un documento sin su OK.**
 - **Peticiones del Panel:** de momento **solo cuando ella lo pide** («revisa las peticiones del Panel»). Herramienta: `node herramientas/peticiones.mjs listar | fotos <id> | estado <id> …`, con las credenciales del robot en las variables del entorno (`ROBOT_EMAIL`, `ROBOT_CLAVE`). Cuando haya un primer cliente se valorará una revisión automática, que consume plan de Claude.
 - **Base de datos:** los cambios de estructura van en `panel/supabase/00N_*.sql`. Ella los pega en el SQL Editor; dale el SQL completo en el chat.
 - Antes de proponer algo, **pruébalo** (por ejemplo, el Panel con datos simulados en Playwright, o las herramientas en copias aparte) y enséñale capturas o resultados.
@@ -105,8 +106,8 @@ Ahora la web pública está en **v7**, y la **v8** (de prueba, idéntica) sigue 
 **Ahora: Fase 1 · Portal seguro**, aprobada por etapas (decisiones 17–25 de `docs/arquitectura.md`, que prevalecen):
 
 1. ✔ cimientos de datos y prueba de aislamiento (`005_portal.sql`, `panel/pruebas/`, `aislamiento.yml`);
-2. portal de promotoras y accesos (receta 14): `portal/`, sección *Promotoras* del Panel, función `invitar`, `006_accesos.sql`, `007_equipos.sql` (equipos por promoción, sin roles, datos fiscales: decisión 28) y `008_ficha_promocion.sql` (ficha y lista estándar de documentos: decisión 29);
-3. documentación (recetas 2 y 13, email de subida);
+2. ✔ portal de promotoras y accesos (receta 14): `portal/`, sección *Promotoras* del Panel, función `invitar`, `006_accesos.sql`, `007_equipos.sql` (equipos por promoción, sin roles, datos fiscales: decisión 28) y `008_ficha_promocion.sql` (ficha y lista estándar de documentos: decisión 29);
+3. documentación (recetas 2 y 13, email de subida): pestaña *Documentación* del Panel, `009_aviso_subida.sql`, `010_borrar.sql` (exportar todo en ZIP y borrar promociones o promotoras desactivadas: decisión 33), función `aviso-subida` + `aviso-documento.yml`, `herramientas/documentos.mjs` y `docs/recetas/`;
 4. validación de planos;
 5. códigos de comprador (receta 24), desde el botón que ya existe en la web pública;
 6. bandeja de Inicio y avisos del sistema;

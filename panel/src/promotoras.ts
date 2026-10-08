@@ -13,7 +13,9 @@
 // administradora, con el código del móvil.
 
 import { pintarActividad } from './actividad';
-import { alEnviar, anotar, esc, fecha, sb, traducir } from './comun';
+import { alEnviar, anotar, conectarPlegables, esc, fecha, sb, traducir } from './comun';
+import { pintarDocumentacion } from './documentacion';
+import { exportarPromocion, exportarPromotora, type Resultado } from './exportar';
 import { pintarPeticiones } from './peticiones';
 import { estadoVersiones, etiquetaVersiones, pintarVersiones } from './versiones';
 
@@ -29,7 +31,6 @@ interface Acceso {
 	id: number; user_id: string; promocion_id: string | null; nombre: string; email: string; cargo: string;
 	activo: boolean; aceptada: boolean; ultima_entrada: string | null;
 }
-interface Requisito { id: number; bloque: string; elemento: string; descripcion: string; obligatorio: boolean; activo: boolean }
 
 const CAMPOS_PROMOCION = `id, nombre, ubicacion, estado, activa, promotora_id, razon_social, cif, domicilio_fiscal,
 	direccion, codigo_postal, municipio, provincia, referencia_catastral, tipo, num_viviendas, num_portales, num_plantas, fecha_entrega`;
@@ -40,7 +41,6 @@ const ESTADOS: Record<string, string> = {
 	en_validacion: 'Planos para validar',
 	publicada: 'Publicada',
 };
-const BLOQUES = ['Planos', 'Memoria de calidades', 'Superficies', 'Marca', 'Datos legales', 'Personalización'];
 
 const PESTANAS: [string, string][] = [
 	['resumen', 'Resumen y versiones'],
@@ -94,15 +94,6 @@ function resumenFicha(p: Ficha): string {
 function resumenFiscal(d: DatosFiscales): string {
 	const partes = [d.razon_social, d.cif ? `CIF ${d.cif}` : null, d.domicilio_fiscal].filter(Boolean) as string[];
 	return partes.length ? esc(partes.join(' · ')) : '<span class="vacio">Datos fiscales sin rellenar (los rellena la promotora en su portal)</span>';
-}
-
-/** Formularios plegados: se abren con su botón y se cierran con «Cancelar». */
-function conectarPlegables(raiz: HTMLElement): void {
-	raiz.querySelectorAll<HTMLButtonElement>('[data-abrir]').forEach((b) => {
-		const form = raiz.querySelector<HTMLFormElement>(`[data-plegable="${CSS.escape(b.dataset.abrir!)}"]`)!;
-		b.addEventListener('click', () => { form.hidden = false; b.hidden = true; form.querySelector<HTMLElement>('input, textarea')?.focus(); });
-		form.querySelector('[data-cerrar]')?.addEventListener('click', () => { form.hidden = true; form.reset(); b.hidden = false; });
-	});
 }
 
 function avisador(raiz: HTMLElement): (texto: string, esError?: boolean) => void {
@@ -359,8 +350,10 @@ export async function pantallaPromotora(destino: HTMLElement, id: string): Promi
 			<div class="acciones">
 				<button class="boton secundario pequeno" type="button" data-abrir="fiscal">Editar datos fiscales</button>
 				<button class="boton secundario pequeno" type="button" data-abrir="nombre">Cambiar nombre</button>
+				<button class="boton secundario pequeno" type="button" data-exportar>Exportar todo (ZIP)</button>
 				<button class="boton secundario pequeno" type="button" data-activa-promotora>${po.activa ? 'Desactivar promotora' : 'Activar promotora'}</button>
 			</div>
+			${po.activa ? '' : `<div class="zona-peligro" data-borrar></div>`}
 			${formFiscal(po, true, true)}
 			<form class="peticion-form" data-nombre data-plegable="nombre" novalidate hidden>
 				<label>Nombre de la promotora (marca) <input name="nombre" maxlength="120" required value="${esc(po.nombre)}"></label>
@@ -380,6 +373,9 @@ export async function pantallaPromotora(destino: HTMLElement, id: string): Promi
 
 	conectarPlegables(destino);
 	conectarPersonas(destino, accesos, id, recargar);
+	conectarExportar(destino, destino.querySelector<HTMLButtonElement>('[data-exportar]')!, (progreso) => exportarPromotora(id, progreso));
+	const zonaBorrar = destino.querySelector<HTMLElement>('[data-borrar]');
+	if (zonaBorrar) void pintarBorradoPromotora(zonaBorrar, po, promociones, accesos.length);
 	void pintarActividad(destino.querySelector<HTMLElement>('[data-actividad]')!, { promotora: id, promociones: promociones.map((p) => p.id) }, 30);
 	// Estado de las versiones de cada promoción, sin esperar a que cargue.
 	for (const p of promociones.filter((x) => x.activa)) {
@@ -415,11 +411,163 @@ export async function pantallaPromotora(destino: HTMLElement, id: string): Promi
 		await recargar();
 	});
 	destino.querySelector('[data-activa-promotora]')!.addEventListener('click', async () => {
-		if (po.activa && !confirm(`¿Desactivar ${po.nombre}?\n\nNadie de esta promotora podrá entrar en el portal ni ver sus promociones, al instante. Las webs públicas no cambian.`)) return;
+		if (po.activa && !confirm(`¿Desactivar ${po.nombre}?\n\nNadie de esta promotora podrá entrar en el portal ni ver sus promociones, al instante. Las webs públicas no cambian.\n\nSi quieres una copia de todo, cancela y pulsa antes «Exportar todo (ZIP)».`)) return;
 		const { error: e } = await sb.from('promotoras').update({ activa: !po.activa }).eq('id', id);
 		if (e) { avisador(destino)(traducir(e), true); return; }
 		await anotar(po.activa ? 'desactiva una promotora' : 'activa una promotora', { promotora: id });
 		await recargar();
+	});
+}
+
+// ── Exportar y borrar (exportar.ts, 010_borrar.sql) ─────────────────────────
+
+/** Botón «Exportar todo»: descarga el ZIP y lo cuenta en el aviso de la pantalla. */
+function conectarExportar(raiz: HTMLElement, boton: HTMLButtonElement, exportar: (progreso: (t: string) => void) => Promise<Resultado>): void {
+	const avisar = avisador(raiz);
+	boton.addEventListener('click', async () => {
+		boton.disabled = true;
+		try {
+			const r = await exportar((t) => avisar(t));
+			avisar(r.avisos.length ? `Exportación descargada (${r.archivos} archivos), con ${r.avisos.length} aviso(s): mira el LEEME.txt del ZIP.`
+				: `Exportación descargada: ${r.archivos} archivos. Está en tu carpeta de Descargas.`, r.avisos.length > 0);
+		} catch (e) {
+			avisar(traducir(e), true);
+		} finally {
+			boton.disabled = false;
+		}
+	});
+}
+
+interface Borrado {
+	que: string; // «la promoción» / «la promotora»
+	nombre: string;
+	detalle: string; // lo que se va a borrar, en HTML
+	exportar: (progreso: (t: string) => void) => Promise<Resultado>;
+	archivos: () => PromiseLike<{ data: unknown; error: { message: string } | null }>;
+	borrar: (nombre: string) => PromiseLike<{ error: { message: string } | null }>;
+	despues: string; // a dónde ir al terminar
+}
+
+/** Zona roja para borrar definitivamente: 1) descargar la exportación, 2) escribir el nombre. */
+function pintarZonaBorrado(zona: HTMLElement, b: Borrado): void {
+	zona.innerHTML = `
+		<h2>Borrar definitivamente</h2>
+		${b.detalle}
+		<p><strong>No se puede deshacer.</strong> Las cuentas de las personas no se borran (se quedan sin acceso). El registro de actividad se conserva.</p>
+		<ol class="pasos">
+			<li>Descarga la copia de todo (es obligatorio antes de borrar):
+				<div class="acciones"><button class="boton secundario pequeno" type="button" data-exportar-antes>Descargar la exportación (ZIP)</button></div>
+				<p class="ayuda" data-progreso role="status"></p>
+			</li>
+			<li>Escribe el nombre de ${esc(b.que)}: <strong>${esc(b.nombre)}</strong>
+				<form class="peticion-form" data-form-borrar novalidate>
+					<input name="nombre" autocomplete="off" disabled aria-label="Nombre para confirmar">
+					<p class="error" data-error-borrar role="alert"></p>
+					<div class="acciones"><button class="boton peligro" type="submit" disabled>Borrar para siempre</button></div>
+				</form>
+			</li>
+		</ol>`;
+	const exportar = zona.querySelector<HTMLButtonElement>('[data-exportar-antes]')!;
+	const progreso = zona.querySelector<HTMLElement>('[data-progreso]')!;
+	const form = zona.querySelector<HTMLFormElement>('[data-form-borrar]')!;
+	const boton = form.querySelector<HTMLButtonElement>('button')!;
+	const campo = form.querySelector<HTMLInputElement>('input')!;
+	const error = zona.querySelector<HTMLElement>('[data-error-borrar]')!;
+	const coincide = () => campo.value.trim() === b.nombre.trim();
+
+	exportar.addEventListener('click', async () => {
+		exportar.disabled = true;
+		try {
+			const r = await b.exportar((t) => { progreso.textContent = t; });
+			progreso.textContent = r.avisos.length
+				? `✓ Descargada (${r.archivos} archivos), con ${r.avisos.length} aviso(s): revisa el LEEME.txt antes de borrar.`
+				: `✓ Descargada: ${r.archivos} archivos. Guárdala bien antes de seguir.`;
+			campo.disabled = false;
+			campo.focus();
+		} catch (e) {
+			progreso.textContent = `No se pudo exportar: ${traducir(e)}. Sin la copia no se puede borrar.`;
+			exportar.disabled = false;
+		}
+	});
+	campo.addEventListener('input', () => { boton.disabled = !coincide(); });
+	form.addEventListener('submit', async (ev) => {
+		ev.preventDefault();
+		if (!coincide() || !confirm(`¿Borrar ${b.nombre} para siempre?\n\nNo se puede deshacer.`)) return;
+		boton.disabled = true;
+		error.textContent = '';
+		boton.textContent = 'Borrando archivos…';
+		try {
+			// 1. Los archivos, con la API de almacenamiento (de 100 en 100).
+			const { data: lista, error: e1 } = await b.archivos();
+			if (e1) throw e1;
+			const porAlmacen = new Map<string, string[]>();
+			for (const a of (lista ?? []) as { bucket: string; nombre: string }[]) porAlmacen.set(a.bucket, [...(porAlmacen.get(a.bucket) ?? []), a.nombre]);
+			for (const [almacen, nombres] of porAlmacen) {
+				for (let i = 0; i < nombres.length; i += 100) {
+					const { error: e2 } = await sb.storage.from(almacen).remove(nombres.slice(i, i + 100));
+					if (e2) throw e2;
+				}
+			}
+			// 2. Las fichas (comprueba antes que no queda ningún archivo).
+			boton.textContent = 'Borrando…';
+			const { error: e3 } = await b.borrar(campo.value);
+			if (e3) throw e3;
+			location.hash = b.despues;
+		} catch (e) {
+			error.textContent = traducir(e);
+			boton.textContent = 'Borrar para siempre';
+			boton.disabled = false;
+		}
+	});
+}
+
+/** Cuántas filas de una tabla tiene una promoción (o varias). */
+async function contar(tabla: string, promociones: string[]): Promise<number> {
+	if (!promociones.length) return 0;
+	const { count } = await sb.from(tabla).select('id', { count: 'exact', head: true }).in('promocion_id', promociones);
+	return count ?? 0;
+}
+
+/** Aviso si alguna promoción tiene web: borrarla aquí no la quita de internet. */
+async function avisoWebs(promociones: { id: string; nombre: string }[]): Promise<string> {
+	const conWeb = (await Promise.all(promociones.map(async (p) => {
+		const e = await estadoVersiones(p.id);
+		return e.pub ?? e.rev ? p : null;
+	}))).filter((p) => p !== null);
+	return conWeb.length ? `<p class="aviso">${conWeb.length === 1 ? `«${esc(conWeb[0].nombre)}» tiene web` : `Tienen web: ${conWeb.map((p) => `«${esc(p.nombre)}»`).join(', ')}`}.
+		Borrar aquí <strong>no la quita de internet</strong> ni borra sus datos 3D del taller: pídeselo a Claude («retira la web de ${esc(conWeb.map((p) => p.id).join(', '))}»).</p>` : '';
+}
+
+async function pintarBorradoPromocion(zona: HTMLElement, p: Promocion): Promise<void> {
+	const ids = [p.id];
+	const [docs, equipo, peticiones, planos, archivos, web] = await Promise.all([
+		contar('documentos', ids), contar('miembros', ids), contar('peticiones', ids), contar('entregables', ids),
+		sb.rpc('archivos_de_promocion', { p_id: p.id }), avisoWebs([p]),
+	]);
+	pintarZonaBorrado(zona, {
+		que: 'la promoción', nombre: p.nombre,
+		detalle: `<p>Se borrará todo lo de <strong>${esc(p.nombre)}</strong>: ${docs} documento(s) subido(s), ${planos} plano(s) entregado(s),
+			${(archivos.data as unknown[] | null)?.length ?? 0} archivo(s) guardado(s), ${equipo} acceso(s) de su equipo y ${peticiones} petición(es) de cambios.</p>${web}`,
+		exportar: (progreso) => exportarPromocion(p.id, progreso),
+		archivos: () => sb.rpc('archivos_de_promocion', { p_id: p.id }),
+		borrar: (nombre) => sb.rpc('borrar_promocion', { p_id: p.id, p_nombre: nombre }),
+		despues: `#/promotora/${p.promotora_id}`,
+	});
+}
+
+async function pintarBorradoPromotora(zona: HTMLElement, po: Promotora, promociones: { id: string; nombre: string }[], personas: number): Promise<void> {
+	const ids = promociones.map((p) => p.id);
+	const [docs, peticiones, archivos, web] = await Promise.all([
+		contar('documentos', ids), contar('peticiones', ids), sb.rpc('archivos_de_promotora', { p_id: po.id }), avisoWebs(promociones),
+	]);
+	pintarZonaBorrado(zona, {
+		que: 'la promotora', nombre: po.nombre,
+		detalle: `<p>Se borrará <strong>${esc(po.nombre)}</strong> con todo lo suyo: ${promociones.length} promoción(es) (también las activas),
+			${docs} documento(s) subido(s), ${(archivos.data as unknown[] | null)?.length ?? 0} archivo(s) guardado(s), ${personas} acceso(s) y ${peticiones} petición(es) de cambios.</p>${web}`,
+		exportar: (progreso) => exportarPromotora(po.id, progreso),
+		archivos: () => sb.rpc('archivos_de_promotora', { p_id: po.id }),
+		borrar: (nombre) => sb.rpc('borrar_promotora', { p_id: po.id, p_nombre: nombre }),
+		despues: '#/promotoras',
 	});
 }
 
@@ -457,9 +605,14 @@ export async function pantallaPromocion(destino: HTMLElement, id: string, pestan
 			</label>
 			<p class="promo-versiones">${resumenFicha(p)}</p>
 			<div class="acciones">
+				<button class="boton secundario pequeno" type="button" data-exportar>Exportar todo (ZIP)</button>
 				<button class="boton secundario pequeno" type="button" data-activa-promo>${p.activa ? 'Desactivar promoción' : 'Activar promoción'}</button>
-			</div>`;
+			</div>
+			${p.activa ? '' : `<div class="zona-peligro" data-borrar></div>`}`;
 		void pintarVersiones(caja.querySelector<HTMLElement>('[data-versiones]')!, p);
+		const zonaBorrar = caja.querySelector<HTMLElement>('[data-borrar]');
+		if (zonaBorrar) void pintarBorradoPromocion(zonaBorrar, p);
+		conectarExportar(destino, caja.querySelector<HTMLButtonElement>('[data-exportar]')!, (progreso) => exportarPromocion(id, progreso));
 		caja.querySelector<HTMLSelectElement>('[data-estado-promo]')!.addEventListener('change', async (ev) => {
 			const sel = ev.target as HTMLSelectElement;
 			const { error: e } = await sb.from('promociones').update({ estado: sel.value }).eq('id', id);
@@ -469,7 +622,7 @@ export async function pantallaPromocion(destino: HTMLElement, id: string, pestan
 			avisador(destino)(`Estado cambiado: «${ESTADOS[sel.value]}».`);
 		});
 		caja.querySelector('[data-activa-promo]')!.addEventListener('click', async () => {
-			if (p.activa && !confirm(`¿Desactivar ${p.nombre}?\n\nSu equipo dejará de verla en el portal al instante. La web pública no cambia.`)) return;
+			if (p.activa && !confirm(`¿Desactivar ${p.nombre}?\n\nSu equipo dejará de verla en el portal al instante. La web pública no cambia.\n\nSi quieres una copia de todo, cancela y pulsa antes «Exportar todo (ZIP)».`)) return;
 			const { error: e } = await sb.from('promociones').update({ activa: !p.activa }).eq('id', id);
 			if (e) { avisador(destino)(traducir(e), true); return; }
 			await anotar(p.activa ? 'desactiva una promoción' : 'activa una promoción', { promocion: id });
@@ -492,12 +645,7 @@ export async function pantallaPromocion(destino: HTMLElement, id: string, pestan
 		conectarPersonas(caja, accesos, p.promotora_id, recargar);
 	}
 
-	if (actual === 'documentacion') {
-		caja.innerHTML = `<h2>Documentos que debe entregar</h2>
-			<p class="ayuda">La lista que ve la promotora en su portal. Lo que suba aparecerá aquí en la próxima etapa.</p>
-			<div data-requisitos></div>`;
-		await pintarRequisitos(p, caja.querySelector<HTMLElement>('[data-requisitos]')!);
-	}
+	if (actual === 'documentacion') await pintarDocumentacion(caja, p);
 
 	if (actual === 'ficha') {
 		caja.innerHTML = `
@@ -534,66 +682,4 @@ export async function pantallaPromocion(destino: HTMLElement, id: string, pestan
 		caja.innerHTML = '<h2>Actividad de la promoción</h2><div data-actividad><p class="vacio">Cargando…</p></div>';
 		await pintarActividad(caja.querySelector<HTMLElement>('[data-actividad]')!, { promocion: id });
 	}
-}
-
-async function pintarRequisitos(p: Promocion, destino: HTMLElement): Promise<void> {
-	const { data, error } = await sb.from('requisitos').select('id, bloque, elemento, descripcion, obligatorio, activo')
-		.eq('promocion_id', p.id).order('orden').order('id');
-	if (error) {
-		destino.innerHTML = `<p class="error">${esc(traducir(error))}</p>`;
-		return;
-	}
-	const reqs = (data ?? []) as Requisito[];
-	const bloques = [...new Set([...BLOQUES, ...reqs.map((r) => r.bloque)])];
-	destino.innerHTML = `<div class="requisitos">
-		${reqs.length ? `<ul>${reqs.map((r) => `<li class="${r.activo ? '' : 'quitado'}"><strong>${esc(r.bloque)}</strong> · ${esc(r.elemento)}${r.obligatorio ? '' : ' <span class="promo-lugar">(opcional)</span>'}
-			${r.activo ? '' : ' <span class="promo-lugar">(quitado de la lista)</span>'}
-			<button class="enlace" type="button" data-requisito="${r.id}" data-activo="${r.activo}">${r.activo ? 'Quitar' : 'Volver a poner'}</button>
-			${r.descripcion ? `<br><span class="promo-lugar">${esc(r.descripcion)}</span>` : ''}</li>`).join('')}</ul>` : ''}
-		${reqs.some((r) => r.activo) ? '' : `<p class="vacio">La lista está vacía: la promotora no verá nada que entregar.</p>
-			<div class="acciones"><button class="boton secundario pequeno" type="button" data-estandar>Añadir la lista estándar</button></div>`}
-		<div class="acciones"><button class="boton secundario pequeno" type="button" data-abrir="requisito">Añadir un documento a la lista</button></div>
-		<form class="peticion-form" data-plegable="requisito" hidden novalidate>
-			<label>Bloque <input name="bloque" list="bloques-${esc(p.id)}" maxlength="80" required placeholder="Por ejemplo: Planos"></label>
-			<datalist id="bloques-${esc(p.id)}">${bloques.map((b) => `<option value="${esc(b)}">`).join('')}</datalist>
-			<label>Qué tiene que entregar <input name="elemento" maxlength="120" required placeholder="Por ejemplo: Plano de planta de cada tipología (PDF o DWG)"></label>
-			<label>Explicación para la promotora (opcional) <input name="descripcion" maxlength="1000"></label>
-			<label class="en-linea"><input name="obligatorio" type="checkbox" checked> Obligatorio</label>
-			<p class="error" role="alert"></p>
-			<div class="acciones">
-				<button class="boton pequeno" type="submit">Añadir a la lista</button>
-				<button class="boton secundario pequeno" type="button" data-cerrar>Cancelar</button>
-			</div>
-		</form>
-	</div>`;
-	conectarPlegables(destino);
-	destino.querySelectorAll<HTMLButtonElement>('[data-requisito]').forEach((b) => b.addEventListener('click', async () => {
-		const activo = b.dataset.activo !== 'true';
-		b.disabled = true;
-		const { error: e } = await sb.from('requisitos').update({ activo }).eq('id', Number(b.dataset.requisito));
-		if (e) { b.disabled = false; alert(traducir(e)); return; }
-		await anotar(activo ? 'vuelve a poner un documento en la lista' : 'quita un documento de la lista', { promocion: p.id, requisito: Number(b.dataset.requisito) });
-		await pintarRequisitos(p, destino);
-	}));
-	destino.querySelector<HTMLButtonElement>('[data-estandar]')?.addEventListener('click', async (ev) => {
-		(ev.currentTarget as HTMLButtonElement).disabled = true;
-		const { error: e } = await sb.rpc('aplicar_lista_estandar', { p_promocion: p.id });
-		if (e) alert(traducir(e));
-		await pintarRequisitos(p, destino);
-	});
-	alEnviar(destino.querySelector<HTMLFormElement>('form[data-plegable="requisito"]')!, async (d) => {
-		const fila = {
-			promocion_id: p.id,
-			bloque: String(d.get('bloque')).trim(),
-			elemento: String(d.get('elemento')).trim(),
-			descripcion: String(d.get('descripcion')).trim(),
-			obligatorio: d.get('obligatorio') === 'on',
-			orden: reqs.length + 1,
-		};
-		if (!fila.bloque || !fila.elemento) throw new Error('Indica el bloque y qué tiene que entregar.');
-		const { error: e } = await sb.from('requisitos').insert(fila);
-		if (e) throw e;
-		await anotar('añade un documento a la lista', { promocion: p.id, elemento: fila.elemento });
-		await pintarRequisitos(p, destino);
-	});
 }
