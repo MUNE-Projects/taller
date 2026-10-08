@@ -506,6 +506,21 @@ await caso( DEBE_FUNCIONAR, 'La administradora ve todo y el registro anota subid
 
 } );
 
+// ─── Aviso de subida (Etapa 3) ──────────────────────────────────────────────
+
+await caso( DEBE_FALLAR, '26. Pedir el aviso de un documento ajeno, o repetir el aviso de uno propio', async () => {
+
+	const v2 = await subirDocumento( gestorA, pA.id, 'prueba-a', 'para el aviso' );
+	const ajeno = await aprobB.rpc( 'marcar_aviso_subida', { p_documento: v2.data.id } );
+	const intruso = await anonimo.rpc( 'marcar_aviso_subida', { p_documento: v2.data.id } );
+	const primero = await gestorA.rpc( 'marcar_aviso_subida', { p_documento: v2.data.id } );
+	const segundo = await gestorA.rpc( 'marcar_aviso_subida', { p_documento: v2.data.id } );
+	const fila = await filaDe( 'documentos', v2.data.id );
+	return ajeno.data === false && ( falla( intruso ) || intruso.data === false )
+		&& primero.data === true && segundo.data === false && fila.avisado === true && fila.revisado_por === null;
+
+} );
+
 // ─── Accesos e invitaciones (función «invitar», receta 14) ──────────────────
 
 const invitar = ( sb, cuerpo ) => sb.functions.invoke( 'invitar', { body: cuerpo } );

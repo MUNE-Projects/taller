@@ -12,11 +12,13 @@ con contraseña + código del móvil y registro de actividad.
   - `005_portal.sql`: portal de promotoras (miembros, requisitos, documentos, entregables, validaciones y sus almacenes privados);
   - `006_accesos.sql`: accesos de las promotoras (para la sección *Promotoras* y la función `invitar`);
   - `007_equipos.sql`: equipos por promoción (o acceso a todas las de la promotora), sin roles, y datos fiscales de promotoras y promociones;
-  - `008_ficha_promocion.sql`: ficha de la promoción y lista estándar de documentos.
+  - `008_ficha_promocion.sql`: ficha de la promoción y lista estándar de documentos;
+  - `009_aviso_subida.sql`: aviso por email de cada documento subido (una sola vez por documento).
 
   Ojo: volver a lanzar `002` después de `005` quita los permisos de escritura de la administradora; en ese caso, relanzar `005`.
 - Prueba de aislamiento entre promotoras: `bash pruebas/lanzar.sh` (necesita Docker y psql). Levanta un Supabase local vacío, aplica estos archivos y hace las comprobaciones. En GitHub se lanza sola en cada propuesta (`.github/workflows/aislamiento.yml`).
 - Función de Supabase `invitar` (`supabase/funciones/invitar/index.ts`): dar acceso al portal (receta 14). Crea la cuenta y Supabase envía el email de invitación; usa la clave de servicio que Supabase da a la función, que no sale de sus servidores.
+- Función de Supabase `aviso-subida` (`supabase/funciones/aviso-subida/index.ts`): la llama el portal tras cada subida y lanza `.github/workflows/aviso-documento.yml`, que te manda el email por GitHub.
 - Textos de los emails del portal (invitación y contraseña nueva): `supabase/emails/`.
 - Función de Supabase `ejecutar` (`supabase/funciones/ejecutar/index.ts`): botones Publicar y Volver, a través de `.github/workflows/publicar.yml`.
 - Mapa completo del Panel y brazo ejecutor: `docs/panel.md`.

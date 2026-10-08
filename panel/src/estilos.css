@@ -174,3 +174,14 @@ input[type=checkbox] { width: auto; }
 .fila-enlace:hover { border-color: var(--acento); }
 h2.separado { margin-top: 22px; }
 .tarjeta > .acciones, .tarjeta > .peticion-form { margin-top: 10px; }
+
+/* Documentación */
+.resumen-docs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.bloque-docs { margin-top: 16px; }
+.bloque-docs h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--tinta-3); font-weight: 600; margin-bottom: 4px; }
+.requisito-doc { display: grid; gap: 8px; padding: 12px 0; border-top: 1px solid var(--linea); }
+.historial { display: grid; gap: 4px; font-size: 13px; padding-left: 12px; border-left: 2px solid var(--linea); }
+.historial-fila { display: flex; justify-content: space-between; gap: 8px; align-items: center; flex-wrap: wrap; color: var(--tinta-2); }
+.historial .estado { font-size: 11px; padding: 2px 8px; }
+.nota-doc { font-size: 13px; margin: -2px 0 4px; }
+.estado.rechazado { background: #f8e6e6; color: var(--error); }

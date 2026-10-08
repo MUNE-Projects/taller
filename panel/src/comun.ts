@@ -48,3 +48,13 @@ export const fecha = (iso: string) => new Date(iso).toLocaleDateString('es-ES', 
 export async function anotar(accion: string, detalle: Record<string, unknown> = {}): Promise<void> {
 	await sb.from('registro').insert({ accion, detalle });
 }
+
+/** Formularios plegados: se abren con su botón y se cierran con «Cancelar». */
+export function conectarPlegables(raiz: HTMLElement): void {
+	raiz.querySelectorAll<HTMLButtonElement>('[data-abrir]').forEach((b) => {
+		const form = raiz.querySelector<HTMLFormElement>(`[data-plegable="${CSS.escape(b.dataset.abrir!)}"]`)!;
+		b.addEventListener('click', () => { form.hidden = false; b.hidden = true; form.querySelector<HTMLElement>('input, textarea')?.focus(); });
+		form.querySelector('[data-cerrar]')?.addEventListener('click', () => { form.hidden = true; form.reset(); b.hidden = false; });
+	});
+}
+

@@ -13,7 +13,8 @@
 // administradora, con el código del móvil.
 
 import { pintarActividad } from './actividad';
-import { alEnviar, anotar, esc, fecha, sb, traducir } from './comun';
+import { alEnviar, anotar, conectarPlegables, esc, fecha, sb, traducir } from './comun';
+import { pintarDocumentacion } from './documentacion';
 import { pintarPeticiones } from './peticiones';
 import { estadoVersiones, etiquetaVersiones, pintarVersiones } from './versiones';
 
@@ -29,7 +30,6 @@ interface Acceso {
 	id: number; user_id: string; promocion_id: string | null; nombre: string; email: string; cargo: string;
 	activo: boolean; aceptada: boolean; ultima_entrada: string | null;
 }
-interface Requisito { id: number; bloque: string; elemento: string; descripcion: string; obligatorio: boolean; activo: boolean }
 
 const CAMPOS_PROMOCION = `id, nombre, ubicacion, estado, activa, promotora_id, razon_social, cif, domicilio_fiscal,
 	direccion, codigo_postal, municipio, provincia, referencia_catastral, tipo, num_viviendas, num_portales, num_plantas, fecha_entrega`;
@@ -40,7 +40,6 @@ const ESTADOS: Record<string, string> = {
 	en_validacion: 'Planos para validar',
 	publicada: 'Publicada',
 };
-const BLOQUES = ['Planos', 'Memoria de calidades', 'Superficies', 'Marca', 'Datos legales', 'Personalización'];
 
 const PESTANAS: [string, string][] = [
 	['resumen', 'Resumen y versiones'],
@@ -94,15 +93,6 @@ function resumenFicha(p: Ficha): string {
 function resumenFiscal(d: DatosFiscales): string {
 	const partes = [d.razon_social, d.cif ? `CIF ${d.cif}` : null, d.domicilio_fiscal].filter(Boolean) as string[];
 	return partes.length ? esc(partes.join(' · ')) : '<span class="vacio">Datos fiscales sin rellenar (los rellena la promotora en su portal)</span>';
-}
-
-/** Formularios plegados: se abren con su botón y se cierran con «Cancelar». */
-function conectarPlegables(raiz: HTMLElement): void {
-	raiz.querySelectorAll<HTMLButtonElement>('[data-abrir]').forEach((b) => {
-		const form = raiz.querySelector<HTMLFormElement>(`[data-plegable="${CSS.escape(b.dataset.abrir!)}"]`)!;
-		b.addEventListener('click', () => { form.hidden = false; b.hidden = true; form.querySelector<HTMLElement>('input, textarea')?.focus(); });
-		form.querySelector('[data-cerrar]')?.addEventListener('click', () => { form.hidden = true; form.reset(); b.hidden = false; });
-	});
 }
 
 function avisador(raiz: HTMLElement): (texto: string, esError?: boolean) => void {
@@ -492,12 +482,7 @@ export async function pantallaPromocion(destino: HTMLElement, id: string, pestan
 		conectarPersonas(caja, accesos, p.promotora_id, recargar);
 	}
 
-	if (actual === 'documentacion') {
-		caja.innerHTML = `<h2>Documentos que debe entregar</h2>
-			<p class="ayuda">La lista que ve la promotora en su portal. Lo que suba aparecerá aquí en la próxima etapa.</p>
-			<div data-requisitos></div>`;
-		await pintarRequisitos(p, caja.querySelector<HTMLElement>('[data-requisitos]')!);
-	}
+	if (actual === 'documentacion') await pintarDocumentacion(caja, p);
 
 	if (actual === 'ficha') {
 		caja.innerHTML = `
@@ -534,66 +519,4 @@ export async function pantallaPromocion(destino: HTMLElement, id: string, pestan
 		caja.innerHTML = '<h2>Actividad de la promoción</h2><div data-actividad><p class="vacio">Cargando…</p></div>';
 		await pintarActividad(caja.querySelector<HTMLElement>('[data-actividad]')!, { promocion: id });
 	}
-}
-
-async function pintarRequisitos(p: Promocion, destino: HTMLElement): Promise<void> {
-	const { data, error } = await sb.from('requisitos').select('id, bloque, elemento, descripcion, obligatorio, activo')
-		.eq('promocion_id', p.id).order('orden').order('id');
-	if (error) {
-		destino.innerHTML = `<p class="error">${esc(traducir(error))}</p>`;
-		return;
-	}
-	const reqs = (data ?? []) as Requisito[];
-	const bloques = [...new Set([...BLOQUES, ...reqs.map((r) => r.bloque)])];
-	destino.innerHTML = `<div class="requisitos">
-		${reqs.length ? `<ul>${reqs.map((r) => `<li class="${r.activo ? '' : 'quitado'}"><strong>${esc(r.bloque)}</strong> · ${esc(r.elemento)}${r.obligatorio ? '' : ' <span class="promo-lugar">(opcional)</span>'}
-			${r.activo ? '' : ' <span class="promo-lugar">(quitado de la lista)</span>'}
-			<button class="enlace" type="button" data-requisito="${r.id}" data-activo="${r.activo}">${r.activo ? 'Quitar' : 'Volver a poner'}</button>
-			${r.descripcion ? `<br><span class="promo-lugar">${esc(r.descripcion)}</span>` : ''}</li>`).join('')}</ul>` : ''}
-		${reqs.some((r) => r.activo) ? '' : `<p class="vacio">La lista está vacía: la promotora no verá nada que entregar.</p>
-			<div class="acciones"><button class="boton secundario pequeno" type="button" data-estandar>Añadir la lista estándar</button></div>`}
-		<div class="acciones"><button class="boton secundario pequeno" type="button" data-abrir="requisito">Añadir un documento a la lista</button></div>
-		<form class="peticion-form" data-plegable="requisito" hidden novalidate>
-			<label>Bloque <input name="bloque" list="bloques-${esc(p.id)}" maxlength="80" required placeholder="Por ejemplo: Planos"></label>
-			<datalist id="bloques-${esc(p.id)}">${bloques.map((b) => `<option value="${esc(b)}">`).join('')}</datalist>
-			<label>Qué tiene que entregar <input name="elemento" maxlength="120" required placeholder="Por ejemplo: Plano de planta de cada tipología (PDF o DWG)"></label>
-			<label>Explicación para la promotora (opcional) <input name="descripcion" maxlength="1000"></label>
-			<label class="en-linea"><input name="obligatorio" type="checkbox" checked> Obligatorio</label>
-			<p class="error" role="alert"></p>
-			<div class="acciones">
-				<button class="boton pequeno" type="submit">Añadir a la lista</button>
-				<button class="boton secundario pequeno" type="button" data-cerrar>Cancelar</button>
-			</div>
-		</form>
-	</div>`;
-	conectarPlegables(destino);
-	destino.querySelectorAll<HTMLButtonElement>('[data-requisito]').forEach((b) => b.addEventListener('click', async () => {
-		const activo = b.dataset.activo !== 'true';
-		b.disabled = true;
-		const { error: e } = await sb.from('requisitos').update({ activo }).eq('id', Number(b.dataset.requisito));
-		if (e) { b.disabled = false; alert(traducir(e)); return; }
-		await anotar(activo ? 'vuelve a poner un documento en la lista' : 'quita un documento de la lista', { promocion: p.id, requisito: Number(b.dataset.requisito) });
-		await pintarRequisitos(p, destino);
-	}));
-	destino.querySelector<HTMLButtonElement>('[data-estandar]')?.addEventListener('click', async (ev) => {
-		(ev.currentTarget as HTMLButtonElement).disabled = true;
-		const { error: e } = await sb.rpc('aplicar_lista_estandar', { p_promocion: p.id });
-		if (e) alert(traducir(e));
-		await pintarRequisitos(p, destino);
-	});
-	alEnviar(destino.querySelector<HTMLFormElement>('form[data-plegable="requisito"]')!, async (d) => {
-		const fila = {
-			promocion_id: p.id,
-			bloque: String(d.get('bloque')).trim(),
-			elemento: String(d.get('elemento')).trim(),
-			descripcion: String(d.get('descripcion')).trim(),
-			obligatorio: d.get('obligatorio') === 'on',
-			orden: reqs.length + 1,
-		};
-		if (!fila.bloque || !fila.elemento) throw new Error('Indica el bloque y qué tiene que entregar.');
-		const { error: e } = await sb.from('requisitos').insert(fila);
-		if (e) throw e;
-		await anotar('añade un documento a la lista', { promocion: p.id, elemento: fila.elemento });
-		await pintarRequisitos(p, destino);
-	});
 }
