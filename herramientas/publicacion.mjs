@@ -35,6 +35,7 @@ import { execFileSync } from 'node:child_process';
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { generarPlanos } from './planos.mjs';
 
 const RAIZ = resolve( dirname( fileURLToPath( import.meta.url ) ), '..' );
 const SALIDA = join( RAIZ, 'salida' );
@@ -179,7 +180,7 @@ function construir( id ) {
 
 // ---------------------------------------------------------------- publicar
 
-function preparar( id ) {
+async function preparar( id ) {
 
 	comprobarPromocion( id );
 	const esc = rutaEscaparate();
@@ -206,6 +207,10 @@ function preparar( id ) {
 	console.log( `  cambios:           ${ cambios }\n` );
 
 	const { destino } = construir( id );
+	// planos comerciales de esta versión, para que la promotora los valide (Etapa 4)
+	console.log( 'Generando los planos comerciales…' );
+	const planos = await generarPlanos( id, version, destino );
+	ok( `Planos para validar: ${ planos.length } (${ planos.map( ( p ) => p.titulo ).join( ', ' ) })` );
 	if ( ! bandera( 'confirmar' ) ) {
 
 		console.log( '\nSimulación: no se ha preparado nada. Repite con --confirmar.\n' );
@@ -221,6 +226,15 @@ function preparar( id ) {
 	const fecha = hoy();
 	escribirJSON( join( carpeta, 'version.json' ), { promocion: id, version, fecha, taller: motor } );
 	git( esc, 'add', '-A', join( PUBLICO, id ) );
+	// el Panel copia los planos de la vista previa al portal: necesita poder leerlos
+	const cabeceras = join( esc, PUBLICO, '_headers' );
+	const actuales = existsSync( cabeceras ) ? readFileSync( cabeceras, 'utf8' ) : '';
+	if ( ! actuales.includes( '/*/planos/*' ) ) {
+
+		writeFileSync( cabeceras, `${ actuales.trimEnd() }\n\n# Planos comerciales de cada versión: el Panel los lee (desde otra dirección)\n# para enviarlos a la promotora a validar.\n/*/planos/*\n  Access-Control-Allow-Origin: *\n  Cache-Control: no-cache\n` );
+		git( esc, 'add', join( PUBLICO, '_headers' ) );
+
+	}
 	// los cambios viajan en el mensaje (privado): el registro lo escribe «aprobar»
 	git( esc, 'commit', '-q', '-m', `Prepara ${ id } ${ version }\n\nCambios: ${ cambios }\nPreparada por: ${ preparadoPor }\nTaller: ${ motor }` );
 	ok( `Escaparate (rama revision): ${ PUBLICO }/${ id }/ en ${ version }` );
@@ -353,7 +367,7 @@ const [ orden, id, extra ] = posicionales;
 switch ( orden ) {
 
 	case 'construir': construir( id ); break;
-	case 'preparar': preparar( id ); break;
+	case 'preparar': await preparar( id ); break;
 	case 'aprobar': aprobar( id ); break;
 	case 'volver': volver( id, extra ); break;
 	case 'estado': estado( id ); break;

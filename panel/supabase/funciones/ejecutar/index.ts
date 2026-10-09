@@ -8,6 +8,10 @@
 //    procesos del taller). La llave nunca sale de aquí.
 // 4. Lo anota en el registro de actividad.
 //
+// Publicar exige que la promotora haya aprobado todos los planos de esa versión
+// (011_planos.sql). Las versiones preparadas antes de existir los planos (sin
+// planos.json en la vista previa) se pueden publicar como hasta ahora.
+//
 // Se pega en Supabase → Edge Functions con el nombre «ejecutar».
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
@@ -16,6 +20,12 @@ const SUPABASE_URL = 'https://iowtdenlkxjqzlpwizgb.supabase.co';
 const SUPABASE_CLAVE_PUBLICA = 'sb_publishable_LLvwP-xexV-Hlz2R585IQQ_H2NfJebR';
 const ORIGENES = ['https://panel.mune-projects.workers.dev', 'https://revision-panel.mune-projects.workers.dev'];
 const PROCESO = 'https://api.github.com/repos/MUNE-Projects/taller/actions/workflows/publicar.yml/dispatches';
+const REVISION = Deno.env.get('REVISION_ESCAPARATE') ?? 'https://revision-escaparate.mune-projects.workers.dev';
+const NO_LISTOS: Record<string, string> = {
+	sin_enviar: 'Primero envía los planos a la promotora para que los valide.',
+	pendientes: 'Faltan planos por aprobar por la promotora.',
+	cambios: 'La promotora ha pedido cambios en algún plano.',
+};
 
 Deno.serve(async (req) => {
 	const origen = req.headers.get('origin') ?? '';
@@ -63,6 +73,15 @@ Deno.serve(async (req) => {
 
 	const { data: promo } = await sb.from('promociones').select('id').eq('id', promocion).maybeSingle();
 	if (!promo) return responder(404, { error: 'No existe esa promoción' });
+	if (accion === 'aprobar') {
+		const { data: listos, error: eListos } = await sb.rpc('planos_listos', { p_promocion: promocion, p_version: version });
+		if (eListos) return responder(500, { error: 'No se ha podido comprobar los planos' });
+		if (listos !== 'listos') {
+			// sin planos enviados: solo se permite si la versión no generó planos (preparada antes de la Etapa 4)
+			const r = listos === 'sin_enviar' ? await fetch(`${REVISION}/${promocion}/planos/planos.json`, { cache: 'no-store' }).catch(() => null) : null;
+			if (r?.status !== 404) return responder(409, { error: `No se puede publicar ${version}: ${NO_LISTOS[listos] ?? 'los planos no están aprobados.'}` });
+		}
+	}
 	const { data: admin } = await sb.from('administradores').select('nombre').maybeSingle();
 
 	const llave = Deno.env.get('GITHUB_EJECUTOR');

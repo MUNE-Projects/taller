@@ -14,6 +14,7 @@ con contraseña + código del móvil y registro de actividad.
   - `007_equipos.sql`: equipos por promoción (o acceso a todas las de la promotora), sin roles, y datos fiscales de promotoras y promociones;
   - `008_ficha_promocion.sql`: ficha de la promoción y lista estándar de documentos;
   - `009_aviso_subida.sql`: aviso por email de cada documento subido (una sola vez por documento).
+  - `011_planos.sql`: validación de planos por la promotora (planos de cada versión, aprobación heredada si no cambian, publicar solo con todo aprobado).
   - `010_borrar.sql`: borrar desde el Panel una promoción o una promotora desactivada, con todo lo suyo (antes obliga a descargar la exportación).
 
   Ojo: volver a lanzar `002` después de `005` quita los permisos de escritura de la administradora; en ese caso, relanzar `005`.

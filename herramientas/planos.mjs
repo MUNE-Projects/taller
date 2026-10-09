@@ -1,0 +1,88 @@
+#!/usr/bin/env node
+// Planos comerciales de una versión, para que la promotora los valide (Etapa 4).
+//
+//   node herramientas/planos.mjs <promoción> --version vN [--salida <carpeta>]
+//
+// Abre el producto maestro en un navegador sin ventana (planos.html), genera un
+// plano por tipología y variante (o por vivienda en las unifamiliares) y deja en
+// <salida>/planos/:
+//   <clave>.pdf          el plano A3 que se valida
+//   <clave>.png          miniatura para el portal
+//   planos.json          lista con título, viviendas y huellas (archivo y datos)
+// Por defecto, <salida> es salida/<promoción>/. «publicacion.mjs preparar» lo
+// llama solo, así que los planos viajan con cada versión a la vista previa.
+//
+// Navegador: Chromium. Si no está en la ruta habitual, indica otra con la
+// variable CHROMIUM (ruta del ejecutable).
+
+import { createHash } from 'node:crypto';
+import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const RAIZ = resolve( dirname( fileURLToPath( import.meta.url ) ), '..' );
+const CHROMIUM = [ process.env.CHROMIUM, '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', '/opt/pw-browsers/chromium/chrome-linux/chrome' ].find( ( r ) => r && existsSync( r ) );
+
+export async function generarPlanos( id, version, salida = join( RAIZ, 'salida', id ) ) {
+
+	if ( ! /^[a-z0-9-]{1,60}$/.test( id ) || ! existsSync( join( RAIZ, 'promociones', id, 'promocion.json' ) ) ) throw new Error( `No existe la promoción «${ id }»` );
+	if ( ! /^v[0-9]{1,5}$/.test( version ?? '' ) ) throw new Error( 'Indica la versión: --version v3' );
+	const { createServer } = await import( 'vite' );
+	const { chromium } = await import( 'playwright-core' );
+
+	process.env.PROMOCION = id;
+	const servidor = await createServer( { root: RAIZ, logLevel: 'error', server: { port: 0, host: '127.0.0.1' } } );
+	await servidor.listen();
+	const navegador = await chromium.launch( CHROMIUM ? { executablePath: CHROMIUM } : {} );
+	try {
+
+		const pagina = await navegador.newPage();
+		pagina.on( 'console', ( m ) => m.text().startsWith( 'Plano ' ) && console.log( `  · ${ m.text() }` ) );
+		await pagina.goto( `${ servidor.resolvedUrls.local[ 0 ] }planos.html` );
+		await pagina.waitForFunction( () => typeof window.generarLote === 'function', null, { timeout: 120000 } );
+		const lote = await pagina.evaluate( () => window.generarLote( ( t ) => console.log( t ) ) );
+
+		const carpeta = join( salida, 'planos' );
+		rmSync( carpeta, { recursive: true, force: true } );
+		mkdirSync( carpeta, { recursive: true } );
+		const planos = lote.map( ( p ) => {
+
+			const pdf = Buffer.from( p.pdf, 'base64' );
+			writeFileSync( join( carpeta, `${ p.clave }.pdf` ), pdf );
+			writeFileSync( join( carpeta, `${ p.clave }.png` ), Buffer.from( p.png, 'base64' ) );
+			return {
+				clave: p.clave, titulo: p.titulo, detalle: p.detalle, viviendas: p.viviendas, orden: p.orden,
+				pdf: `${ p.clave }.pdf`, miniatura: `${ p.clave }.png`,
+				huella: createHash( 'sha256' ).update( pdf ).digest( 'hex' ), huellaDatos: p.huellaDatos,
+			};
+
+		} );
+		writeFileSync( join( carpeta, 'planos.json' ), JSON.stringify( { promocion: id, version, generados: new Date().toISOString(), planos }, null, '\t' ) + '\n' );
+		return planos;
+
+	} finally {
+
+		await navegador.close();
+		await servidor.close();
+
+	}
+
+}
+
+if ( process.argv[ 1 ] === fileURLToPath( import.meta.url ) ) {
+
+	const args = process.argv.slice( 2 );
+	const opcion = ( n ) => ( args.indexOf( `--${ n }` ) >= 0 ? args[ args.indexOf( `--${ n }` ) + 1 ] : undefined );
+	try {
+
+		const planos = await generarPlanos( args[ 0 ], opcion( 'version' ), opcion( 'salida' ) && resolve( opcion( 'salida' ) ) );
+		console.log( `\n✓ ${ planos.length } plano(s) en ${ opcion( 'salida' ) ?? `salida/${ args[ 0 ] }` }/planos/` );
+
+	} catch ( e ) {
+
+		console.error( `\n✗ ${ e.message }\n` );
+		process.exit( 1 );
+
+	}
+
+}

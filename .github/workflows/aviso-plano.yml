@@ -1,0 +1,96 @@
+# Aviso «planos»: cada vez que la promotora aprueba un plano o pide cambios en
+# su portal, la función «aviso-subida» de Supabase lanza este proceso. Escribe
+# en el aviso de esa promoción y versión (o abre uno nuevo), y GitHub envía el
+# email a quien vigila el almacén. Cuando están todos aprobados, lo dice.
+
+name: Aviso de validación de planos
+run-name: planos ${{ inputs.promocion }} ${{ inputs.version }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      promocion:
+        required: true
+        type: string
+      nombre:
+        required: true
+        type: string
+      plano:
+        required: true
+        type: string
+      version:
+        required: true
+        type: string
+      decision:
+        required: true
+        type: string
+      comentario:
+        required: false
+        type: string
+        default: ''
+      persona:
+        required: false
+        type: string
+        default: ''
+      todos:
+        required: false
+        type: string
+        default: 'no'
+
+permissions:
+  issues: write
+
+concurrency:
+  group: aviso-plano-${{ inputs.promocion }}
+  cancel-in-progress: false
+
+jobs:
+  avisar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      PROMOCION: ${{ inputs.promocion }}
+      NOMBRE: ${{ inputs.nombre }}
+      PLANO: ${{ inputs.plano }}
+      VERSION: ${{ inputs.version }}
+      DECISION: ${{ inputs.decision }}
+      COMENTARIO: ${{ inputs.comentario }}
+      PERSONA: ${{ inputs.persona }}
+      TODOS: ${{ inputs.todos }}
+    steps:
+      - name: Escribir el aviso
+        run: |
+          [[ "$PROMOCION" =~ ^[a-z0-9-]{1,60}$ ]] || { echo "::error::Promoción no válida"; exit 1; }
+          [[ "$VERSION" =~ ^v[0-9]{1,5}$ ]] || { echo "::error::Versión no válida"; exit 1; }
+          [[ "$DECISION" == aprobado || "$DECISION" == rechazado ]] || { echo "::error::Decisión no válida"; exit 1; }
+          for v in "$NOMBRE" "$PERSONA"; do [[ ${#v} -le 120 ]] || { echo "::error::Texto demasiado largo"; exit 1; }; done
+          [[ ${#PLANO} -le 160 && ${#COMENTARIO} -le 500 ]] || { echo "::error::Texto demasiado largo"; exit 1; }
+          # El texto viene del portal: sin saltos de línea ni comillas de código, y
+          # las @ desactivadas para que nadie pueda mencionar a usuarios de GitHub.
+          limpio() { printf '%s' "$1" | tr -d '`\r\n' | sed 's/@/(arroba)/g'; }
+          titulo="$(limpio "$NOMBRE") · planos $VERSION"
+          if [[ "$DECISION" == aprobado ]]; then
+            linea="- ✅ **$(limpio "${PERSONA:-Alguien}")** ha aprobado **$(limpio "$PLANO")**"
+          else
+            linea="- ✏️ **$(limpio "${PERSONA:-Alguien}")** pide cambios en **$(limpio "$PLANO")**: «$(limpio "$COMENTARIO")»"
+          fi
+          if [[ "$TODOS" == si ]]; then
+            linea="$linea"$'\n\n'"**Todos los planos de $VERSION están aprobados.** Ya puedes publicar $VERSION desde el Panel: https://panel.mune-projects.workers.dev/#/promocion/$PROMOCION/resumen"
+          fi
+          gh label create planos --repo "$REPO" --color 2F5D50 \
+            --description "Validación de planos por una promotora" 2>/dev/null || true
+          export TITULO="$titulo"
+          abierto=$(gh issue list --repo "$REPO" --label planos --state open --limit 100 --json number,title \
+            --jq '.[] | select(.title == $ENV.TITULO) | .number' | head -n1)
+          if [[ -n "$abierto" ]]; then
+            gh issue comment "$abierto" --repo "$REPO" --body "$linea"
+          else
+            cuerpo=$(printf '%s\n' \
+              "## 📐 Validación de planos · $(limpio "$NOMBRE") $VERSION" "" \
+              "$linea" "" \
+              "**Míralo en tu Panel:** https://panel.mune-projects.workers.dev/#/promocion/$PROMOCION/resumen" "" \
+              "_Las próximas validaciones de esta versión se añadirán aquí como comentarios._")
+            gh issue create --repo "$REPO" --label planos --title "$titulo" --body "$cuerpo"
+          fi

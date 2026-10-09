@@ -4,7 +4,12 @@ Web privada donde cada promotora entra con su correo y su contraseña (la elige
 al aceptar la invitación) y ve solo sus promociones: la documentación que tiene
 que entregar (y la sube), sus planos y entregables, y la versión publicada.
 
-- Código: `src/main.ts` (TypeScript sin frameworks) + `@supabase/supabase-js`.
+Cada promoción va por pestañas: *Resumen*, *Documentación*, *Planos* (validar
+los planos comerciales de cada versión: aprobar o pedir cambios) y *Ficha y
+datos fiscales*.
+
+- Código: `src/main.ts` (pantallas), `src/planos.ts` (validación de planos) y
+  `src/comun.ts` (sesión y utilidades), en TypeScript sin frameworks + `@supabase/supabase-js`.
 - Reglas de la base de datos: `panel/supabase/005_portal.sql` y `006_accesos.sql`.
   Las comprueba el servidor; la página no decide nada.
 - Accesos: los da la administradora desde la sección *Promotoras* del Panel,

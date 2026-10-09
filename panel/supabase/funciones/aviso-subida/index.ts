@@ -1,5 +1,6 @@
 // Función «aviso-subida» de Supabase: aviso por email a la administradora cada
-// vez que una promotora sube un documento (Etapa 3).
+// vez que una promotora sube un documento (Etapa 3) o valida un plano (Etapa 4:
+// aprueba o pide cambios; con { validacion_id } en lugar de { documento_id }).
 //
 // 1. La llama el portal justo después de subir el documento, con la sesión de
 //    quien lo ha subido.
@@ -20,6 +21,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? 'https://iowtdenlkxjqzlpwizgb.supabase.co';
 const CLAVE_PUBLICA = Deno.env.get('CLAVE_PUBLICA') ?? 'sb_publishable_LLvwP-xexV-Hlz2R585IQQ_H2NfJebR';
 const PROCESO = 'https://api.github.com/repos/MUNE-Projects/taller/actions/workflows/aviso-documento.yml/dispatches';
+const PROCESO_PLANO = 'https://api.github.com/repos/MUNE-Projects/taller/actions/workflows/aviso-plano.yml/dispatches';
 const ORIGENES = [
 	'https://portal.mune-projects.workers.dev',
 	'https://revision-portal.mune-projects.workers.dev',
@@ -51,10 +53,58 @@ Deno.serve(async (req) => {
 	});
 
 	let documento: number;
+	let validacion: number;
 	try {
-		documento = Number((await req.json()).documento_id);
+		const cuerpo = await req.json();
+		documento = Number(cuerpo.documento_id);
+		validacion = Number(cuerpo.validacion_id);
 	} catch {
 		return responder(400, { error: 'Orden no válida' });
+	}
+	const llamarGitHub = (url: string, inputs: Record<string, string>) => {
+		const llave = Deno.env.get('GITHUB_EJECUTOR');
+		if (!llave) return null;
+		return fetch(url, {
+			method: 'POST',
+			headers: {
+				Authorization: `Bearer ${llave}`,
+				Accept: 'application/vnd.github+json',
+				'X-GitHub-Api-Version': '2022-11-28',
+				'User-Agent': 'mune-portal',
+			},
+			body: JSON.stringify({ ref: 'main', inputs }),
+		});
+	};
+
+	// Validación de un plano (aprobado o cambios pedidos)
+	if (Number.isInteger(validacion) && validacion > 0) {
+		const { data: toca, error: eMarca } = await sb.rpc('marcar_aviso_validacion', { p_validacion: validacion });
+		if (eMarca) return responder(403, { error: 'Sin permiso' });
+		if (toca !== true) return responder(200, { ok: true, avisado: false });
+		const { data: v } = await sb.from('validaciones')
+			.select('promocion_id, version, decision, comentario, entregables(titulo, nombre), promociones(nombre)')
+			.eq('id', validacion).maybeSingle();
+		if (!v) return responder(404, { error: 'No se encuentra la validación' });
+		const fv = v as unknown as {
+			promocion_id: string; version: string; decision: string; comentario: string | null;
+			entregables: { titulo: string | null; nombre: string } | null; promociones: { nombre: string } | null;
+		};
+		const { data: { user } } = await sb.auth.getUser();
+		const { data: persona } = await sb.from('miembros').select('nombre').eq('user_id', user?.id ?? '').limit(1).maybeSingle();
+		const { data: listos } = await sb.rpc('planos_listos', { p_promocion: fv.promocion_id, p_version: fv.version });
+		const r = await llamarGitHub(PROCESO_PLANO, {
+			promocion: fv.promocion_id,
+			nombre: corto(fv.promociones?.nombre, 120),
+			plano: corto(fv.entregables?.titulo ?? fv.entregables?.nombre, 160),
+			version: fv.version,
+			decision: fv.decision,
+			comentario: corto(fv.comentario, 500),
+			persona: corto(persona?.nombre, 120),
+			todos: listos === 'listos' ? 'si' : 'no',
+		});
+		if (!r) return responder(500, { error: 'Falta la llave A (GITHUB_EJECUTOR) en los secretos de Supabase' });
+		if (!r.ok) return responder(502, { error: `GitHub no ha aceptado el aviso (${r.status})` });
+		return responder(200, { ok: true, avisado: true });
 	}
 	if (!Number.isInteger(documento) || documento <= 0) return responder(400, { error: 'Documento no válido' });
 
@@ -73,29 +123,16 @@ Deno.serve(async (req) => {
 		requisitos: { elemento: string } | null; promociones: { nombre: string; promotoras: { nombre: string } | null } | null;
 	};
 
-	const llave = Deno.env.get('GITHUB_EJECUTOR');
-	if (!llave) return responder(500, { error: 'Falta la llave A (GITHUB_EJECUTOR) en los secretos de Supabase' });
-	const r = await fetch(PROCESO, {
-		method: 'POST',
-		headers: {
-			Authorization: `Bearer ${llave}`,
-			Accept: 'application/vnd.github+json',
-			'X-GitHub-Api-Version': '2022-11-28',
-			'User-Agent': 'mune-portal',
-		},
-		body: JSON.stringify({
-			ref: 'main',
-			inputs: {
-				promocion: fila.promocion_id,
-				nombre: corto(fila.promociones?.nombre, 120),
-				promotora: corto(fila.promociones?.promotoras?.nombre, 120),
-				documento: corto(fila.requisitos?.elemento, 120),
-				archivo: corto(fila.nombre, 200),
-				version: String(fila.version),
-				persona: corto(persona?.nombre, 120),
-			},
-		}),
+	const r = await llamarGitHub(PROCESO, {
+		promocion: fila.promocion_id,
+		nombre: corto(fila.promociones?.nombre, 120),
+		promotora: corto(fila.promociones?.promotoras?.nombre, 120),
+		documento: corto(fila.requisitos?.elemento, 120),
+		archivo: corto(fila.nombre, 200),
+		version: String(fila.version),
+		persona: corto(persona?.nombre, 120),
 	});
+	if (!r) return responder(500, { error: 'Falta la llave A (GITHUB_EJECUTOR) en los secretos de Supabase' });
 	if (!r.ok) return responder(502, { error: `GitHub no ha aceptado el aviso (${r.status})` });
 	return responder(200, { ok: true, avisado: true });
 });
