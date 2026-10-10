@@ -60,7 +60,7 @@ El escaparate (`MUNE-Projects/escaparate`) contiene solo lo publicado: `publico/
 
 ## Acceso de comprador sin base de datos
 
-- Cada vivienda tiene un código privado generado de antemano: `python3 herramientas/generar_accesos.py`.
+- Cada vivienda tiene un código privado de comprador. Lo generan la promotora (portal) o la administradora (Panel), pestaña *Compradores*; se comprueba en Supabase (`panel/supabase/014_codigos_comprador.sql`) y no va en la web pública.
 - En `promocion.json` solo se guarda el **hash SHA-256** de cada código, nunca el código en claro.
 - Los enlaces para entregar a cada comprador se escriben en `accesos-privados.csv`, fuera del control de versiones.
 - El enlace es `<url>#c-xxxxxxxxxxxxxxxx`. También se puede pegar el código en "Accede para personalizar tu vivienda".
@@ -149,7 +149,7 @@ npm run build      # salida estática en dist/
 ```
 
 - **Modos:** barra inferior o teclas `1` (Plano), `2` (Vivienda) y `3` (Personalizar, con acceso de comprador).
-- **Acceso de prueba:** los enlaces de las viviendas de ejemplo están en `accesos-privados.csv` (se generan con `python3 herramientas/generar_accesos.py`).
+- **Acceso de prueba:** genera un código para una vivienda de ejemplo en el Panel (pestaña *Compradores* de la promoción).
 - **Vistas:** barra de vistas encima de los modos. También se puede orbitar libremente con el ratón.
 - **Capturar imagen** (icono de cámara): renderiza la vista actual a ~2400 px con iluminación global de alta calidad, acumula 72 fotogramas y descarga un PNG.
 - **Motor:** WebGPU cuando el navegador lo soporta, con respaldo automático a WebGL 2. `?webgl` fuerza WebGL 2.

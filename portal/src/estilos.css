@@ -191,3 +191,9 @@ input[type=file] { padding: 8px; font-size: 14px; }
 	.plano-fila { grid-template-columns: 1fr; }
 	.plano-mini { width: 100%; }
 }
+
+/* Códigos de comprador (Etapa 5) */
+.acciones-fila { white-space: nowrap; }
+.cambio { display: grid; gap: 6px; justify-items: start; white-space: normal; margin-top: 6px; }
+.codigo-nuevo { display: grid; gap: 8px; margin-bottom: 14px; padding: 14px 16px; border-radius: 10px; background: var(--acento-suave); border: 1px solid var(--acento); }
+.codigo-nuevo .codigo { font: 600 22px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.06em; color: var(--tinta); user-select: all; }

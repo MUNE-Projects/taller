@@ -2,7 +2,8 @@
 // Lo común (sesión de Supabase, utilidades) está en comun.ts; la validación de
 // planos, en planos.ts.
 
-import { ESCAPARATE, INACTIVIDAD_MAX, MAX_TAM, MIN_CLAVE, CABECERA, alEnviar, app, errorEnlace, esc, fecha, pintar, sb, tipoEnlace, traducir } from './comun';
+import { ESCAPARATE, REVISION, INACTIVIDAD_MAX, MAX_TAM, MIN_CLAVE, CABECERA, alEnviar, app, errorEnlace, esc, fecha, pintar, sb, tipoEnlace, traducir } from './comun';
+import { pintarCompradores } from './compradores';
 import { htmlLista, leerPlanos, pintarDetalle, versionesConPlanos } from './planos';
 
 // ── Decide qué pantalla toca ──────────────────────────────────────────────
@@ -251,7 +252,7 @@ interface Documento { id: number; requisito_id: number; nombre: string; ruta: st
 interface Entregable { id: number; version: string; tipo: string; tipologia: string | null; nombre: string; ruta: string }
 
 const TIPOS_ENTREGABLE: Record<string, string> = { infografia: 'Infografía', pdf: 'PDF' };
-const PESTANAS: [string, string][] = [['resumen', 'Resumen'], ['documentacion', 'Documentación'], ['planos', 'Planos'], ['datos', 'Ficha y datos fiscales']];
+const PESTANAS: [string, string][] = [['resumen', 'Resumen'], ['documentacion', 'Documentación'], ['planos', 'Planos'], ['compradores', 'Compradores'], ['datos', 'Ficha y datos fiscales']];
 
 async function pantallaPromocion(id: string, pestana = 'resumen', extra = '', mensaje = ''): Promise<void> {
 	const [promo, reqs, docs, versiones] = await Promise.all([
@@ -370,6 +371,10 @@ async function pantallaPromocion(id: string, pestana = 'resumen', extra = '', me
 					<button class="boton secundario pequeno" type="button" data-bajar="entregables" data-ruta="${esc(e.ruta)}" data-nombre="${esc(e.nombre)}">Descargar</button>
 				</div>`).join('')}` : ''}`;
 		}
+	}
+
+	if (actual === 'compradores') {
+		await pintarCompradores(caja, { sb, esc, fecha, traducir, escaparate: ESCAPARATE, revision: REVISION }, p);
 	}
 
 	if (actual === 'datos') {

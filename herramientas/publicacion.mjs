@@ -174,11 +174,40 @@ function construir( id ) {
 	}
 
 	ok( `Sin Studio y sin secretos · ${ archivos.length } archivos · ${ ( total / 1048576 ).toFixed( 1 ) } MB` );
+
+	// lista pública de viviendas (sin códigos ni selecciones): la usan el Panel y
+	// el portal para gestionar los códigos de comprador
+	const { viviendas = [] } = JSON.parse( readFileSync( join( RAIZ, 'promociones', id, 'promocion.json' ), 'utf8' ) );
+	escribirJSON( join( destino, 'viviendas.json' ), viviendas.map( ( v ) => ( { ref: v.ref, portal: v.portal ?? null, planta: v.planta, tipologia: v.tipologia, espejo: !! v.espejo } ) ) );
 	return { destino, archivos: archivos.length, bytes: total };
 
 }
 
 // ---------------------------------------------------------------- publicar
+
+// El Panel y el portal leen, desde otra dirección, los planos de cada versión
+// y la lista de viviendas: el escaparate tiene que permitirlo (en las dos ramas).
+function asegurarCabeceras( esc ) {
+
+	const cabeceras = join( esc, PUBLICO, '_headers' );
+	let texto = existsSync( cabeceras ) ? readFileSync( cabeceras, 'utf8' ).trimEnd() : '';
+	const reglas = [
+		[ '/*/planos/*', 'Planos comerciales de cada versión: el Panel los copia para enviarlos a la promotora.' ],
+		[ '/*/viviendas.json', 'Lista de viviendas (sin datos privados): la usan el Panel y el portal para los códigos de comprador.' ],
+	];
+	let cambia = false;
+	for ( const [ ruta, motivo ] of reglas ) {
+
+		if ( texto.includes( `\n${ ruta }\n` ) || texto.startsWith( `${ ruta }\n` ) ) continue;
+		texto += `\n\n# ${ motivo }\n${ ruta }\n  Access-Control-Allow-Origin: *\n  Cache-Control: no-cache`;
+		cambia = true;
+
+	}
+	if ( ! cambia ) return;
+	writeFileSync( cabeceras, `${ texto.trimStart() }\n` );
+	git( esc, 'add', join( PUBLICO, '_headers' ) );
+
+}
 
 async function preparar( id ) {
 
@@ -226,15 +255,7 @@ async function preparar( id ) {
 	const fecha = hoy();
 	escribirJSON( join( carpeta, 'version.json' ), { promocion: id, version, fecha, taller: motor } );
 	git( esc, 'add', '-A', join( PUBLICO, id ) );
-	// el Panel copia los planos de la vista previa al portal: necesita poder leerlos
-	const cabeceras = join( esc, PUBLICO, '_headers' );
-	const actuales = existsSync( cabeceras ) ? readFileSync( cabeceras, 'utf8' ) : '';
-	if ( ! actuales.includes( '/*/planos/*' ) ) {
-
-		writeFileSync( cabeceras, `${ actuales.trimEnd() }\n\n# Planos comerciales de cada versión: el Panel los lee (desde otra dirección)\n# para enviarlos a la promotora a validar.\n/*/planos/*\n  Access-Control-Allow-Origin: *\n  Cache-Control: no-cache\n` );
-		git( esc, 'add', join( PUBLICO, '_headers' ) );
-
-	}
+	asegurarCabeceras( esc );
 	// los cambios viajan en el mensaje (privado): el registro lo escribe «aprobar»
 	git( esc, 'commit', '-q', '-m', `Prepara ${ id } ${ version }\n\nCambios: ${ cambios }\nPreparada por: ${ preparadoPor }\nTaller: ${ motor }` );
 	ok( `Escaparate (rama revision): ${ PUBLICO }/${ id }/ en ${ version }` );
@@ -280,6 +301,7 @@ function aprobar( id ) {
 	const fecha = hoy();
 	git( esc, 'rm', '-r', '-q', '--ignore-unmatch', join( PUBLICO, id ) );
 	git( esc, 'checkout', 'origin/revision', '--', join( PUBLICO, id ) );
+	asegurarCabeceras( esc );
 	git( esc, 'commit', '-q', '-m', `Publica ${ id } ${ enRevision }\n\nAprobada en el Panel por: ${ aprobadoPor }` );
 	const etiqueta = `${ id }/${ enRevision }`;
 	if ( ! git( esc, 'tag', '--list', etiqueta ) ) git( esc, 'tag', '-a', etiqueta, '-m', `${ id } ${ enRevision } · ${ fecha }` );

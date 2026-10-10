@@ -17,7 +17,8 @@ import { alEnviar, anotar, conectarPlegables, esc, fecha, sb, traducir } from '.
 import { pintarDocumentacion } from './documentacion';
 import { exportarPromocion, exportarPromotora, type Resultado } from './exportar';
 import { pintarPeticiones } from './peticiones';
-import { estadoVersiones, etiquetaVersiones, pintarVersiones } from './versiones';
+import { ESCAPARATE, REVISION, estadoVersiones, etiquetaVersiones, pintarVersiones } from './versiones';
+import { pintarCompradores } from './compradores';
 
 interface DatosFiscales { razon_social: string | null; cif: string | null; domicilio_fiscal: string | null }
 interface Promotora extends DatosFiscales { id: string; nombre: string; activa: boolean; contacto: string | null }
@@ -47,6 +48,7 @@ const PESTANAS: [string, string][] = [
 	['equipo', 'Equipo'],
 	['documentacion', 'Documentación'],
 	['ficha', 'Ficha y datos'],
+	['compradores', 'Compradores'],
 	['peticiones', 'Peticiones de cambios'],
 	['actividad', 'Actividad'],
 ];
@@ -670,6 +672,10 @@ export async function pantallaPromocion(destino: HTMLElement, id: string, pestan
 			caja.querySelector<HTMLElement>('[data-guardado-fiscal]')!.textContent = '✓ Datos fiscales guardados.';
 			fiscal.querySelector<HTMLButtonElement>('button[type=submit]')!.disabled = false;
 		});
+	}
+
+	if (actual === 'compradores') {
+		await pintarCompradores(caja, { sb, esc, fecha, traducir, escaparate: ESCAPARATE, revision: REVISION }, p);
 	}
 
 	if (actual === 'peticiones') {

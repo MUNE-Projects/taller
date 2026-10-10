@@ -115,8 +115,10 @@ async function iniciar() {
 	// vivienda (#código) se carga esa vivienda y se habilita la personalización.
 	const pideProfesional = /^#(studio|promotora)/.test( location.hash );
 	const codigoInicial = ( pideProfesional ? '' : extraerCodigo( location.hash ) ) || leer( CLAVE_ACCESO ) || '';
-	let comprador: ViviendaPromocion | null = await resolverAcceso( codigoInicial );
-	if ( ! comprador && codigoInicial ) guardar( CLAVE_ACCESO, null );
+	const accesoInicial = await resolverAcceso( codigoInicial );
+	let comprador: ViviendaPromocion | null = typeof accesoInicial === 'object' ? accesoInicial : null;
+	// código que ya no vale: se olvida (si no se pudo comprobar, se conserva para la próxima vez)
+	if ( accesoInicial === null && codigoInicial ) guardar( CLAVE_ACCESO, null );
 	let fichaVivienda: ViviendaPromocion = comprador ?? viviendaPublica();
 
 	// ---------------------------------------------------------------- modelo
@@ -819,10 +821,17 @@ async function iniciar() {
 	$( '#acceso form' ).addEventListener( 'submit', async ( ev ) => {
 
 		ev.preventDefault();
+		const boton = $<HTMLButtonElement>( '#acceso button[type=submit]' );
+		boton.disabled = true;
 		const v = await resolverAcceso( campoAcceso.value );
-		if ( ! v ) {
+		boton.disabled = false;
+		if ( ! v || typeof v === 'string' ) {
 
-			$( '#acceso .error' ).hidden = false;
+			const error = $( '#acceso .error' );
+			error.textContent = v === 'bloqueado' ? 'Demasiados intentos. Espera unos minutos y vuelve a probar.'
+				: v === 'sin-conexion' ? 'No se ha podido comprobar el código ahora mismo. Revisa tu conexión y vuelve a probar en unos minutos.'
+				: 'Ese código no corresponde a ninguna vivienda de la promoción. Revisa que esté completo.';
+			error.hidden = false;
 			campoAcceso.focus();
 			return;
 
@@ -1459,6 +1468,7 @@ async function iniciar() {
 
 	} )();
 	if ( comprador ) avisar( `Bienvenido. Estás viendo tu vivienda ${ comprador.ref }. Pulsa Personalizar para elegir tus acabados.` );
+	else if ( accesoInicial === 'sin-conexion' ) avisar( 'No se ha podido comprobar tu código de comprador ahora mismo. Puedes ver la promoción y volver a entrar en unos minutos.' );
 
 	// ---------------------------------------------------------------- studio (producción)
 	// Solo existe en la construcción interna (--mode studio). En la web pública
