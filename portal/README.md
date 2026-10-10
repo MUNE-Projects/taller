@@ -5,8 +5,8 @@ al aceptar la invitación) y ve solo sus promociones: la documentación que tien
 que entregar (y la sube), sus planos y entregables, y la versión publicada.
 
 Cada promoción va por pestañas: *Resumen*, *Documentación*, *Planos* (validar
-los planos comerciales de cada versión: aprobar o pedir cambios) y *Ficha y
-datos fiscales*.
+los planos comerciales de cada versión: aprobar o pedir cambios), *Compradores*
+(códigos de comprador de cada vivienda) y *Ficha y datos fiscales*.
 
 - Código: `src/main.ts` (pantallas), `src/planos.ts` (validación de planos) y
   `src/comun.ts` (sesión y utilidades), en TypeScript sin frameworks + `@supabase/supabase-js`.

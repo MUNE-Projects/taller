@@ -720,6 +720,76 @@ await caso( DEBE_FUNCIONAR, 'Avisos a la promotora: se comprueba lo que se avisa
 
 } );
 
+// ─── Códigos de comprador (014_codigos_comprador.sql) ───────────────────────
+
+const entrarComprador = ( codigo, promocion = 'prueba-a' ) => anonimo.rpc( 'entrar_comprador', { p_promocion: promocion, p_codigo: codigo } );
+const generar = ( sb, vivienda, nuevo = false, promocion = 'prueba-a' ) => sb.rpc( 'generar_codigo_comprador', { p_promocion: promocion, p_vivienda: vivienda, p_nuevo_comprador: nuevo } );
+
+await caso( DEBE_FALLAR, '31. Códigos de comprador: otra promotora, el robot o alguien sin sesión intentan generarlos o verlos', async () => {
+
+	const r = {
+		otraPromotora: await generar( aprobB, 'Bajo A' ),
+		robot: await generar( robot, 'Bajo A' ),
+		anonimo: await generar( anonimo, 'Bajo A' ),
+		verOtra: await aprobB.rpc( 'codigos_de_promocion', { p_promocion: 'prueba-a' } ),
+		tablaCodigos: await gestorA.from( 'codigos_comprador' ).select( '*' ),
+		tablaIntentos: await anonimo.from( 'intentos_comprador' ).select( '*' ),
+		seleccionesAnonimo: await anonimo.from( 'selecciones_comprador' ).select( '*' ),
+		seleccionesOtra: await aprobB.from( 'selecciones_comprador' ).insert( { promocion_id: 'prueba-a', vivienda_ref: 'Bajo A', pack: 'x', fecha: '2026-10-10' } ),
+		todosOtra: await aprobB.rpc( 'generar_codigos_pendientes', { p_promocion: 'prueba-a', p_viviendas: [ 'Bajo Z' ] } ),
+		todosAnonimo: await anonimo.rpc( 'generar_codigos_pendientes', { p_promocion: 'prueba-a', p_viviendas: [ 'Bajo Z' ] } ),
+	};
+	const noFallan = Object.keys( r ).filter( ( k ) => ! falla( r[ k ] ) );
+	if ( noFallan.length ) throw new Error( `no fallan: ${ noFallan.join( ', ' ) }` );
+	return true;
+
+} );
+
+await caso( DEBE_FUNCIONAR, 'Códigos de comprador: la promotora genera y cambia el código; el comprador entra solo con el vigente y ve solo lo suyo', async () => {
+
+	const c1 = await exigir( generar( gestorA, 'Bajo A' ), 'generar' );
+	if ( ! /^c-[0-9a-f]{12}$/.test( c1 ) ) throw new Error( `código raro: ${ c1 }` );
+	// lo formalizado por el primer comprador (lo registra la administradora)
+	await exigir( admin.from( 'selecciones_comprador' ).insert( { promocion_id: 'prueba-a', vivienda_ref: 'Bajo A', comprador: 1, pack: 'cocinas', opciones: { cocina: 'nogal' }, fecha: '2026-10-01' } ), 'selección' );
+	const bien = ( await entrarComprador( c1 ) ).data;
+	const escrito = ( await entrarComprador( ` ${ c1.toUpperCase().replace( 'C-', 'c ' ).replace( /(.{6})/, '$1-' ) } ` ) ).data; // con espacios, guiones y mayúsculas
+	const mal = await entrarComprador( 'c-000000000000' );
+	const otraPromocion = ( await entrarComprador( c1, 'prueba-b' ) ).data;
+	// mismo comprador: el código anterior deja de valer y conserva lo suyo
+	const { data: c2 } = await generar( aprobA, 'Bajo A' );
+	const viejo = ( await entrarComprador( c1 ) ).data;
+	const mismo = ( await entrarComprador( c2 ) ).data;
+	// comprador nuevo: empieza de cero
+	const { data: c3 } = await generar( admin, 'Bajo A', true );
+	const nuevo = ( await entrarComprador( c3 ) ).data;
+	const lista = await exigir( gestorA.rpc( 'codigos_de_promocion', { p_promocion: 'prueba-a' } ), 'lista' );
+	const fila = lista.find( ( x ) => x.vivienda_ref === 'Bajo A' );
+	return bien?.vivienda === 'Bajo A' && bien.selecciones?.cocinas?.opciones?.cocina === 'nogal' && escrito?.vivienda === 'Bajo A'
+		&& ! mal.error && mal.data === null && otraPromocion === null
+		&& viejo === null && mismo?.selecciones?.cocinas && nuevo?.vivienda === 'Bajo A' && Object.keys( nuevo.selecciones ).length === 0
+		&& fila.comprador === 2 && fila.accesos === 1 && ! ( 'huella' in fila );
+
+} );
+
+await caso( DEBE_FUNCIONAR, 'Códigos de comprador: la promotora genera de golpe los de las viviendas que no tienen (para el Excel), y valen', async () => {
+
+	const nuevos = await exigir( gestorA.rpc( 'generar_codigos_pendientes', { p_promocion: 'prueba-a', p_viviendas: [ 'Bajo A', 'Bajo B', 'Bajo B', ' 1ºC ' ] } ), 'todos' );
+	const refs = nuevos.map( ( x ) => x.vivienda_ref ).sort();
+	const entraB = ( await entrarComprador( nuevos.find( ( x ) => x.vivienda_ref === 'Bajo B' ).codigo ) ).data;
+	const otraVez = await exigir( gestorA.rpc( 'generar_codigos_pendientes', { p_promocion: 'prueba-a', p_viviendas: [ 'Bajo B' ] } ), 'otra vez' );
+	return JSON.stringify( refs ) === JSON.stringify( [ '1ºC', 'Bajo B' ] ) && entraB?.vivienda === 'Bajo B' && otraVez.length === 0;
+
+} );
+
+await caso( DEBE_FALLAR, '32. Probar códigos al azar: tras 10 fallos se bloquea un rato (aunque luego se acierte)', async () => {
+
+	const { data: bueno } = await generar( admin, 'Bajo A2', false, 'prueba-a2' );
+	for ( let i = 0; i < 10; i ++ ) await entrarComprador( `c-00000000000${ i }`, 'prueba-a2' );
+	const bloqueado = await entrarComprador( bueno, 'prueba-a2' );
+	return falla( bloqueado ) && /Demasiados intentos/.test( bloqueado.error.message );
+
+} );
+
 // ─── Accesos e invitaciones (función «invitar», receta 14) ──────────────────
 
 const invitar = ( sb, cuerpo ) => sb.functions.invoke( 'invitar', { body: cuerpo } );

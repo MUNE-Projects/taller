@@ -115,8 +115,10 @@ async function iniciar() {
 	// vivienda (#código) se carga esa vivienda y se habilita la personalización.
 	const pideProfesional = /^#(studio|promotora)/.test( location.hash );
 	const codigoInicial = ( pideProfesional ? '' : extraerCodigo( location.hash ) ) || leer( CLAVE_ACCESO ) || '';
-	let comprador: ViviendaPromocion | null = await resolverAcceso( codigoInicial );
-	if ( ! comprador && codigoInicial ) guardar( CLAVE_ACCESO, null );
+	const accesoInicial = await resolverAcceso( codigoInicial );
+	let comprador: ViviendaPromocion | null = typeof accesoInicial === 'object' ? accesoInicial : null;
+	// código que ya no vale: se olvida (si no se pudo comprobar, se conserva para la próxima vez)
+	if ( accesoInicial === null && codigoInicial ) guardar( CLAVE_ACCESO, null );
 	let fichaVivienda: ViviendaPromocion = comprador ?? viviendaPublica();
 
 	// ---------------------------------------------------------------- modelo
@@ -128,7 +130,7 @@ async function iniciar() {
 
 		const catalogo = catalogoPara( v );
 		const propia = comprador?.ref === v.ref;
-		return new Configurador( catalogo, v.precioBase, packsDeVivienda( PROMOCION, propia ? v : { ...v, selecciones: undefined }, catalogo.categorias ) );
+		return new Configurador( catalogo, packsDeVivienda( PROMOCION, propia ? v : { ...v, selecciones: undefined }, catalogo.categorias ) );
 
 	};
 	let conf = crearConfigurador( fichaVivienda );
@@ -662,11 +664,17 @@ async function iniciar() {
 	} );
 
 	// ---------------------------------------------------------------- ficha
+	// El comprador ve su vivienda («Portal 3 · Bajo A»), no la tipología de la que sale.
+	function nombreVivienda( v: ViviendaPromocion ) {
+
+		return v.portal && ! v.ref.toLowerCase().includes( 'portal' ) ? `Portal ${ v.portal } · ${ v.ref }` : v.ref;
+
+	}
 	function actualizarFicha() {
 
 		const t = modelo.tipologia;
 		const v = fichaVivienda;
-		$( '#ficha-vivienda' ).textContent = comprador ? `${ v.ref } · ${ t.nombre }` : t.nombre;
+		$( '#ficha-vivienda' ).textContent = comprador ? nombreVivienda( v ) : t.nombre;
 		$( '#ficha-datos' ).textContent = `${ t.dormitorios } dormitorios · ${ t.banos } baños · ${ fmtM2( utilInterior() ) } útiles · terraza y porche de ${ fmtM2( v.superficies.exterior ) }`;
 		document.body.classList.toggle( 'comprador', !! comprador );
 
@@ -819,10 +827,17 @@ async function iniciar() {
 	$( '#acceso form' ).addEventListener( 'submit', async ( ev ) => {
 
 		ev.preventDefault();
+		const boton = $<HTMLButtonElement>( '#acceso button[type=submit]' );
+		boton.disabled = true;
 		const v = await resolverAcceso( campoAcceso.value );
-		if ( ! v ) {
+		boton.disabled = false;
+		if ( ! v || typeof v === 'string' ) {
 
-			$( '#acceso .error' ).hidden = false;
+			const error = $( '#acceso .error' );
+			error.textContent = v === 'bloqueado' ? 'Demasiados intentos. Espera unos minutos y vuelve a probar.'
+				: v === 'sin-conexion' ? 'No se ha podido comprobar el código ahora mismo. Revisa tu conexión y vuelve a probar en unos minutos.'
+				: 'Ese código no corresponde a ninguna vivienda de la promoción. Revisa que esté completo.';
+			error.hidden = false;
 			campoAcceso.focus();
 			return;
 
@@ -848,7 +863,8 @@ async function iniciar() {
 	// ---------------------------------------------------------------- documento de selección
 	const dialogo = $<HTMLDialogElement>( '#resumen-configuracion' );
 	let packResumen = '';
-	const CLAVE_COMPRADOR = 'inmobiliarias:comprador';
+	// versiones anteriores recordaban el nombre y el DNI en el navegador: se borran
+	guardar( 'inmobiliarias:comprador', null );
 	const escapar = ( t: string ) => t.replace( /[&<>"]/g, ( c ) => ( { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' } )[ c ]! );
 	const conceptoPago = ( pack: string ) => ( PROMOCION.pagos?.concepto ?? '{ref} · {pack}' )
 		.replace( '{ref}', fichaVivienda.ref ).replace( '{pack}', pack ).replace( '{promocion}', PROMOCION.promocion.nombre );
@@ -865,24 +881,18 @@ async function iniciar() {
 		} ).join( '' );
 		const total = conf.totalPack( packId );
 		const pg = PROMOCION.pagos;
-		let datos: { nombre?: string; dni?: string } = {};
-		try {
-
-			datos = JSON.parse( leer( CLAVE_COMPRADOR ) ?? '{}' );
-
-		} catch { /* sin datos guardados */ }
 
 		$( '#titulo-resumen' ).textContent = pv.pack.titulo;
 		dialogo.querySelector( '.contenido' )!.innerHTML = `
-			<p class="fecha">${ PROMOCION.promocion.nombre } · ${ fichaVivienda.ref } · ${ modelo.tipologia.nombre }</p>
+			<p class="fecha">${ PROMOCION.promocion.nombre } · ${ nombreVivienda( fichaVivienda ) }</p>
 			<table>
 				<tbody>${ filas }</tbody>
 				<tfoot><tr class="total"><th scope="row">Total mejoras del pack</th><td></td><td>${ total ? `+${ fmtEuros( total ) }` : '0 €' }</td></tr></tfoot>
 			</table>
 			<fieldset class="datos-comprador">
 				<legend>Datos del comprador <span>(opcional: también puede rellenarlos a mano en el documento)</span></legend>
-				<label>Nombre y apellidos<input name="nombre" autocomplete="name" value="${ escapar( datos.nombre ?? '' ) }"></label>
-				<label>DNI / NIE<input name="dni" autocomplete="off" value="${ escapar( datos.dni ?? '' ) }"></label>
+				<label>Nombre y apellidos<input name="nombre" autocomplete="name" value=""></label>
+				<label>DNI / NIE<input name="dni" autocomplete="off" value=""></label>
 			</fieldset>
 			${ total && pg ? `<div class="pago">
 				<p><strong>Pago por transferencia: ${ fmtEuros( total ) }</strong></p>
@@ -893,12 +903,11 @@ async function iniciar() {
 
 	};
 
-	/** Datos del comprador escritos en el diálogo (se recuerdan solo en este navegador). */
+	/** Datos del comprador escritos en el diálogo: solo van al PDF, no se guardan en ningún sitio. */
 	const datosComprador = () => {
 
 		const f = ( n: string ) => ( dialogo.querySelector( `input[name="${ n }"]` ) as HTMLInputElement | null )?.value.trim() ?? '';
 		const d = { nombre: f( 'nombre' ), dni: f( 'dni' ).toUpperCase() };
-		guardar( CLAVE_COMPRADOR, JSON.stringify( d ) );
 		return d;
 
 	};
@@ -1074,7 +1083,7 @@ async function iniciar() {
 		promocion: PROMOCION, tipologia: modelo.tipologia, vivienda, ficha: comprador ? fichaVivienda : null,
 		distribucion: conf.alternativa ? ( modelo.alternativas.find( ( x ) => x.id === conf.alternativa )?.nombre ?? 'alternativa' ) : 'base',
 	} );
-	const nombreArchivo = ( base: string ) => `${ base }-${ PROMOCION.promocion.nombre }-${ modelo.tipologia.nombre }${ comprador ? `-${ fichaVivienda.ref }` : '' }`.toLowerCase().normalize( 'NFD' ).replace( /[^a-z0-9]+/g, '-' ).replace( /-$/, '' );
+	const nombreArchivo = ( base: string ) => `${ base }-${ PROMOCION.promocion.nombre }-${ comprador ? nombreVivienda( fichaVivienda ) : modelo.tipologia.nombre }`.toLowerCase().normalize( 'NFD' ).replace( /[^a-z0-9]+/g, '-' ).replace( /-$/, '' );
 	const opcionesPlano = () => abrirDescarga( 'Plano comercial', 'Plano a escala generado a partir del modelo de la vivienda, con superficies, leyenda, escala gráfica, orientación y la marca de la promoción.', [
 		{ titulo: 'PDF A3 vectorial', detalle: 'Para imprimir y adjuntar a la documentación comercial. Nítido a cualquier tamaño.', formato: 'PDF', hacer: async ( pr ) => {
 
@@ -1459,6 +1468,7 @@ async function iniciar() {
 
 	} )();
 	if ( comprador ) avisar( `Bienvenido. Estás viendo tu vivienda ${ comprador.ref }. Pulsa Personalizar para elegir tus acabados.` );
+	else if ( accesoInicial === 'sin-conexion' ) avisar( 'No se ha podido comprobar tu código de comprador ahora mismo. Puedes ver la promoción y volver a entrar en unos minutos.' );
 
 	// ---------------------------------------------------------------- studio (producción)
 	// Solo existe en la construcción interna (--mode studio). En la web pública

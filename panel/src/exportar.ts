@@ -40,7 +40,7 @@ async function bajar(almacen: string, ruta: string, esperada: string | null, avi
 
 /** Mete en el ZIP, bajo «carpeta», todo lo de una promoción. Devuelve el resumen para el LEEME. */
 async function anadirPromocion(zip: Zip, carpeta: string, id: string, equipo: Fila[], avisos: string[], progreso: (t: string) => void): Promise<string> {
-	const [[promocion], requisitos, documentos, entregables, validaciones, peticiones, registro] = await Promise.all([
+	const [[promocion], requisitos, documentos, entregables, validaciones, peticiones, registro, codigos, selecciones] = await Promise.all([
 		leer(sb.from('promociones').select('*').eq('id', id)),
 		leer(sb.from('requisitos').select('*').eq('promocion_id', id).order('orden').order('id')),
 		leer(sb.from('documentos').select('*').eq('promocion_id', id).order('requisito_id').order('version')),
@@ -48,6 +48,8 @@ async function anadirPromocion(zip: Zip, carpeta: string, id: string, equipo: Fi
 		leer(sb.from('validaciones').select('*').eq('promocion_id', id).order('id')),
 		leer(sb.from('peticiones').select('*').eq('promocion_id', id).order('id')),
 		leer(sb.from('registro').select('*').eq('detalle->>promocion', id).order('momento')),
+		leer(sb.rpc('codigos_de_promocion', { p_promocion: id })),
+		leer(sb.from('selecciones_comprador').select('*').eq('promocion_id', id).order('vivienda_ref').order('comprador')),
 	]);
 	const reqPorId = new Map(requisitos.map((r) => [r.id, r]));
 	const lineas: string[] = [];
@@ -87,7 +89,8 @@ async function anadirPromocion(zip: Zip, carpeta: string, id: string, equipo: Fi
 	lineas.push(`Personas con acceso a esta promoción: ${equipo.length}`);
 	for (const a of equipo) lineas.push(`  · ${a.nombre} <${a.email}>${a.cargo ? ` · ${a.cargo}` : ''}${a.activo ? '' : ' · acceso retirado'}`);
 
-	zip.anadir(`${carpeta}datos.json`, json({ promocion, equipo, requisitos, documentos, entregables, validaciones, peticiones, registro }));
+	lineas.push(`Viviendas con código de comprador: ${codigos.length} (los códigos no se exportan: solo existen sus huellas)`);
+	zip.anadir(`${carpeta}datos.json`, json({ promocion, equipo, requisitos, documentos, entregables, validaciones, peticiones, codigos_de_comprador: codigos, selecciones_de_comprador: selecciones, registro }));
 	return [`■ ${promocion?.nombre ?? id} (${id})`, ...lineas].join('\n');
 }
 
@@ -97,7 +100,7 @@ function leeme(titulo: string, cuerpo: string, avisos: string[]): string {
 		`Fecha: ${new Date().toLocaleString('es-ES')}`,
 		'',
 		'Contenido:',
-		'  · datos.json: todos los datos (ficha, datos fiscales, lista de documentos, equipo, peticiones y actividad).',
+		'  · datos.json: todos los datos (ficha, datos fiscales, lista de documentos, equipo, peticiones, compradores y actividad).',
 		'  · documentos/: lo que subió la promotora, con todas sus versiones.',
 		'  · entregables/: planos, infografías y PDF entregados, por versión.',
 		'  · peticiones/: fotos de referencia de las peticiones de cambios.',

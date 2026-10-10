@@ -119,7 +119,7 @@ async function sha256( texto: string ) {
 export function extraerCodigo( entrada: string ) {
 
 	const t = entrada.trim();
-	const m = t.match( /c-[a-z0-9]{8,}/i );
+	const m = t.match( /c-[a-z0-9]{8,}/i ) ?? t.match( /#?(c-?[0-9a-f -]{12,20})$/i );
 	return ( m ? m[ 0 ] : t.replace( /^#/, '' ) ).toLowerCase();
 
 }
@@ -144,11 +144,40 @@ export async function accesoProfesional( codigo: string ): Promise<PerfilProfesi
 
 }
 
-/** Vivienda asociada a un código de acceso, o null. */
-export async function resolverAcceso( codigo: string ): Promise<ViviendaPromocion | null> {
+// Supabase (solo para el acceso de comprador): dirección y clave «publishable»,
+// pensada para ir en el navegador; por sí sola no da acceso a nada.
+const SUPABASE_URL: string = import.meta.env.VITE_SUPABASE_URL ?? 'https://iowtdenlkxjqzlpwizgb.supabase.co';
+const SUPABASE_CLAVE: string = import.meta.env.VITE_SUPABASE_CLAVE ?? 'sb_publishable_LLvwP-xexV-Hlz2R585IQQ_H2NfJebR';
 
-	if ( ! codigo || ! crypto?.subtle ) return null;
-	const h = await sha256( `${ PROMOCION.id }:${ extraerCodigo( codigo ) }` );
-	return PROMOCION.viviendas.find( ( v ) => v.acceso === h ) ?? null;
+/** Vivienda del comprador; null si el código no vale; o por qué no se pudo comprobar. */
+export type ResultadoAcceso = ViviendaPromocion | null | 'sin-conexion' | 'bloqueado';
+
+/**
+ * Comprueba el código en Supabase (entrar_comprador, con límite de intentos) y
+ * devuelve su vivienda con lo que el comprador ya tiene formalizado.
+ */
+export async function resolverAcceso( codigo: string ): Promise<ResultadoAcceso> {
+
+	// «c-» y 12 cifras hexadecimales (se admite con espacios o guiones): si no
+	// tiene esa forma, ni se pregunta (no gasta intentos)
+	const c = extraerCodigo( codigo ).replace( /[^a-z0-9]/g, '' ).replace( /^c(?=[0-9a-f]{12}$)/, '' );
+	if ( ! /^[0-9a-f]{12}$/.test( c ) ) return null;
+	try {
+
+		const r = await fetch( `${ SUPABASE_URL }/rest/v1/rpc/entrar_comprador`, {
+			method: 'POST',
+			headers: { apikey: SUPABASE_CLAVE, 'Content-Type': 'application/json' },
+			body: JSON.stringify( { p_promocion: PROMOCION.id, p_codigo: c } ),
+		} );
+		if ( ! r.ok ) return /Demasiados intentos/.test( await r.text() ) ? 'bloqueado' : 'sin-conexion';
+		const d = await r.json() as { vivienda: string; selecciones: ViviendaPromocion[ 'selecciones' ] } | null;
+		const v = d && PROMOCION.viviendas.find( ( x ) => x.ref === d.vivienda );
+		return v ? { ...v, selecciones: d.selecciones ?? {} } : null;
+
+	} catch {
+
+		return 'sin-conexion';
+
+	}
 
 }

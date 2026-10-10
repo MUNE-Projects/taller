@@ -165,17 +165,20 @@ export interface ViviendaPromocion {
 	/** Vivienda simétrica de su tipología (se espeja la geometría al cargar). */
 	espejo: boolean;
 	orientacion: string;
-	precioBase: number;
 	superficies: { util: number; exterior: number; construida: number };
 	/** Restricciones de opciones para esta vivienda (por categoría). */
 	opciones?: Record<string, string[]>;
 	nota?: string;
-	/** SHA-256 de "<id promoción>:<código de acceso>". */
-	acceso: string;
+	/**
+	 * (Ya no se usa: los códigos de comprador se comprueban en Supabase,
+	 * 014_codigos_comprador.sql, y no van en la web pública.)
+	 */
+	acceso?: string;
 	/**
 	 * Selecciones ya formalizadas por el comprador (las registra la promotora al
 	 * recibir el documento firmado y el pago). Se muestran como histórico en los
-	 * packs cuyo periodo ha finalizado.
+	 * packs cuyo periodo ha finalizado. Viven en Supabase (selecciones_comprador)
+	 * y solo llegan al navegador al entrar con el código de la vivienda.
 	 */
 	selecciones?: Record<string, { fecha: string; opciones: Record<string, string> }>;
 }

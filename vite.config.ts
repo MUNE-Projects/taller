@@ -12,7 +12,7 @@ import { defineConfig, type Plugin } from 'vite';
 
 const PROMOCION_POR_DEFECTO = 'residencial-demo';
 
-/** Quita de promocion.json lo que solo usa el Studio (no debe publicarse). */
+/** Quita de promocion.json lo que solo usa el Studio y lo privado de cada comprador (no debe publicarse). */
 const sinDatosDeStudio = (): Plugin => ( {
 	name: 'sin-datos-de-studio',
 	enforce: 'pre',
@@ -21,6 +21,15 @@ const sinDatosDeStudio = (): Plugin => ( {
 		if ( ! /promociones[\\/][^\\/]+[\\/]promocion\.json$/.test( id ) ) return null;
 		const datos = JSON.parse( codigo );
 		delete datos.studio;
+		// los códigos y lo formalizado por cada comprador viven en Supabase, nunca en la web;
+		// el precio de venta no está en la plataforma (si quedara en datos antiguos, no sale)
+		for ( const v of datos.viviendas ?? [] ) {
+
+			delete v.acceso;
+			delete v.selecciones;
+			delete v.precioBase;
+
+		}
 		return { code: JSON.stringify( datos ), map: null };
 
 	},

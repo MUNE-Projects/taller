@@ -64,7 +64,7 @@ documentación de la promoción ──► datos (JSON) ──► Studio (edició
   - «Guardar encuadre actual» sobre una existente;
   - «Nueva vista» a partir del encuadre actual;
   - la casilla decide si la vista aparece en la barra de vistas guiadas.
-- **Acabados y precios.** Nombres, precios y colores de cada opción del catálogo, y precio base de cada vivienda. Se refleja al instante en el configurador del comprador.
+- **Acabados y precios.** Nombres, precios y colores de cada opción del catálogo (el precio de la vivienda no está en la plataforma: decisión 37). Se refleja al instante en el configurador del comprador.
 - **Marca.** Promotora, promoción, colores, tipografía, logo SVG, contacto y textos legales.
 - **Interiorismo IA.** Ver abajo.
 - **Biblioteca.** Activos por categoría, con metadatos y «Colocar». Incluye un formulario para crear un activo nuevo desde una referencia.

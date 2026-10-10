@@ -16,7 +16,7 @@ Menú fijo arriba: **Inicio · Promotoras · Sistema · Salir**, y arriba de cad
 - `#/` **Inicio**: versiones pendientes de revisar y peticiones abiertas, con enlace a su promoción.
 - `#/promotoras` **Promotoras**: la lista y el alta.
 - `#/promotora/<id>` **Una promotora**: sus promociones, quién tiene acceso a todas, sus datos y su actividad (la suya y la de todas sus promociones).
-- `#/promocion/<id>/<pestaña>` **Una promoción**, con pestañas: *Resumen y versiones* (publicar, volver atrás, estado), *Equipo*, *Documentación*, *Ficha y datos*, *Peticiones de cambios* y *Actividad*.
+- `#/promocion/<id>/<pestaña>` **Una promoción**, con pestañas: *Resumen y versiones* (publicar, volver atrás, estado), *Equipo*, *Documentación*, *Ficha y datos*, *Compradores* (códigos de comprador, receta 24), *Peticiones de cambios* y *Actividad*.
 - `#/sistema` **Sistema**: el registro de actividad completo (auditoría). Más adelante, copias y avisos de llaves.
 
 ## Secciones
@@ -51,6 +51,7 @@ Bandeja con lo pendiente de todas las promociones:
 | **Entregables** | Planos PDF/PNG, renders y PDF de muestra: descargar y regenerar (receta 7) |
 | **Validación de planos** | Qué ha aprobado o rechazado la promotora, con sus comentarios |
 | **Marca e información** | Logo, colores, contacto y textos legales de la promotora (receta 16) |
+| **Compradores** | Un código por vivienda: generar, cambiar (mismo comprador o comprador nuevo) y ver si ha entrado (receta 24). La promotora tiene la misma pestaña en su portal |
 | **Peticiones a Claude** | Las peticiones de esta promoción y su estado |
 
 ### 4. Peticiones a Claude

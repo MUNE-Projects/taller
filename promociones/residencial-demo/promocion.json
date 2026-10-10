@@ -77,20 +77,10 @@
       "tipologia": "a",
       "espejo": false,
       "orientacion": "Sur",
-      "precioBase": 425000,
       "superficies": {
         "util": 88.18,
         "exterior": 32.71,
         "construida": 123.21
-      },
-      "acceso": "ad4bcd3781a31e59a2edc7b53be87ebf1c69023df797a8a318cdd68fc35aad87",
-      "selecciones": {
-        "distribuciones": {
-          "fecha": "2026-07-21",
-          "opciones": {
-            "distribucion": "alternativa"
-          }
-        }
       }
     },
     {
@@ -100,7 +90,6 @@
       "tipologia": "a",
       "espejo": true,
       "orientacion": "Sur",
-      "precioBase": 419000,
       "superficies": {
         "util": 88.18,
         "exterior": 32.71,
@@ -111,8 +100,7 @@
           "sin-mejora"
         ]
       },
-      "nota": "Ejemplo: vivienda simétrica de la tipología A, sin opción de piscina.",
-      "acceso": "b117f709f738e6f6cb7dc089e7bdf8c59ca3babd2dd3ad8f60d2233aa6a73241"
+      "nota": "Ejemplo: vivienda simétrica de la tipología A, sin opción de piscina."
     }
   ],
   "studio": {

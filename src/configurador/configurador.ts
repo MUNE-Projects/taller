@@ -28,7 +28,7 @@ export class Configurador {
 	private tweens: { u: { value: unknown }; desde: THREE.Color | number; hasta: THREE.Color | number; t0: number }[] = [];
 	private readonly duracion = 450;
 
-	constructor( readonly datos: Configuracion, readonly precioBase: number, readonly packs: PackVivienda[] = [] ) {
+	constructor( readonly datos: Configuracion, readonly packs: PackVivienda[] = [] ) {
 
 		this.seleccion = Object.fromEntries( datos.categorias.map( ( c ) => [ c.id, c.opciones[ 0 ].id ] ) );
 		// packs cerrados: lo formalizado (finalizado) o lo incluido (próximamente)
@@ -175,12 +175,6 @@ export class Configurador {
 	get totalExtras() {
 
 		return this.extras.reduce( ( s, x ) => s + x.opcion.precio, 0 );
-
-	}
-
-	get total() {
-
-		return this.precioBase + this.totalExtras;
 
 	}
 
