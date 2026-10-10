@@ -22,10 +22,11 @@ Claude se usa **solo en producción** (preparar, interpretar, revisar), **nunca 
 - **Códigos de comprador** (Fase 1): se validan en Supabase. Se guarda solo su hash, con límite de intentos, regeneración y revocación. La web pública es estática y no depende de Supabase.
 - **Entorno en tres capas** (A precisa, B próxima, C lejana), con su fiabilidad indicada. Fuentes: generación propia, Catastro, IGN/PNOA/LiDAR y OSM. Google 3D Tiles queda excluido salvo aprobación expresa. Dron: solo un añadido opcional futuro.
 - **3D híbrido:** la arquitectura se genera desde datos; el mobiliario y los objetos son GLB reutilizables de la biblioteca. Se permiten assets externos gratuitos (también modelos 3D) si su licencia permite uso comercial y redistribución, y siempre registrados.
+- **Marca (decisión 39):** MUNE Projects = la empresa; **MUNE** = la plataforma y la marca visible («The agile visual platform»). Capas: **MUNE Portal** (la promotora), **MUNE Studio** (lo interno de MUNE: el Panel y el Studio) y la **experiencia pública de la promoción** (marca blanca). «Escaparate» es solo un nombre técnico interno. Textos: claros, directos, poco técnicos; tú en singular; «MUNE» para la plataforma y «el equipo de MUNE» para las personas; versiones «v7»; nunca errores técnicos a la vista. Propuestas pendientes en `docs/propuestas-marca-y-producto.md`.
 - **Personas:**
-  - la **administradora** (Carolina) usa su **Panel**;
-  - las **promotoras** tendrán su **portal** (Fase 1): subir documentación, validar planos, ver versiones, marca;
-  - los **compradores** ven la visita pública y, con código, su parte privada.
+  - la **administradora** (Carolina) usa **MUNE Studio** (el Panel);
+  - las **promotoras** usan **MUNE Portal**: documentación, planos, compradores, ficha y formalización; marca y catálogo en la Fase 2;
+  - los **compradores** ven la experiencia pública y, con código, su parte privada (personalización, histórico y formalización).
 
 ## Reglas que nunca se rompen
 
@@ -56,8 +57,8 @@ Claude se usa **solo en producción** (preparar, interpretar, revisar), **nunca 
 | Solo lo publicado | GitHub `MUNE-Projects/escaparate` (privado): `main` = producción, `revision` = vista previa |
 | Web pública | https://escaparate.mune-projects.workers.dev/residencial-demo/ |
 | Vista previa | https://revision-escaparate.mune-projects.workers.dev/residencial-demo/ |
-| Panel | https://panel.mune-projects.workers.dev (vista previa: https://revision-panel.mune-projects.workers.dev) |
-| Portal de promotoras | https://portal.mune-projects.workers.dev (vista previa: https://revision-portal.mune-projects.workers.dev), código en `portal/` |
+| MUNE Studio (Panel) | https://panel.mune-projects.workers.dev (vista previa: https://revision-panel.mune-projects.workers.dev) |
+| MUNE Portal | https://portal.mune-projects.workers.dev (vista previa: https://revision-portal.mune-projects.workers.dev), código en `portal/` |
 | Base de datos y usuarios | Supabase, proyecto `mune-inmobiliarias` (UE, Irlanda), plan gratuito: `https://iowtdenlkxjqzlpwizgb.supabase.co` |
 | Alojamiento | Cloudflare Workers (cuenta con subdominio `mune-projects`), plan gratuito |
 

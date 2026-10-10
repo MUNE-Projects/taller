@@ -43,8 +43,8 @@ jobs:
           cuerpo=$(printf '%s\n' \
             "## 👉 Revisa antes de publicar" "" \
             "**Vista previa:** https://revision-escaparate.mune-projects.workers.dev/$PROMOCION/" "" \
-            "**Publicar o pedir cambios, en tu Panel:** https://panel.mune-projects.workers.dev" "" \
+            "**Publícala o pide cambios en MUNE Studio:** https://panel.mune-projects.workers.dev" "" \
             "## Qué cambia" "" "$CAMBIOS" "" \
-            "_Este aviso se cierra solo cuando publiques $VERSION desde el Panel._")
+            "_Este aviso se cierra solo cuando publiques $VERSION desde MUNE Studio._")
           gh issue create --repo "$REPO" --label revision \
             --title "$PROMOCION $VERSION · lista para revisar" --body "$cuerpo"
