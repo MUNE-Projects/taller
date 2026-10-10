@@ -29,13 +29,24 @@ function paraPersonas(m: string): boolean {
 
 export function traducir(e: unknown): string {
 	const m = e instanceof Error ? e.message : typeof e === 'object' && e && 'message' in e ? String(e.message) : String(e);
-	if (/invalid login credentials/i.test(m)) return 'Correo o contraseña incorrectos.';
-	if (/rate limit|too many/i.test(m)) return 'Demasiados intentos. Espera unos minutos y vuelve a probar.';
-	if (/invalid totp|invalid code|expired/i.test(m)) return 'Código incorrecto o caducado. Prueba con el código que aparece ahora en la app.';
-	if (/failed to fetch|network/i.test(m)) return 'No hay conexión. Revisa internet y vuelve a probar.';
+	if (/invalid login credentials/i.test(m)) return 'El correo o la contraseña no son correctos. Revísalos y vuelve a probar.';
+	if (/rate limit|too many/i.test(m)) return 'Has hecho demasiados intentos seguidos. Espera unos minutos y vuelve a probar.';
+	if (/invalid totp|invalid code|expired/i.test(m)) return 'El código no es correcto o ya ha caducado. Escribe el que aparece ahora en la app.';
+	if (/failed to fetch|network/i.test(m)) return 'No hay conexión a internet. Revisa la conexión y vuelve a probar.';
 	if (paraPersonas(m)) return m;
 	console.error('[MUNE Studio]', e);
-	return 'No se ha podido completar. Vuelve a probar; si sigue pasando, díselo a Claude.';
+	return GENERICO;
+}
+
+const GENERICO = 'No se ha podido completar. Vuelve a probar en un momento; si sigue pasando, díselo a Claude.';
+
+/**
+ * Error con lo que ha pasado delante: «No se ha podido X. <motivo o qué hacer>».
+ * Si el motivo no es para personas, solo se dice qué hacer.
+ */
+export function fallo(que: string, e: unknown): string {
+	const t = traducir(e);
+	return t === GENERICO ? `${que}. Vuelve a probar en un momento; si sigue pasando, díselo a Claude.` : `${que}. ${t}`;
 }
 
 /** Conecta un formulario: desactiva el botón mientras trabaja y muestra errores. */
