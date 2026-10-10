@@ -13,6 +13,7 @@ import { jsPDF } from 'jspdf';
 import type { Equipamiento, Estancia, Promocion, Punto, Tipologia, Vivienda, ViviendaPromocion } from '../modelo/tipos';
 import { colocarRotulo, type Formato, type Medida } from '../escena/rotulos';
 import { svgPNG } from '../promocion/marca';
+import { CATALOGO } from '../promocion/promocion';
 
 type P2 = [ number, number ];
 
@@ -289,7 +290,7 @@ export interface DatosPlano {
 	vivienda: Vivienda;
 	/** Vivienda concreta (si se descarga desde el acceso de un comprador). */
 	ficha: ViviendaPromocion | null;
-	/** Nombre de la distribución representada. */
+	/** Nombre de la distribución representada («base» = la opción incluida del catálogo). */
 	distribucion: string;
 }
 
@@ -302,6 +303,9 @@ const COLORES = {
 
 const claseSuelo = ( e: Estancia ) => e.uso === 'exterior' ? 'exterior' : e.suelo === 'madera' ? 'madera' : e.suelo === 'porcelanico-bano' ? 'humedo' : 'ceramico';
 
+/** Nombre visible de la distribución: «base» se muestra con el nombre de la opción incluida del catálogo. */
+const nombreDistribucion = ( d: string ) => d !== 'base' ? d
+	: CATALOGO.categorias.find( ( c ) => c.id === 'distribucion' )?.opciones.find( ( o ) => ! o.alternativa )?.nombre ?? 'Distribución base';
 const fmtM2 = ( n: number ) => `${ n.toLocaleString( 'es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 } ) } m²`;
 
 /** Dibuja la hoja completa. */
@@ -523,7 +527,7 @@ function componer( D: Dibujo, d: DatosPlano, logos: { promotora: { url: string; 
 	}
 
 	y += 4.6;
-	D.txt( `Distribución: ${ d.distribucion }`, colX, y, { tam: 9, color: COLORES.gris } );
+	D.txt( nombreDistribucion( d.distribucion ), colX, y, { tam: 9, color: COLORES.gris } );
 
 	// tabla de superficies
 	y += 11;
@@ -604,7 +608,7 @@ function componer( D: Dibujo, d: DatosPlano, logos: { promotora: { url: string; 
 	D.lin( [ [ colX, yp ], [ colX + colW, yp ] ], COLORES.linea, 0.2 );
 	yp += 4.5;
 	const rev = t.revision;
-	D.txt( rev ? `${ rev.fase } · versión ${ rev.version } · ${ fechaCorta( rev.fecha ) }` : 'Documento comercial', colX, yp, { tam: 7, negrita: true, color: COLORES.gris } );
+	D.txt( rev ? `${ rev.fase } · v${ rev.version } · ${ fechaCorta( rev.fecha ) }` : 'Documento comercial', colX, yp, { tam: 7, negrita: true, color: COLORES.gris } );
 	D.txt( `Generado el ${ new Date().toLocaleDateString( 'es-ES' ) }`, colX + colW, yp, { tam: 7, color: COLORES.grisClaro, alinear: 'right' } );
 	yp += 4;
 	D.txt( `${ marca.promotora } · ${ marca.contacto.web } · ${ marca.contacto.telefono }`, colX, yp, { tam: 6.5, color: COLORES.grisClaro } );

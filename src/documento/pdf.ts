@@ -1,7 +1,7 @@
 // Documento de selección de un pack (PDF): mecanismo de formalización.
 // Se genera en el navegador del comprador; no se guarda nada en ningún sistema.
-// Procedimiento: descargar → firmar → transferencia → enviar al comercial el
-// documento firmado y el justificante de pago.
+// Procedimiento: descargar → firmar → transferencia → enviar el documento
+// firmado y el justificante a quien indique la promotora (o al comercial).
 
 import { jsPDF } from 'jspdf';
 import type { Configurador } from '../configurador/configurador';
@@ -130,11 +130,11 @@ export async function generarPDF( d: DatosDocumento ): Promise<Blob> {
 	const altoImg = anchoUtil * 9 / 16;
 	doc.addImage( d.imagen, 'JPEG', M, y, anchoUtil, altoImg, undefined, 'FAST' );
 	y += altoImg + 4.5;
-	texto( partir( `Imagen con la selección aplicada. ${ marca.legal.imagenes }`, anchoUtil, 7 ), M, y, 7, GRIS_CLARO );
+	texto( partir( `Imagen con tu selección aplicada. ${ marca.legal.imagenes }`, anchoUtil, 7 ), M, y, 7, GRIS_CLARO );
 
 	// selección del pack
 	y += 11;
-	titulo( 'Opciones seleccionadas', y );
+	titulo( 'Opciones elegidas', y );
 	y += 4;
 	for ( const c of pv.categorias ) {
 
@@ -153,7 +153,7 @@ export async function generarPDF( d: DatosDocumento ): Promise<Blob> {
 	y += 3;
 	doc.setFillColor( suave[ 0 ], suave[ 1 ], suave[ 2 ] );
 	doc.roundedRect( M, y, anchoUtil, 13, 2, 2, 'F' );
-	texto( `Total mejoras de este pack (${ extras.length })`, M + 5, y + 8.4, 11, TINTA, 'bold' );
+	texto( `Total de las mejoras del pack (${ extras.length })`, M + 5, y + 8.4, 11, TINTA, 'bold' );
 	texto( total ? fmtEuros( total ) : '0 €', A4.ancho - M - 5, y + 8.8, 15, acento, 'bold', { align: 'right' } );
 	y += 18;
 	const aviso = partir( marca.legal.precios, anchoUtil, 7.2 );
@@ -166,14 +166,14 @@ export async function generarPDF( d: DatosDocumento ): Promise<Blob> {
 	texto( 'Formalización y pago', M, y, 17, TINTA, 'bold' );
 	y += 7;
 	const intro = partir( total
-		? `Para formalizar tu selección, firma este documento, haz la transferencia por el importe indicado y envía el documento firmado y el justificante a ${ destino }.`
+		? `Para formalizar tu selección, firma este documento, haz la transferencia por el importe indicado y envía el documento firmado y el justificante de pago a ${ destino }.`
 		: `Este pack no tiene mejoras con coste. Para dejar constancia de tu selección, firma este documento y envíalo a ${ destino }.`, anchoUtil, 9.5 );
 	texto( intro, M, y, 9.5, GRIS );
 	y += intro.length * 4.3 + 5;
 
 	// pasos
 	const pasos = total
-		? [ [ 'Descargar', 'Este documento' ], [ 'Firmar', 'Completa tus datos y firma' ], [ 'Transferir', `${ fmtEuros( total ) }` ], [ 'Enviar', 'Documento firmado y justificante' ] ]
+		? [ [ 'Descargar', 'Este documento' ], [ 'Firmar', 'Completa tus datos y firma' ], [ 'Transferir', `Importe: ${ fmtEuros( total ) }` ], [ 'Enviar', 'Documento firmado y justificante de pago' ] ]
 		: [ [ 'Descargar', 'Este documento' ], [ 'Firmar', 'Completa tus datos y firma' ], [ 'Enviar', 'Documento firmado' ] ];
 	const anchoPaso = anchoUtil / pasos.length;
 	pasos.forEach( ( [ a, b ], i ) => {
@@ -201,7 +201,7 @@ export async function generarPDF( d: DatosDocumento ): Promise<Blob> {
 			[ 'IBAN', pagos.iban ],
 			...( pagos.bic ? [ [ 'BIC / SWIFT', pagos.bic ] as [ string, string ] ] : [] ),
 			[ 'Concepto', d.concepto ],
-			...( pagos.plazoDias ? [ [ 'Plazo', `${ pagos.plazoDias } días naturales desde la firma, siempre antes del ${ fmtFecha( pv.pack.hasta ) } (fin del periodo del pack)` ] as [ string, string ] ] : [] ),
+			...( pagos.plazoDias ? [ [ 'Plazo', `${ pagos.plazoDias } días naturales desde la firma y, como tarde, el ${ fmtFecha( pv.pack.hasta ) } (fin del periodo del pack)` ] as [ string, string ] ] : [] ),
 		];
 		const alto = filas.reduce( ( s, [ , b ] ) => s + Math.max( 1, partir( b, anchoUtil - 50, 9.5 ).length ) * 4.6 + 3, 0 ) + 4;
 		doc.roundedRect( M, y, anchoUtil, alto, 2, 2, 'S' );
@@ -228,9 +228,9 @@ export async function generarPDF( d: DatosDocumento ): Promise<Blob> {
 
 	// conformidad del comprador
 	y += 3;
-	titulo( 'Conformidad del comprador', y );
+	titulo( 'Conformidad', y );
 	y += 4;
-	const decl = partir( `El/la abajo firmante, comprador/a de la vivienda ${ v.ref } de ${ p.promocion.nombre }, declara conocer y aceptar la selección de este pack y su importe.`, anchoUtil, 8.5 );
+	const decl = partir( `Como comprador/a de la vivienda ${ v.ref } de ${ p.promocion.nombre }, declaro conocer y aceptar la selección de este pack y su importe.`, anchoUtil, 8.5 );
 	texto( decl, M, y + 3, 8.5, GRIS );
 	y += decl.length * 3.8 + 8;
 	const campo = ( etiqueta: string, x: number, ancho: number, valor = '' ) => {
@@ -246,7 +246,7 @@ export async function generarPDF( d: DatosDocumento ): Promise<Blob> {
 	campo( 'DNI / NIE', M, anchoUtil * 0.48, d.comprador.dni );
 	campo( 'Fecha', M + anchoUtil * 0.52, anchoUtil * 0.48 );
 	y += 15;
-	texto( 'FIRMA DEL COMPRADOR', M, y, 6.5, GRIS_CLARO, 'bold', { charSpace: 0.3 } );
+	texto( 'FIRMA', M, y, 6.5, GRIS_CLARO, 'bold', { charSpace: 0.3 } );
 	doc.setDrawColor( GRIS[ 0 ], GRIS[ 1 ], GRIS[ 2 ] );
 	doc.setLineWidth( 0.3 );
 	doc.roundedRect( M, y + 2.5, anchoUtil * 0.48, 26, 1.5, 1.5, 'S' );
