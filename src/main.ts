@@ -1479,7 +1479,7 @@ async function iniciar() {
 		}
 
 	} )();
-	if ( comprador ) avisar( `Te damos la bienvenida. Estás viendo tu vivienda ${ comprador.ref }. Pulsa Personalizar para elegir tus acabados.` );
+	if ( comprador ) avisar( `Te damos la bienvenida. Estás viendo tu vivienda ${ comprador.ref }. Pulsa Personalizar para ver las opciones disponibles para tu vivienda.` );
 	else if ( accesoInicial === 'sin-conexion' ) avisar( 'No se ha podido comprobar tu código ahora mismo. Puedes ver la promoción y volver a entrar en unos minutos.' );
 
 	// ---------------------------------------------------------------- studio (producción)
