@@ -80,7 +80,7 @@ jobs:
             cuerpo=$(printf '%s\n' \
               "## 📄 Documentación nueva de $(limpio "$NOMBRE")${PROMOTORA:+ ($(limpio "$PROMOTORA"))}" "" \
               "$linea" "" \
-              "**Revísala en tu Panel:** https://panel.mune-projects.workers.dev/#/promocion/$PROMOCION/documentacion" "" \
+              "**Revísala en MUNE Studio:** https://panel.mune-projects.workers.dev/#/promocion/$PROMOCION/documentacion" "" \
               "_Las próximas subidas de esta promoción se añadirán aquí como comentarios. Puedes cerrar este aviso cuando esté todo revisado._")
             gh issue create --repo "$REPO" --label documentacion --title "$titulo" --body "$cuerpo"
           fi

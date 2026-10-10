@@ -64,6 +64,22 @@ const leer = ( k: string ) => {
 
 };
 
+/** Nombre de archivo sin tildes ni espacios: «Tipología A» → «tipologia-a». */
+const slug = ( s: string ) => s.normalize( 'NFD' ).replace( /[\u0300-\u036f]/g, '' ).toLowerCase().replace( /[^a-z0-9]+/g, '-' ).replace( /^-+|-+$/g, '' );
+
+/**
+ * Progreso del render HD en lenguaje llano: el render informa por mosaicos y
+ * muestras; aquí se convierte en un porcentaje.
+ */
+const progresoRender = ( pr: ( t: string ) => void ) => ( t: string ) => {
+
+	const m = t.match( /(?:mosaico (\d+) de (\d+), )?muestra (\d+) de (\d+)/ );
+	if ( ! m ) return pr( 'Terminando la imagen…' );
+	const [ n, total, s, muestras ] = [ m[ 1 ] ?? 1, m[ 2 ] ?? 1, m[ 3 ], m[ 4 ] ].map( Number );
+	pr( `Generando la imagen… ${ Math.floor( ( ( n - 1 ) * muestras + s - 1 ) / ( total * muestras ) * 100 ) }\u00a0%` );
+
+};
+
 async function iniciar() {
 
 	aplicarMarca( PROMOCION );
@@ -100,7 +116,7 @@ async function iniciar() {
 		void dispositivo.lost.then( ( i ) => i.reason !== 'destroyed' && aWebGL( i.message ) );
 
 	}
-	$( '#motor' ).textContent = backend;
+	console.info( 'Motor de dibujo:', backend );
 
 	const escena = new THREE.Scene();
 	escena.backgroundNode = fondo();
@@ -611,7 +627,7 @@ async function iniciar() {
 		if ( m !== 'plano' && ! viviendaLista ) {
 
 			modoPendiente = m;
-			avisar( 'Preparando la vista 3D de la vivienda…' );
+			avisar( 'Preparando la vivienda en 3D…' );
 			return;
 
 		}
@@ -647,7 +663,6 @@ async function iniciar() {
 		if ( t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement || t?.closest?.( '#configurador, dialog' ) ) return;
 		const modos: Record<string, Modo> = { 1: 'plano', 2: 'vivienda', 3: 'personalizar' };
 		if ( modos[ ev.key ] ) irModo( modos[ ev.key ] );
-		if ( ev.key === 'Escape' ) $( '#captura' ).hidden = true;
 
 	} );
 	$( '#recentrar' ).addEventListener( 'click', () => {
@@ -732,8 +747,8 @@ async function iniciar() {
 			const informe = reconstruir();
 			const alternativa = modelo.alternativas.find( ( v ) => v.id === nueva.alternativa );
 			panel.informe( 'distribucion', alternativa ? [ alternativa.descripcion, ...informe ] : [] );
-			avisar( alternativa ? alternativa.resumen : 'Distribución base: salón y cocina vuelven a estar separados.', {
-				etiqueta: 'Ver en plano', hacer: () => irModo( 'plano' ),
+			avisar( alternativa ? alternativa.resumen : 'Has vuelto a la distribución base.', {
+				etiqueta: 'Ver en el plano', hacer: () => irModo( 'plano' ),
 			} );
 
 		}
@@ -836,7 +851,7 @@ async function iniciar() {
 			const error = $( '#acceso .error' );
 			error.textContent = v === 'bloqueado' ? 'Demasiados intentos. Espera unos minutos y vuelve a probar.'
 				: v === 'sin-conexion' ? 'No se ha podido comprobar el código ahora mismo. Revisa tu conexión y vuelve a probar en unos minutos.'
-				: 'Ese código no corresponde a ninguna vivienda de la promoción. Revisa que esté completo.';
+				: 'Ese código no corresponde a ninguna vivienda de esta promoción. Comprueba que esté completo.';
 			error.hidden = false;
 			campoAcceso.focus();
 			return;
@@ -866,7 +881,8 @@ async function iniciar() {
 	// versiones anteriores recordaban el nombre y el DNI en el navegador: se borran
 	guardar( 'inmobiliarias:comprador', null );
 	const escapar = ( t: string ) => t.replace( /[&<>"]/g, ( c ) => ( { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' } )[ c ]! );
-	const conceptoPago = ( pack: string ) => ( PROMOCION.pagos?.concepto ?? '{ref} · {pack}' )
+	const formalizacion = () => fichaVivienda.formalizacion ?? {};
+	const conceptoPago = ( pack: string ) => ( formalizacion().pago?.concepto ?? '{promocion} · {ref} · {pack}' )
 		.replace( '{ref}', fichaVivienda.ref ).replace( '{pack}', pack ).replace( '{promocion}', PROMOCION.promocion.nombre );
 	const mostrarResumen = ( packId: string ) => {
 
@@ -880,25 +896,29 @@ async function iniciar() {
 
 		} ).join( '' );
 		const total = conf.totalPack( packId );
-		const pg = PROMOCION.pagos;
+		const { pago: pg, contacto } = formalizacion();
+		// a quién se envía el documento firmado (lo configura la promotora en MUNE Portal)
+		const destino = contacto?.email
+			? `${ contacto.nombre ? `${ escapar( contacto.nombre ) }, ` : '' }<a href="mailto:${ escapar( contacto.email ) }">${ escapar( contacto.email ) }</a>${ contacto.telefono ? ` (${ escapar( contacto.telefono ) })` : '' }`
+			: 'tu comercial';
 
 		$( '#titulo-resumen' ).textContent = pv.pack.titulo;
 		dialogo.querySelector( '.contenido' )!.innerHTML = `
 			<p class="fecha">${ PROMOCION.promocion.nombre } · ${ nombreVivienda( fichaVivienda ) }</p>
 			<table>
 				<tbody>${ filas }</tbody>
-				<tfoot><tr class="total"><th scope="row">Total mejoras del pack</th><td></td><td>${ total ? `+${ fmtEuros( total ) }` : '0 €' }</td></tr></tfoot>
+				<tfoot><tr class="total"><th scope="row">Total de las mejoras del pack</th><td></td><td>${ total ? `+${ fmtEuros( total ) }` : '0 €' }</td></tr></tfoot>
 			</table>
 			<fieldset class="datos-comprador">
-				<legend>Datos del comprador <span>(opcional: también puede rellenarlos a mano en el documento)</span></legend>
+				<legend>Tus datos <span>(opcional: también puedes escribirlos a mano en el documento)</span></legend>
 				<label>Nombre y apellidos<input name="nombre" autocomplete="name" value=""></label>
 				<label>DNI / NIE<input name="dni" autocomplete="off" value=""></label>
 			</fieldset>
-			${ total && pg ? `<div class="pago">
-				<p><strong>Pago por transferencia: ${ fmtEuros( total ) }</strong></p>
-				<p>${ pg.titular } · ${ pg.iban }<br>Concepto: ${ escapar( conceptoPago( pv.pack.titulo ) ) }</p>
+			${ total && pg?.iban ? `<div class="pago">
+				<p><strong>Importe de la transferencia: ${ fmtEuros( total ) }</strong></p>
+				<p>${ escapar( pg.titular ?? '' ) } · ${ escapar( pg.iban ) }<br>Concepto: ${ escapar( conceptoPago( pv.pack.titulo ) ) }</p>
 			</div>` : '' }
-			<ol class="pasos"><li>Descargue el documento</li><li>Fírmelo</li>${ total ? '<li>Realice la transferencia</li>' : '' }<li>Envíe a su comercial el documento firmado${ total ? ' y el justificante de pago' : '' }</li></ol>`;
+			<ol class="pasos"><li>Descarga el documento.</li><li>Fírmalo.</li>${ total ? '<li>Haz la transferencia.</li>' : '' }<li>Envía el documento firmado${ total ? ' y el justificante' : '' } a ${ destino }.</li></ol>`;
 		dialogo.showModal();
 
 	};
@@ -947,7 +967,7 @@ async function iniciar() {
 
 		const b = ev.currentTarget as HTMLButtonElement;
 		b.disabled = true;
-		b.textContent = 'Preparando documento…';
+		b.textContent = 'Preparando el documento…';
 		try {
 
 			const pv = conf.packs.find( ( p ) => p.pack.id === packResumen )!;
@@ -960,7 +980,7 @@ async function iniciar() {
 				superficieUtil: utilInterior(), imagen, comprador, concepto: conceptoPago( pv.pack.titulo ),
 			} );
 			const fecha = new Date().toISOString().slice( 0, 10 );
-			await descargar( `seleccion-${ fichaVivienda.ref.toLowerCase().replace( /[^a-z0-9]+/g, '-' ) }-${ packResumen }-${ fecha }.pdf`, blob );
+			await descargar( `${ slug( `seleccion-${ fichaVivienda.ref }-${ packResumen }-${ fecha }` ) }.pdf`, blob );
 
 		} catch ( e ) {
 
@@ -1057,12 +1077,12 @@ async function iniciar() {
 				try {
 
 					await o.hacer( ( t ) => ( progreso.textContent = t ) );
-					progreso.textContent = 'Listo. Descarga iniciada.';
+					progreso.textContent = 'Listo. La descarga ha empezado.';
 
 				} catch ( e ) {
 
 					console.error( e );
-					progreso.textContent = 'No se ha podido generar. Inténtalo de nuevo o elige una resolución menor.';
+					progreso.textContent = 'No se ha podido generar el archivo. Vuelve a probar o elige una opción más pequeña.';
 
 				} finally {
 
@@ -1083,17 +1103,17 @@ async function iniciar() {
 		promocion: PROMOCION, tipologia: modelo.tipologia, vivienda, ficha: comprador ? fichaVivienda : null,
 		distribucion: conf.alternativa ? ( modelo.alternativas.find( ( x ) => x.id === conf.alternativa )?.nombre ?? 'alternativa' ) : 'base',
 	} );
-	const nombreArchivo = ( base: string ) => `${ base }-${ PROMOCION.promocion.nombre }-${ comprador ? nombreVivienda( fichaVivienda ) : modelo.tipologia.nombre }`.toLowerCase().normalize( 'NFD' ).replace( /[^a-z0-9]+/g, '-' ).replace( /-$/, '' );
-	const opcionesPlano = () => abrirDescarga( 'Plano comercial', 'Plano a escala generado a partir del modelo de la vivienda, con superficies, leyenda, escala gráfica, orientación y la marca de la promoción.', [
-		{ titulo: 'PDF A3 vectorial', detalle: 'Para imprimir y adjuntar a la documentación comercial. Nítido a cualquier tamaño.', formato: 'PDF', hacer: async ( pr ) => {
+	const nombreArchivo = ( base: string ) => slug( `${ base }-${ PROMOCION.promocion.nombre }-${ comprador ? nombreVivienda( fichaVivienda ) : modelo.tipologia.nombre }` );
+	const opcionesPlano = () => abrirDescarga( 'Plano comercial', 'Plano a escala de la vivienda, con superficies, leyenda, orientación y la marca de la promoción.', [
+		{ titulo: 'PDF A3', detalle: 'Para imprimir o adjuntar a la documentación comercial. Se ve nítido a cualquier tamaño.', formato: 'PDF', hacer: async ( pr ) => {
 
-			pr( 'Dibujando el plano…' );
+			pr( 'Generando el plano…' );
 			await descargar( `${ nombreArchivo( 'plano-comercial' ) }.pdf`, await planoPDF( datosPlano() ) );
 
 		} },
-		{ titulo: 'Imagen de alta resolución', detalle: 'A3 a 300 ppp (4961 × 3508 px). Para web, portales y presentaciones.', formato: 'PNG', hacer: async ( pr ) => {
+		{ titulo: 'Imagen en alta resolución', detalle: 'Tamaño A3 a 300 ppp (4961 × 3508 px). Para la web, portales inmobiliarios y presentaciones.', formato: 'PNG', hacer: async ( pr ) => {
 
-			pr( 'Dibujando el plano a 300 ppp…' );
+			pr( 'Generando el plano…' );
 			await descargar( `${ nombreArchivo( 'plano-comercial' ) }.png`, await planoPNG( datosPlano() ) );
 
 		} },
@@ -1151,9 +1171,9 @@ async function iniciar() {
 		}
 
 		const resoluciones: [ string, string, number, number ][] = [
-			[ 'Web', 'Web, redes y portales inmobiliarios.', 1920, 16 ],
-			[ 'Alta resolución', 'Presentaciones, pantallas 4K y campañas digitales.', 3840, 12 ],
-			[ 'Impresión', 'Folletos y lonas: unos 24 MP, aprox. A3 a 300 ppp. Tarda más.', 6000, 10 ],
+			[ 'Web', 'Para la web, redes sociales y portales inmobiliarios.', 1920, 16 ],
+			[ 'Alta resolución', 'Para presentaciones, pantallas grandes y campañas digitales.', 3840, 12 ],
+			[ 'Impresión', 'Para folletos y lonas (aprox. A3 a 300 ppp). Es la que más tarda.', 6000, 10 ],
 		];
 		const opciones = resoluciones.map( ( [ titulo, detalle, ancho, muestras ] ) => ( {
 			titulo, detalle, formato: '',
@@ -1163,7 +1183,8 @@ async function iniciar() {
 				capturando = true;
 				try {
 
-					const blob = await hd.generar( { ancho, alto, muestras: muestrasHD || muestras, progreso: pr } );
+					pr( 'Generando la imagen…' );
+					const blob = await hd.generar( { ancho, alto, muestras: muestrasHD || muestras, progreso: progresoRender( pr ) } );
 					await descargar( `render-${ nombreArchivo( cam.actual || 'vista' ) }-${ ancho }x${ alto }.jpg`, blob );
 
 				} finally {
@@ -1175,7 +1196,7 @@ async function iniciar() {
 
 			},
 		} ) );
-		abrirDescarga( 'Render HD', 'Imagen de la vista actual con más calidad que el visor (más muestras de luz, reflejos completos, sombras a 8K y antialiasing por supermuestreo), sin interfaz. Puede tardar desde unos segundos hasta un par de minutos.', opciones, formatos );
+		abrirDescarga( 'Render HD', 'Descarga una imagen de la vista actual, sin interfaz y con más calidad que el visor. Elige el tamaño según dónde la vayas a usar. Puede tardar desde unos segundos hasta un par de minutos.', opciones, formatos );
 		const actualizar = () => dialogoDescarga.querySelectorAll<HTMLElement>( '.opcion-descarga' ).forEach( ( el, i ) => {
 
 			const ancho = resoluciones[ i ][ 2 ];
@@ -1185,15 +1206,6 @@ async function iniciar() {
 		actualizar();
 
 	} );
-	$( '#captura a' ).addEventListener( 'click', async ( ev ) => {
-
-		if ( ! descargas ) return; // sin capability: el enlace normal hace la descarga
-		ev.preventDefault();
-		const a = ev.currentTarget as HTMLAnchorElement;
-		await descargar( a.download, await ( await fetch( a.href ) ).blob() );
-
-	} );
-	$( '#captura button' ).addEventListener( 'click', () => ( $( '#captura' ).hidden = true ) );
 
 	// ---------------------------------------------------------------- bucle
 	addEventListener( 'resize', () => {
@@ -1467,8 +1479,8 @@ async function iniciar() {
 		}
 
 	} )();
-	if ( comprador ) avisar( `Bienvenido. Estás viendo tu vivienda ${ comprador.ref }. Pulsa Personalizar para elegir tus acabados.` );
-	else if ( accesoInicial === 'sin-conexion' ) avisar( 'No se ha podido comprobar tu código de comprador ahora mismo. Puedes ver la promoción y volver a entrar en unos minutos.' );
+	if ( comprador ) avisar( `Te damos la bienvenida. Estás viendo tu vivienda ${ comprador.ref }. Pulsa Personalizar para ver las opciones disponibles para tu vivienda.` );
+	else if ( accesoInicial === 'sin-conexion' ) avisar( 'No se ha podido comprobar tu código ahora mismo. Puedes ver la promoción y volver a entrar en unos minutos.' );
 
 	// ---------------------------------------------------------------- studio (producción)
 	// Solo existe en la construcción interna (--mode studio). En la web pública
@@ -1544,7 +1556,7 @@ async function iniciar() {
 		} else {
 
 			entrarPromotora( codigo );
-			avisar( 'Perfil Promotora: puedes descargar renders HD (botón «Render HD») y el plano comercial en PDF o PNG (modo Plano).' );
+			avisar( 'Has entrado como promotora. Ya puedes descargar imágenes en alta calidad con «Render HD» y, desde Plano, el plano comercial en PDF o PNG.' );
 
 		}
 
@@ -1575,7 +1587,7 @@ async function iniciar() {
 iniciar().catch( ( err ) => {
 
 	console.error( err );
-	$( '#carga' ).textContent = 'No se ha podido iniciar el visor 3D en este navegador.';
+	$( '#carga' ).textContent = 'No se ha podido abrir la visita 3D en este navegador. Prueba con otro navegador o actualiza el que usas.';
 
 } );
 

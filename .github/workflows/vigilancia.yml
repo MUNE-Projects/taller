@@ -82,10 +82,10 @@ jobs:
             if (( dias < 0 )); then titulo="🔑 Una llave del sistema ha caducado"
             else titulo="🔑 Una llave del sistema caduca pronto"; fi
             avisar "$titulo" "$(printf '%s\n' \
-              "Quedan **$dias días** para que caduque una llave del sistema. Sin ella no se puede publicar desde el Panel." "" \
+              "Quedan **$dias días** para que caduque una llave del sistema. Sin ella no se puede publicar desde MUNE Studio." "" \
               "**Qué hacer:**" \
-              "1. Mira cuál es en tu Panel: $PANEL/#/sistema" \
+              "1. Mira cuál es en MUNE Studio: $PANEL/#/sistema" \
               "2. Renuévala siguiendo la receta \`docs/recetas/19-sistema-y-llaves.md\` (o pídele a Claude que te guíe)." \
-              "3. Apunta la fecha nueva en el Panel con **Ya la he renovado**." "" \
+              "3. Apunta la fecha nueva en MUNE Studio con **Ya la he renovado**." "" \
               "_Cierra este aviso cuando esté hecho._")"
           fi

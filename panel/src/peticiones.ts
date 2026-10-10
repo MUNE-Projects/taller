@@ -14,8 +14,8 @@ const TIPOS_FOTO: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': '
 function comprobarFotos(fotos: File[]): void {
 	if (fotos.length > MAX_FOTOS) throw new Error(`Puedes adjuntar como máximo ${MAX_FOTOS} fotos.`);
 	for (const f of fotos) {
-		if (!TIPOS_FOTO[f.type]) throw new Error(`«${f.name}» no es JPG, PNG ni WebP.`);
-		if (f.size > MAX_TAM_FOTO) throw new Error(`«${f.name}» pesa más de 10 MB.`);
+		if (!TIPOS_FOTO[f.type]) throw new Error(`«${f.name}» no es una foto JPG, PNG o WebP. Elige otra.`);
+		if (f.size > MAX_TAM_FOTO) throw new Error(`«${f.name}» pesa más de 10 MB. Elige una foto más ligera.`);
 	}
 }
 
@@ -23,7 +23,10 @@ async function subirFotos(peticion: number, fotos: File[]): Promise<void> {
 	for (const [i, f] of fotos.entries()) {
 		const ruta = `${peticion}/${i + 1}.${TIPOS_FOTO[f.type]}`;
 		const { error } = await sb.storage.from('referencias').upload(ruta, f, { contentType: f.type, upsert: false });
-		if (error) throw new Error(`La petición se ha guardado, pero la foto «${f.name}» no se ha podido subir: ${error.message}`);
+		if (error) {
+			console.error('[MUNE Studio]', error);
+			throw new Error(`La petición se ha guardado, pero la foto «${f.name}» no se ha podido subir. Recarga la página y, si la necesitas, envíala en una petición nueva.`);
+		}
 	}
 }
 

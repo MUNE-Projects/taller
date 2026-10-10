@@ -170,9 +170,9 @@ export async function resolverAcceso( codigo: string ): Promise<ResultadoAcceso>
 			body: JSON.stringify( { p_promocion: PROMOCION.id, p_codigo: c } ),
 		} );
 		if ( ! r.ok ) return /Demasiados intentos/.test( await r.text() ) ? 'bloqueado' : 'sin-conexion';
-		const d = await r.json() as { vivienda: string; selecciones: ViviendaPromocion[ 'selecciones' ] } | null;
+		const d = await r.json() as { vivienda: string; selecciones: ViviendaPromocion[ 'selecciones' ]; formalizacion?: ViviendaPromocion[ 'formalizacion' ] } | null;
 		const v = d && PROMOCION.viviendas.find( ( x ) => x.ref === d.vivienda );
-		return v ? { ...v, selecciones: d.selecciones ?? {} } : null;
+		return v ? { ...v, selecciones: d.selecciones ?? {}, formalizacion: d.formalizacion ?? {} } : null;
 
 	} catch {
 

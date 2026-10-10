@@ -11,6 +11,8 @@ type Fila = Record<string, unknown>;
 
 export interface Resultado { archivos: number; avisos: string[] }
 
+/** Para el nombre del ZIP: sin tildes ni símbolos («Construcciones Peñón» → Construcciones-Penon). */
+const paraArchivo = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w -]+/g, '').trim().replace(/\s+/g, '-') || 'promotora';
 const limpio = (texto: string) => texto.replace(/[\\/:*?"<>|\u0000-\u001f]+/g, '_').trim().slice(0, 120) || 'sin nombre';
 const hoy = () => new Date().toISOString().slice(0, 10);
 const json = (datos: unknown) => JSON.stringify(datos, null, '\t');
@@ -30,11 +32,11 @@ async function huella(datos: Uint8Array): Promise<string> {
 async function bajar(almacen: string, ruta: string, esperada: string | null, avisos: string[]): Promise<Uint8Array | null> {
 	const { data, error } = await sb.storage.from(almacen).download(ruta);
 	if (error || !data) {
-		avisos.push(`No se pudo descargar ${almacen}/${ruta}`);
+		avisos.push(`No se ha podido descargar ${almacen}/${ruta}`);
 		return null;
 	}
 	const datos = new Uint8Array(await data.arrayBuffer());
-	if (esperada && (await huella(datos)) !== esperada) avisos.push(`La huella no coincide: ${almacen}/${ruta}`);
+	if (esperada && (await huella(datos)) !== esperada) avisos.push(`El archivo descargado no coincide con el original guardado: ${almacen}/${ruta}`);
 	return datos;
 }
 
@@ -89,7 +91,7 @@ async function anadirPromocion(zip: Zip, carpeta: string, id: string, equipo: Fi
 	lineas.push(`Personas con acceso a esta promoción: ${equipo.length}`);
 	for (const a of equipo) lineas.push(`  · ${a.nombre} <${a.email}>${a.cargo ? ` · ${a.cargo}` : ''}${a.activo ? '' : ' · acceso retirado'}`);
 
-	lineas.push(`Viviendas con código de comprador: ${codigos.length} (los códigos no se exportan: solo existen sus huellas)`);
+	lineas.push(`Viviendas con código de comprador: ${codigos.length} (los códigos no se exportan: por seguridad, MUNE no los guarda)`);
 	zip.anadir(`${carpeta}datos.json`, json({ promocion, equipo, requisitos, documentos, entregables, validaciones, peticiones, codigos_de_comprador: codigos, selecciones_de_comprador: selecciones, registro }));
 	return [`■ ${promocion?.nombre ?? id} (${id})`, ...lineas].join('\n');
 }
@@ -104,9 +106,9 @@ function leeme(titulo: string, cuerpo: string, avisos: string[]): string {
 		'  · documentos/: lo que subió la promotora, con todas sus versiones.',
 		'  · entregables/: planos, infografías y PDF entregados, por versión.',
 		'  · peticiones/: fotos de referencia de las peticiones de cambios.',
-		'La web 3D y los datos de construcción de cada promoción no están aquí: están en el almacén «taller» de GitHub.',
+		'La experiencia 3D y los datos de construcción de cada promoción no van en esta exportación: MUNE los guarda aparte (almacén privado «taller» de GitHub).',
 		'',
-		avisos.length ? `ATENCIÓN, ${avisos.length} aviso(s):\n${avisos.map((a) => `  ! ${a}`).join('\n')}` : 'Todos los archivos se han descargado y su huella coincide.',
+		avisos.length ? `ATENCIÓN, ${avisos.length} ${avisos.length === 1 ? 'aviso' : 'avisos'}:\n${avisos.map((a) => `  ! ${a}`).join('\n')}` : 'Todos los archivos se han descargado completos y coinciden con los originales.',
 		'',
 		cuerpo,
 		'',
@@ -124,7 +126,7 @@ function guardar(zip: Zip, nombre: string): void {
 
 export async function exportarPromocion(id: string, progreso: (t: string) => void = () => {}): Promise<Resultado> {
 	const [promocion] = await leer(sb.from('promociones').select('promotora_id, nombre').eq('id', id));
-	if (!promocion) throw new Error('Esa promoción no existe');
+	if (!promocion) throw new Error('No se ha encontrado la promoción. Puede que se haya borrado.');
 	const [promotora] = await leer(sb.from('promotoras').select('*').eq('id', promocion.promotora_id));
 	const equipo = (await leer(sb.rpc('accesos', { p_promotora: promocion.promotora_id }))).filter((a) => a.promocion_id === id);
 	const zip = new Zip();
@@ -139,7 +141,7 @@ export async function exportarPromocion(id: string, progreso: (t: string) => voi
 
 export async function exportarPromotora(id: string, progreso: (t: string) => void = () => {}): Promise<Resultado> {
 	const [promotora] = await leer(sb.from('promotoras').select('*').eq('id', id));
-	if (!promotora) throw new Error('Esa promotora no existe');
+	if (!promotora) throw new Error('No se ha encontrado la promotora. Puede que se haya borrado.');
 	const [promociones, accesos, registro] = await Promise.all([
 		leer(sb.from('promociones').select('id').eq('promotora_id', id).order('nombre')),
 		leer(sb.rpc('accesos', { p_promotora: id })),
@@ -162,7 +164,7 @@ export async function exportarPromotora(id: string, progreso: (t: string) => voi
 	zip.anadir('LEEME.txt', leeme(`la promotora «${promotora.nombre}»`, [cabecera, ...partes].join('\n\n'), avisos)
 		.replace('  · datos.json: todos los datos', '  · datos.json: los datos de la promotora y sus accesos. Cada promoción tiene su carpeta en promociones/, con su datos.json')
 		.replace(/  · (documentos|entregables|peticiones)\//g, '  · promociones/<promoción>/$1/'));
-	guardar(zip, `MUNE-${limpio(String(promotora.nombre)).replace(/\s+/g, '-')}-${hoy()}.zip`);
+	guardar(zip, `MUNE-${paraArchivo(String(promotora.nombre))}-${hoy()}.zip`);
 	await anotar('exporta una promotora', { promotora: id, archivos: zip.cuantos, avisos: avisos.length });
 	return { archivos: zip.cuantos, avisos };
 }

@@ -37,8 +37,9 @@ const diasHasta = (dia: string) => Math.round((Date.parse(`${dia}T00:00:00`) - D
 
 function chipLlave(dias: number): string {
 	if (dias < 0) return '<span class="estado rechazado">Caducada</span>';
-	if (dias <= 30) return `<span class="estado rechazado">Caduca en ${dias} días</span>`;
-	if (dias <= 60) return `<span class="estado pendiente">Caduca en ${dias} días</span>`;
+	const cuando = dias === 0 ? 'Caduca hoy' : `Caduca en ${dias} día${dias === 1 ? '' : 's'}`;
+	if (dias <= 30) return `<span class="estado rechazado">${cuando}</span>`;
+	if (dias <= 60) return `<span class="estado pendiente">${cuando}</span>`;
 	return '<span class="estado al-dia">Vigente</span>';
 }
 
@@ -55,7 +56,7 @@ export async function pantallaSistema(destino: HTMLElement): Promise<void> {
 		<section class="tarjeta" data-estado-sistema><h2>Estado del sistema</h2><p class="vacio">Cargando…</p></section>
 		<section class="tarjeta">
 			<h2>Registro de actividad completo</h2>
-			<p class="ayuda">Todo lo que ha pasado, de todas las promotoras y promociones, más tus entradas al Panel. Lo de cada promoción también está en su pestaña «Actividad».</p>
+			<p class="ayuda">Todo lo que ha pasado, de todas las promotoras y promociones, y tus entradas en MUNE Studio. Lo de cada promoción también está en su pestaña «Actividad».</p>
 			<div data-actividad><p class="vacio">Cargando…</p></div>
 		</section>`;
 	const caja = destino.querySelector<HTMLElement>('[data-estado-sistema]')!;
@@ -75,7 +76,7 @@ async function pintarEstado(caja: HTMLElement, mensaje = ''): Promise<void> {
 		<h2>Estado del sistema</h2>
 		${mensaje ? `<p class="aviso" role="status">${esc(mensaje)}</p>` : ''}
 		<h3 class="subtitulo">Llaves</h3>
-		<p class="ayuda">Las llaves dejan que el Panel publique y que GitHub copie la web. Caducan: un mes antes te aviso en Inicio y por email. Para renovarlas, sigue la receta 19 (o pídele a Claude que te guíe); después apunta aquí la fecha nueva.</p>
+		<p class="ayuda">Las llaves permiten publicar desde MUNE Studio y llevar la versión publicada a internet. Caducan: 60 y 30 días antes verás un aviso en Inicio y, a 30 días, te llegará también un email. Para renovarlas, sigue la receta 19 (o pide a Claude que te guíe) y después pulsa «Ya la he renovado» para apuntar la nueva fecha.</p>
 		<div class="lista-planos">${e.llaves.map((l) => `
 			<div class="fila-plano" data-llave="${esc(l.id)}">
 				<span><strong>${esc(l.nombre)}</strong><br>
@@ -93,7 +94,7 @@ async function pintarEstado(caja: HTMLElement, mensaje = ''): Promise<void> {
 		${barra('Base de datos', e.datos, e.datos_limite)}
 		${barra('Archivos (documentación, planos y fotos)', e.archivos, e.archivos_limite)}
 		<h3 class="subtitulo">Vigilancia automática</h3>
-		<p class="ayuda">Cada 3 días, GitHub da un toque a Supabase para que no se duerma y comprueba las llaves. Si algo falla, te llega un email.</p>
+		<p class="ayuda">Cada 3 días, una tarea automática (en GitHub) mantiene activa la base de datos (Supabase), para que no se duerma, y comprueba las llaves. Si algo falla, te llega un email.</p>
 		<p>${e.latido ? `Última señal: <strong>${esc(new Date(e.latido).toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' }))}</strong>` : 'Todavía no ha dado ninguna señal.'}
 			${horas <= 96 ? '<span class="estado al-dia">Funcionando</span>' : '<span class="estado pendiente">Sin señales recientes</span>'}</p>`;
 
@@ -116,7 +117,7 @@ async function pintarEstado(caja: HTMLElement, mensaje = ''): Promise<void> {
 				boton.disabled = false;
 				return;
 			}
-			await pintarEstado(caja, `✓ Apuntado: la llave caduca el ${fecha(input.value)}.`);
+			await pintarEstado(caja, `✓ Guardado: la llave caduca el ${fecha(input.value)}.`);
 		});
 	});
 }

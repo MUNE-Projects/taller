@@ -81,11 +81,12 @@ export class Panel {
 		const chip = h( 'span', { class: `estado-pack ${ estado }` } );
 		if ( estado !== 'disponible' ) chip.insertAdjacentHTML( 'afterbegin', CANDADO );
 		chip.append( ETIQUETA_ESTADO[ estado ] );
-		// próximamente: solo nombre, estado y un aviso neutro (sin fechas, precios
-		// ni opciones, que todavía pueden cambiar)
+		// próximamente: solo nombre, estado, un aviso neutro y la fecha de apertura
+		// si existe (sin precios ni opciones, que todavía pueden cambiar)
 		if ( estado === 'proximamente' ) return h( 'section', { class: 'pack', 'data-estado': estado, 'aria-label': `${ pack.titulo }: ${ ETIQUETA_ESTADO[ estado ] }` },
 			h( 'header', { class: 'cabecera-pack' }, h( 'div', { class: 'titulo-pack' }, h( 'h3', {}, pack.titulo ), chip ) ),
-			h( 'p', { class: 'nota-pack' }, 'Este pack estará disponible en una fase posterior de la promoción. Te informaremos cuando se abra el periodo de selección.' ) );
+			h( 'p', { class: 'nota-pack' }, 'Este pack se abrirá más adelante. La promotora te avisará cuando empiece su periodo de selección.' ),
+			pack.desde ? h( 'p', { class: 'periodo-pack' }, textoPeriodo( pack, estado ) ) : null );
 		const cabecera = h( 'header', { class: 'cabecera-pack' },
 			h( 'div', { class: 'titulo-pack' }, h( 'h3', {}, pack.titulo ), chip ),
 			h( 'p', { class: 'periodo-pack' }, textoPeriodo( pack, estado ) ),
@@ -104,8 +105,8 @@ export class Panel {
 			}
 
 			seccion.append( lista, h( 'p', { class: 'nota-pack' }, pv.formalizada
-				? `Selección formalizada el ${ fmtFecha( pv.formalizada.fecha ) }. Ya no se puede modificar.`
-				: 'No se formalizó ninguna mejora en este pack: se mantiene lo incluido en la vivienda.' ) );
+				? `Selección formalizada el ${ fmtFecha( pv.formalizada.fecha ) }. Ya no se puede cambiar.`
+				: 'No se formalizó ninguna mejora en este pack. Se mantiene lo incluido en tu vivienda.' ) );
 			return seccion;
 
 		}
@@ -225,7 +226,7 @@ export class Panel {
 		for ( const [ id, pie ] of this.piesPack ) {
 
 			const n = c.extrasDe( id ).length;
-			const doc = h( 'button', { type: 'button', class: 'documento-pack' }, 'Documento del pack' ) as HTMLButtonElement;
+			const doc = h( 'button', { type: 'button', class: 'documento-pack' }, 'Preparar documento' ) as HTMLButtonElement;
 			doc.onclick = () => this.cb.generar( id );
 			pie.replaceChildren( h( 'span', {}, n ? `${ n } ${ n === 1 ? 'mejora' : 'mejoras' } · ` : 'Sin mejoras · ', h( 'strong', {}, `+${ fmtEuros( c.totalPack( id ) ) }` ) ), doc );
 
@@ -245,7 +246,7 @@ export class Panel {
 
 			} else {
 
-				quitar = h( 'span', { class: 'cerrada', title: 'Mejora formalizada en un pack cerrado' } );
+				quitar = h( 'span', { class: 'cerrada', title: 'Mejora ya formalizada en un pack cerrado' } );
 				quitar.innerHTML = CANDADO;
 
 			}
@@ -266,7 +267,7 @@ export class Panel {
 		const abierto = c.packs.find( ( p ) => p.estado === 'disponible' );
 		const generar = this.raiz.querySelector( '.generar' ) as HTMLButtonElement;
 		generar.hidden = ! abierto;
-		if ( abierto ) generar.textContent = `Documento · ${ abierto.pack.titulo.replace( /^Pack \d+ · /, '' ) }`;
+		if ( abierto ) generar.textContent = `Preparar documento · ${ abierto.pack.titulo.replace( /^Pack \d+ · /, '' ) }`;
 		const chip = document.querySelector( '#total-ficha' ) as HTMLElement | null;
 		if ( chip ) {
 

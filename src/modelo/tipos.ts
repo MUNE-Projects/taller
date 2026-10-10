@@ -181,6 +181,8 @@ export interface ViviendaPromocion {
 	 * y solo llegan al navegador al entrar con el código de la vivienda.
 	 */
 	selecciones?: Record<string, { fecha: string; opciones: Record<string, string> }>;
+	/** Contacto y datos de pago de la formalización: solo llegan con el código de la vivienda. */
+	formalizacion?: Formalizacion;
 }
 
 export type EstadoPack = 'disponible' | 'proximamente' | 'finalizado';
@@ -200,15 +202,26 @@ export interface Pack {
 
 /** Datos para el pago por transferencia de las mejoras. */
 export interface Pagos {
-	titular: string;
-	banco: string;
-	iban: string;
+	titular?: string;
+	banco?: string;
+	iban?: string;
 	bic?: string;
 	/** Concepto de la transferencia; admite {ref}, {pack}, {promocion}. */
-	concepto: string;
+	concepto?: string;
 	/** Días para realizar la transferencia desde la firma. */
 	plazoDias?: number;
 	instrucciones?: string;
+}
+
+/**
+ * Formalización de la personalización: a quién envía el comprador el documento
+ * firmado y los datos para la transferencia. La configura la promotora en
+ * MUNE Portal; vive en Supabase y solo llega al navegador con un código de
+ * comprador válido (016_formalizacion.sql).
+ */
+export interface Formalizacion {
+	contacto?: { nombre?: string; email?: string; telefono?: string };
+	pago?: Pagos;
 }
 
 export interface Marca {
@@ -219,7 +232,6 @@ export interface Marca {
 	tipografia: { familia: string; googleFonts?: string };
 	favicon: string | null;
 	contacto: { telefono: string; email: string; web: string; direccion: string };
-	comercial?: { nombre: string; telefono: string; email: string };
 	legal: { precios: string; imagenes: string; pie: string; plano?: string };
 }
 
@@ -237,5 +249,4 @@ export interface Promocion {
 	promotora?: { acceso: string };
 	/** Packs de personalización, en el orden en que se ofrecen. */
 	packs?: Pack[];
-	pagos?: Pagos;
 }

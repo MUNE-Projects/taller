@@ -11,7 +11,8 @@ function pintar(html: string): void {
 	app.querySelector<HTMLElement>('[autofocus]')?.focus();
 }
 
-const CABECERA = '<p class="marca">MUNE · Panel</p>';
+const CABECERA = '<p class="marca">MUNE Studio</p>';
+const SESION_CADUCADA = 'Tu sesión se ha cerrado tras un rato sin actividad. Vuelve a entrar.';
 const CAMPO_CODIGO = `<label>Código de 6 cifras
 	<input class="codigo" name="codigo" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required autofocus>
 </label>`;
@@ -36,10 +37,11 @@ async function decidir(): Promise<void> {
 
 // ── 1. Correo y contraseña ────────────────────────────────────────────────
 
-function pantallaEntrada(): void {
+function pantallaEntrada(aviso = ''): void {
 	pintar(`<form class="caja" novalidate>
 		${CABECERA}
 		<h1>Entrar</h1>
+		${aviso ? `<p class="aviso" role="status">${esc(aviso)}</p>` : ''}
 		<label>Correo <input name="correo" type="email" autocomplete="username" required autofocus></label>
 		<label>Contraseña <input name="clave" type="password" autocomplete="current-password" required></label>
 		<p class="error" role="alert"></p>
@@ -66,12 +68,13 @@ async function pantallaAlta(pendientes: Factor[]): Promise<void> {
 
 	pintar(`<form class="caja" novalidate>
 		${CABECERA}
-		<h1>Activa la doble verificación</h1>
+		<h1>Protege tu acceso con el móvil</h1>
+		<p>Cada vez que entres, además de la contraseña, necesitarás un código del móvil. Para activarlo:</p>
 		<p>1. Abre <strong>Google Authenticator</strong> (o Microsoft Authenticator) en el móvil.<br>
 		2. Pulsa <strong>+</strong> y elige <strong>Escanear código QR</strong>.<br>
-		3. Escribe aquí el código de 6 cifras que te muestre.</p>
+		3. Escribe aquí el código de 6 cifras que aparece en <strong>MUNE Panel</strong>.</p>
 		<div class="qr"><img alt="Código QR para la app de verificación" src="${esc(data.totp.qr_code)}"></div>
-		<p class="secreto">¿No puedes escanear? Introduce a mano esta clave: ${esc(data.totp.secret)}</p>
+		<p class="secreto">¿No puedes escanear el código? Escribe esta clave a mano en la app: ${esc(data.totp.secret)}</p>
 		${CAMPO_CODIGO}
 		<p class="error" role="alert"></p>
 		<button class="boton" type="submit">Confirmar</button>
@@ -92,7 +95,7 @@ function pantallaCodigo(factor: Factor): void {
 	pintar(`<form class="caja" novalidate>
 		${CABECERA}
 		<h1>Código del móvil</h1>
-		<p>Abre tu app de verificación y escribe el código de <strong>MUNE Panel</strong>.</p>
+		<p>Abre la app de verificación del móvil y escribe el código de 6 cifras que aparece en <strong>MUNE Panel</strong>.</p>
 		${CAMPO_CODIGO}
 		<p class="error" role="alert"></p>
 		<button class="boton" type="submit">Verificar</button>
@@ -116,7 +119,7 @@ async function escritorio(): Promise<void> {
 	if (!admin) {
 		await sb.auth.signOut();
 		pintar(`<div class="caja">${CABECERA}<h1>Sin acceso</h1>
-			<p>Esta cuenta no tiene permiso para usar el panel.</p></div>`);
+			<p>Esta cuenta no tiene acceso a MUNE Studio. Comprueba que has entrado con el correo correcto y recarga la página para volver a entrar.</p></div>`);
 		return;
 	}
 
@@ -128,7 +131,7 @@ async function escritorio(): Promise<void> {
 	pintar(`<div class="escritorio">
 		<header class="cabecera">
 			${CABECERA}
-			<nav class="menu" aria-label="Secciones del Panel">
+			<nav class="menu" aria-label="Secciones de MUNE Studio">
 				<a href="#/" data-menu="inicio">Inicio</a>
 				<a href="#/promotoras" data-menu="promotoras">Promotoras</a>
 				<a href="#/sistema" data-menu="sistema">Sistema</a>
@@ -182,11 +185,14 @@ for (const ev of ['pointerdown', 'keydown']) addEventListener(ev, () => { ultima
 setInterval(async () => {
 	if (Date.now() - ultimaActividad < INACTIVIDAD_MAX) return;
 	const { data: { session } } = await sb.auth.getSession();
-	if (session) await salir();
+	if (session) {
+		await salir();
+		pantallaEntrada(SESION_CADUCADA);
+	}
 }, 60_000);
 
 decidir().catch((e) => {
-	pintar(`<div class="caja">${CABECERA}<h1>No se pudo cargar</h1><p class="error">${esc(traducir(e))}</p>
-		<button class="boton" type="button" data-reintentar>Reintentar</button></div>`);
+	pintar(`<div class="caja">${CABECERA}<h1>No se ha podido cargar</h1><p class="error">${esc(traducir(e))}</p>
+		<button class="boton" type="button" data-reintentar>Volver a probar</button></div>`);
 	app.querySelector('[data-reintentar]')!.addEventListener('click', () => location.reload());
 });

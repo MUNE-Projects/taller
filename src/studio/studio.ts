@@ -540,25 +540,8 @@ export async function abrirStudio( api: ApiStudio ) {
 
 		}
 
-		// datos de pago por transferencia (aparecen en el documento de cada pack)
-		const pg = api.promocion.pagos ??= { titular: '', banco: '', iban: '', concepto: '{promocion} · {ref} · {pack}' };
-		const campoPago = ( etiqueta: string, k: 'titular' | 'banco' | 'iban' | 'bic' | 'concepto' | 'instrucciones' ) => {
-
-			const i = h( k === 'instrucciones' ? 'textarea' : 'input', k === 'instrucciones' ? { rows: '3' } : { type: 'text' } ) as HTMLInputElement;
-			i.value = String( pg[ k ] ?? '' );
-			i.addEventListener( 'change', () => {
-
-				pg[ k ] = i.value;
-				cambio( false );
-
-			} );
-			return h( 'label', { class: 'st-campo' }, h( 'span', {}, etiqueta ), i );
-
-		};
-		out.push( h( 'h3', {}, 'Pagos' ), h( 'p', { class: 'st-ayuda' }, 'Datos de la transferencia que figuran en el documento de cada pack. En el concepto se pueden usar {promocion}, {ref} y {pack}.' ),
-			campoPago( 'Beneficiario', 'titular' ), campoPago( 'Entidad', 'banco' ), campoPago( 'IBAN', 'iban' ), campoPago( 'BIC / SWIFT', 'bic' ),
-			campoPago( 'Concepto', 'concepto' ), campoPago( 'Instrucciones adicionales', 'instrucciones' ) );
-
+		// el contacto y los datos de pago de la formalización ya no van aquí: los
+		// configura la promotora en MUNE Portal (Ficha y datos) y viven en Supabase
 		return out;
 
 	}
@@ -919,9 +902,9 @@ Es una aproximación ligera; no reproduzcas un producto concreto. Responde SOLO 
 		const m = api.modelo();
 		// lo que ya está integrado en los datos
 		const integrado: Record<string, string> = {
-			tipologias: `${ p.tipologias.length } tipología(s) modelada(s)`,
+			tipologias: `${ p.tipologias.length } ${ p.tipologias.length === 1 ? 'tipología modelada' : 'tipologías modeladas' }`,
 			superficies: `Útil ${ m.vivienda.meta.superficies_oficiales.interior } m² · exterior ${ m.vivienda.meta.superficies_oficiales.exterior } m²`,
-			viviendas: `${ p.viviendas.length } vivienda(s): ${ p.viviendas.map( ( v ) => v.ref ).join( ', ' ) }`,
+			viviendas: `${ p.viviendas.length } ${ p.viviendas.length === 1 ? 'vivienda' : 'viviendas' }: ${ p.viviendas.map( ( v ) => v.ref ).join( ', ' ) }`,
 			'memoria-calidades': 'Acabados de la memoria aplicados al catálogo',
 			branding: `Marca «${ p.marca.promotora }» aplicada`,
 			acabados: `${ api.catalogo.categorias.length } categorías de personalización`,

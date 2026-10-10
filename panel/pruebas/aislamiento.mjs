@@ -440,7 +440,7 @@ await caso( DEBE_FUNCIONAR, 'Lista estándar de documentos: solo la administrado
 	await exigir( admin.from( 'requisitos' ).update( { activo: false } ).eq( 'id', lista.at( -1 ).id ), 'quitar' );
 	const quitarIntruso = await aprobA.from( 'requisitos' ).update( { activo: false } ).eq( 'id', lista[ 0 ].id ).select();
 	const vista = ( await aprobA.from( 'requisitos' ).select( 'id' ).eq( 'promocion_id', 'prueba-a3' ) ).data;
-	return falla( intruso ) && falla( repetida ) && n === 11 && lista.some( ( r ) => r.plantilla === '/plantillas/tabla-viviendas.xlsx' )
+	return falla( intruso ) && falla( repetida ) && n === 10 && lista.some( ( r ) => r.plantilla === '/plantillas/tabla-viviendas.xlsx' )
 		&& ( falla( quitarIntruso ) || vacio( quitarIntruso ) ) && vista.length === lista.length - 1;
 
 } );
@@ -771,6 +771,31 @@ await caso( DEBE_FUNCIONAR, 'Códigos de comprador: la promotora genera y cambia
 
 } );
 
+const formalizar = ( sb, promocion, email, iban = 'ES91 2100 0418 4502 0005 1332' ) => sb.rpc( 'guardar_formalizacion', {
+	p_promocion: promocion, p_contacto_nombre: 'Comercial', p_contacto_email: email, p_contacto_telefono: '600 000 000',
+	p_titular: 'Promotora A S.L.', p_banco: 'Banco', p_iban: iban, p_bic: '', p_concepto: '{ref} · {pack}', p_plazo_dias: 10, p_instrucciones: '',
+} );
+
+await caso( DEBE_FALLAR, '33. Formalización: otra promotora, el robot o alguien sin sesión intentan cambiar el contacto o los datos de pago; nadie sin código los lee', async () => {
+
+	const r = await Promise.all( [ formalizar( aprobB, 'prueba-a', 'x@b.es' ), formalizar( robot, 'prueba-a', 'x@b.es' ), formalizar( anonimo, 'prueba-a', 'x@b.es' ) ] );
+	const leeAnonimo = await anonimo.from( 'promociones' ).select( 'formalizacion' ).eq( 'id', 'prueba-a' );
+	const leeB = await aprobB.from( 'promociones' ).select( 'formalizacion' ).eq( 'id', 'prueba-a' );
+	const ibanMal = await formalizar( gestorA, 'prueba-a', 'ventas@a.es', 'ES12' );
+	return r.every( falla ) && ( falla( leeAnonimo ) || vacio( leeAnonimo ) ) && vacio( leeB ) && falla( ibanMal );
+
+} );
+
+await caso( DEBE_FUNCIONAR, 'Formalización: la promotora guarda contacto y datos de pago, y el comprador los recibe solo al entrar con su código', async () => {
+
+	await exigir( formalizar( gestorA, 'prueba-a', 'Ventas@A.es' ), 'guardar' );
+	const codigo = await exigir( generar( gestorA, 'Ático Z' ), 'código' );
+	const dentro = ( await entrarComprador( codigo ) ).data;
+	const f = dentro?.formalizacion;
+	return f?.contacto?.email === 'ventas@a.es' && f?.pago?.iban === 'ES91 2100 0418 4502 0005 1332' && f?.pago?.plazoDias === 10;
+
+} );
+
 await caso( DEBE_FUNCIONAR, 'Códigos de comprador: la promotora genera de golpe los de las viviendas que no tienen (para el Excel), y valen', async () => {
 
 	const nuevos = await exigir( gestorA.rpc( 'generar_codigos_pendientes', { p_promocion: 'prueba-a', p_viviendas: [ 'Bajo A', 'Bajo B', 'Bajo B', ' 1ºC ' ] } ), 'todos' );
@@ -916,6 +941,28 @@ await caso( DEBE_FUNCIONAR, 'La vigilancia da señales sin sesión (solo recibe 
 	const despues = await exigir( admin.rpc( 'avisos_sistema' ), 'avisos después' );
 	const pasada = await admin.rpc( 'renovar_llave', { p_id: 'llave-a', p_caduca: '2020-01-01' } );
 	return ! despues.some( ( x ) => x.clave === 'llave:llave-a' ) && falla( pasada );
+
+} );
+
+// ─── Fase del proyecto (018 y 019) ──────────────────────────────────────────
+await caso( DEBE_FUNCIONAR, 'Fase del proyecto: el equipo la cambia (con historial) y los documentos nuevos quedan marcados; nadie más la cambia ni ve el historial', async () => {
+
+	const ajenaB = await aprobB.rpc( 'cambiar_fase_proyecto', { p_promocion: 'prueba-a', p_fase: 'ejecucion' } );
+	const deRobot = await robot.rpc( 'cambiar_fase_proyecto', { p_promocion: 'prueba-a', p_fase: 'ejecucion' } );
+	const sinSesion = await anonimo.rpc( 'cambiar_fase_proyecto', { p_promocion: 'prueba-a', p_fase: 'ejecucion' } );
+	const otraPromocion = await gestorA.rpc( 'cambiar_fase_proyecto', { p_promocion: 'prueba-a2', p_fase: 'basico' } );
+	const mala = await gestorA.rpc( 'cambiar_fase_proyecto', { p_promocion: 'prueba-a', p_fase: 'obra' } );
+	await exigir( gestorA.rpc( 'cambiar_fase_proyecto', { p_promocion: 'prueba-a', p_fase: 'basico' } ), 'fase básico' );
+	await exigir( gestorA.rpc( 'cambiar_fase_proyecto', { p_promocion: 'prueba-a', p_fase: 'ejecucion' } ), 'fase ejecución' );
+	const doc = await subirDocumento( gestorA, pA.id, 'prueba-a', 'documento en fase de ejecución' );
+	const historialA = ( await gestorA.from( 'fases_promocion' ).select( 'fase' ).eq( 'promocion_id', 'prueba-a' ) ).data ?? [];
+	const historialB = await aprobB.from( 'fases_promocion' ).select( 'fase' ).eq( 'promocion_id', 'prueba-a' );
+	const historialAnonimo = await anonimo.from( 'fases_promocion' ).select( 'fase' ).limit( 1 );
+	return falla( ajenaB ) && falla( deRobot ) && falla( sinSesion ) && falla( otraPromocion ) && falla( mala )
+		&& ( await filaDe( 'promociones', 'prueba-a' ) ).fase_proyecto === 'ejecucion'
+		&& ( await filaDe( 'documentos', doc.data.id ) ).fase === 'ejecucion'
+		&& historialA.length === 2 && vacio( historialB ) && ( falla( historialAnonimo ) || vacio( historialAnonimo ) )
+		&& ( await filaDe( 'promociones', 'prueba-a2' ) ).fase_proyecto === null;
 
 } );
 

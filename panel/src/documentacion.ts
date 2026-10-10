@@ -1,27 +1,28 @@
 // Pestaña «Documentación» de una promoción (Etapa 3 · recetas 2 y 13).
 //
 // · Lo que ha subido la promotora, documento a documento y con todas sus
-//   versiones: descargar, marcar como vigente o rechazar con una nota (la
-//   promotora ve el estado y la nota en su portal).
+//   versiones: descargar, aceptar o rechazar con una nota (la promotora ve el
+//   estado y la nota en MUNE Portal).
 // · La lista de documentos que tiene que entregar, que se puede ajustar.
 //
 // Las reglas (005, 008) dejan a la administradora cambiar solo el estado y la
 // nota; nadie puede borrar ni sobrescribir un documento.
 
+import { FASES, conectarFase, htmlFase, leerHistorialFases } from './fase';
 import { avisarPromotora } from './avisos';
 import { alEnviar, anotar, conectarPlegables, esc, fecha, sb, traducir } from './comun';
 
-interface PromocionMin { id: string; nombre: string; promotora_id: string }
+interface PromocionMin { id: string; nombre: string; promotora_id: string; fase_proyecto?: string | null }
 interface Requisito { id: number; bloque: string; elemento: string; descripcion: string; obligatorio: boolean; activo: boolean }
 interface Documento {
 	id: number; requisito_id: number; nombre: string; ruta: string; tamano: number; version: number;
-	estado: string; nota: string | null; subido_por: string; subido_en: string; revisado_en: string | null;
+	estado: string; nota: string | null; subido_por: string; subido_en: string; revisado_en: string | null; fase?: string | null;
 }
 
-const BLOQUES = ['Planos', 'Memoria de calidades', 'Superficies', 'Marca', 'Datos legales', 'Personalización'];
+const BLOQUES = ['Planos', 'Viviendas y superficies', 'Calidades', 'Marca', 'Datos legales', 'Personalización'];
 const ESTADOS_DOC: Record<string, [string, string]> = {
-	pendiente: ['Por revisar', 'pendiente'],
-	vigente: ['Vigente', 'al-dia'],
+	pendiente: ['En revisión', 'pendiente'],
+	vigente: ['Aceptado', 'al-dia'],
 	rechazado: ['Rechazado', 'rechazado'],
 };
 
@@ -41,11 +42,12 @@ async function descargar(ruta: string, nombre: string, promocion: string): Promi
 }
 
 export async function pintarDocumentacion(caja: HTMLElement, p: PromocionMin): Promise<void> {
-	const [reqs, docs, personas] = await Promise.all([
+	const [reqs, docs, personas, historial] = await Promise.all([
 		sb.from('requisitos').select('id, bloque, elemento, descripcion, obligatorio, activo').eq('promocion_id', p.id).order('orden').order('id'),
-		sb.from('documentos').select('id, requisito_id, nombre, ruta, tamano, version, estado, nota, subido_por, subido_en, revisado_en')
+		sb.from('documentos').select('id, requisito_id, nombre, ruta, tamano, version, estado, nota, subido_por, subido_en, revisado_en, fase')
 			.eq('promocion_id', p.id).order('version', { ascending: false }),
 		sb.from('miembros').select('user_id, nombre').eq('promotora_id', p.promotora_id),
+		leerHistorialFases(sb, p.id),
 	]);
 	for (const r of [reqs, docs, personas]) if (r.error) throw r.error;
 	const requisitos = (reqs.data ?? []) as Requisito[];
@@ -65,12 +67,13 @@ export async function pintarDocumentacion(caja: HTMLElement, p: PromocionMin): P
 
 	caja.innerHTML = `
 		<h2>Documentación</h2>
+		${htmlFase(p.fase_proyecto, historial, 'administradora')}
 		<p class="resumen-docs">
 			<span class="estado ${entregados === obligatorios.length && obligatorios.length ? 'al-dia' : 'pendiente'}">Obligatorios entregados: ${entregados} de ${obligatorios.length}</span>
-			<span class="estado ${porRevisar ? 'pendiente' : ''}">Por revisar: ${porRevisar}</span>
-			<span class="estado ${vigentes ? 'al-dia' : ''}">Vigentes: ${vigentes}</span>
+			<span class="estado ${porRevisar ? 'pendiente' : ''}">En revisión: ${porRevisar}</span>
+			<span class="estado ${vigentes ? 'al-dia' : ''}">Aceptados: ${vigentes}</span>
 		</p>
-		<p class="ayuda">Al marcar un documento como vigente o rechazarlo, la promotora lo ve en su portal. Si lo rechazas, explica por qué: la nota le llegará tal cual.</p>
+		<p class="ayuda">Cuando aceptas o rechazas un documento, la promotora lo ve en MUNE Portal. Si lo rechazas, explica el motivo: la promotora recibirá tu nota tal cual, también por email.</p>
 		${[...bloques].map(([bloque, rs]) => `<div class="bloque-docs"><h3>${esc(bloque)}</h3>${rs.map((r) => {
 			const versiones = documentos.filter((d) => d.requisito_id === r.id);
 			const u = versiones[0];
@@ -81,30 +84,32 @@ export async function pintarDocumentacion(caja: HTMLElement, p: PromocionMin): P
 					<span class="estado ${clase}">${esc(etiqueta)}</span>
 				</div>
 				${versiones.length ? `<div class="historial">${versiones.map((d, i) => `<div class="historial-fila">
-					<span><strong>v${d.version}</strong> · ${esc(d.nombre)} · ${esc(tamano(d.tamano))} · ${esc(fecha(d.subido_en))} · ${esc(quien.get(d.subido_por) ?? '—')}
+					<span><strong>v${d.version}</strong> · ${esc(d.nombre)} · ${esc(tamano(d.tamano))} · ${esc(fecha(d.subido_en))}${d.fase ? ` · ${FASES[d.fase] ?? ''}` : ''} · ${esc(quien.get(d.subido_por) ?? '—')}
 						${i > 0 || d.estado !== 'pendiente' ? ` · <span class="estado ${ESTADOS_DOC[d.estado]?.[1] ?? ''}">${esc(ESTADOS_DOC[d.estado]?.[0] ?? d.estado)}</span>` : ''}</span>
 					<button class="enlace" type="button" data-bajar="${d.id}">Descargar</button>
 				</div>${d.nota ? `<p class="promo-lugar nota-doc">Nota: ${esc(d.nota)}</p>` : ''}`).join('')}</div>
 				<div class="acciones">
-					${u!.estado !== 'vigente' ? `<button class="boton pequeno" type="button" data-vigente="${u!.id}">Marcar v${u!.version} como vigente</button>` : ''}
+					${u!.estado !== 'vigente' ? `<button class="boton pequeno" type="button" data-vigente="${u!.id}">Aceptar v${u!.version}</button>` : ''}
 					${u!.estado !== 'rechazado' ? `<button class="boton secundario pequeno" type="button" data-abrir="rechazo-${u!.id}">Rechazar v${u!.version}…</button>` : ''}
 				</div>
 				<form class="peticion-form" data-rechazo="${u!.id}" data-plegable="rechazo-${u!.id}" hidden novalidate>
 					<label>¿Por qué se rechaza? (lo verá la promotora)
-						<textarea name="nota" rows="3" maxlength="2000" required placeholder="Por ejemplo: faltan las cotas de la cocina; subid el plano acotado."></textarea>
+						<textarea name="nota" rows="3" maxlength="2000" required placeholder="Por ejemplo: faltan las cotas de la cocina; sube el plano acotado."></textarea>
 					</label>
 					<p class="error" role="alert"></p>
 					<div class="acciones">
 						<button class="boton" type="submit">Rechazar</button>
 						<button class="boton secundario" type="button" data-cerrar>Cancelar</button>
 					</div>
-				</form>` : '<p class="vacio">Todavía no ha subido nada.</p>'}
+				</form>` : '<p class="vacio">La promotora todavía no ha subido nada.</p>'}
 			</article>`;
-		}).join('')}</div>`).join('') || '<p class="vacio">La lista de documentos está vacía.</p>'}
+		}).join('')}</div>`).join('') || '<p class="vacio">La lista de documentos está vacía. Pulsa «Ajustar la lista de documentos» para añadir la lista estándar o documentos sueltos.</p>'}
 		<div class="acciones"><button class="boton secundario pequeno" type="button" data-ajustar>Ajustar la lista de documentos</button></div>
 		<div data-requisitos hidden></div>`;
 
 	conectarPlegables(caja);
+	// la fase también se ve en la cabecera de la promoción: se recarga la página entera
+	conectarFase(caja, sb, p.id, p.fase_proyecto, () => location.reload(), traducir);
 	caja.querySelectorAll<HTMLButtonElement>('[data-bajar]').forEach((b) => b.addEventListener('click', () => {
 		const d = documentos.find((x) => x.id === Number(b.dataset.bajar))!;
 		void descargar(d.ruta, d.nombre, p.id);

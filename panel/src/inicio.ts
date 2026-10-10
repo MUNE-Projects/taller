@@ -1,4 +1,4 @@
-// Inicio del Panel: lo que necesita tu atención, con enlace a cada sitio.
+// Inicio de MUNE Studio: lo que necesita tu atención, con enlace a cada sitio.
 // Arriba, los avisos del sistema (015_sistema.sql); después, las versiones
 // pendientes con el estado de sus planos, la documentación por revisar y las
 // peticiones abiertas.
@@ -12,9 +12,9 @@ import { REVISION, estadoVersiones } from './versiones';
 /** Qué toca hacer con una versión pendiente, según sus planos. */
 const PASO: Record<Listos, [string, string, string]> = {
 	sin_planos: ['Revisar y publicar', 'pendiente', 'Revisa la vista previa y publícala si está bien.'],
-	sin_enviar: ['Revisar y enviar planos', 'pendiente', 'Revisa la vista previa y envía los planos a la promotora.'],
-	pendientes: ['Esperando a la promotora', '', 'La promotora está validando los planos.'],
-	cambios: ['Cambios pedidos', 'rechazado', 'La promotora ha pedido cambios en algún plano.'],
+	sin_enviar: ['Enviar los planos', 'pendiente', 'Revisa la vista previa y envía los planos a la promotora.'],
+	pendientes: ['Esperando a la promotora', '', 'La promotora está revisando los planos.'],
+	cambios: ['Cambios pedidos', 'rechazado', 'La promotora ha pedido cambios en algún plano. Mira cuáles en la promoción.'],
 	listos: ['Lista para publicar', 'al-dia', 'La promotora ha aprobado todos los planos.'],
 };
 
@@ -26,7 +26,7 @@ export async function pantallaInicio(destino: HTMLElement): Promise<void> {
 		</section>
 		<section class="tarjeta">
 			<h2>Versiones pendientes</h2>
-			<div data-versiones><p class="vacio">Consultando el escaparate…</p></div>
+			<div data-versiones><p class="vacio">Comprobando las versiones…</p></div>
 		</section>
 		<section class="tarjeta">
 			<h2>Documentación por revisar</h2>
@@ -37,7 +37,7 @@ export async function pantallaInicio(destino: HTMLElement): Promise<void> {
 			<p class="ayuda">Cuando quieras que Claude se ponga con ellas, díselo en Claude Code: «revisa las peticiones del Panel».</p>
 			<div data-peticiones><p class="vacio">Cargando…</p></div>
 		</section>
-		<p class="ayuda" data-sistema-en-orden hidden>✓ El sistema está en orden: llaves vigentes, espacio de sobra y vigilancia funcionando. <a href="#/sistema">Ver el estado</a></p>
+		<p class="ayuda" data-sistema-en-orden hidden>✓ Todo en orden: llaves vigentes, espacio suficiente y vigilancia funcionando. <a href="#/sistema">Ver el estado</a></p>
 		<div class="acciones"><a class="boton secundario" href="#/promotoras">Ver todas las promotoras y promociones</a></div>`;
 
 	void avisosSistema().then((avisos) => {
@@ -93,7 +93,7 @@ export async function pantallaInicio(destino: HTMLElement): Promise<void> {
 				<a class="fila-enlace" href="#/promocion/${esc(id)}/documentacion">
 					<span><strong>${esc(g.nombre)}</strong><br><span class="promo-lugar">Última subida: ${esc(fecha(g.ultimo))}</span></span>
 					<span class="estado pendiente">${g.n} por revisar</span>
-				</a>`).join('')}</div>` : '<p class="vacio">No hay documentación nueva.</p>';
+				</a>`).join('')}</div>` : '<p class="vacio">No hay documentación por revisar.</p>';
 		});
 
 	const peticiones = await peticionesAbiertas();

@@ -429,26 +429,6 @@ body.con-etiquetas .etiqueta { opacity: 1; }
 .preparando { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; background: var(--papel); color: var(--tinta-2); font-size: 13px; }
 .preparando[hidden] { display: none; }
 
-/* ------------------------------------------------ imagen capturada */
-#captura {
-	position: fixed;
-	inset: 0;
-	z-index: 10;
-	display: grid;
-	place-items: center;
-	padding: 24px 16px;
-	background: rgb(28 28 26 / 0.55);
-	backdrop-filter: blur(6px);
-	-webkit-backdrop-filter: blur(6px);
-}
-#captura[hidden] { display: none; }
-#captura figure { display: grid; gap: 12px; max-width: min(1200px, 100%); max-height: 100%; margin: 0; padding: 12px; background: var(--papel); border-radius: 14px; box-shadow: 0 24px 64px rgb(0 0 0 / 0.25); }
-#captura img { display: block; max-width: 100%; max-height: calc(100vh - 140px); border-radius: 6px; object-fit: contain; }
-#captura figcaption { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; font-size: 12px; color: var(--tinta-2); }
-#captura .acciones { display: flex; gap: 8px; }
-#captura a, #captura button { padding: 8px 14px; border: 1px solid var(--linea); border-radius: 8px; background: transparent; color: var(--tinta); font-size: 13px; text-decoration: none; cursor: pointer; }
-#captura button { background: var(--tinta); color: var(--papel); border-color: var(--tinta); }
-
 /* ------------------------------------------------ carga */
 #carga {
 	position: fixed;
@@ -482,7 +462,6 @@ body.listo #carga { opacity: 0; visibility: hidden; }
 	.configurador { top: auto; left: 8px; right: 8px; bottom: 8px; width: auto; max-height: 58vh; }
 	.aviso, body[data-modo="personalizar"] .aviso { left: 50%; top: 12px; bottom: auto; }
 	.pie { right: 12px; bottom: 136px; }
-	.pie #motor { display: none; }
 	body[data-modo="personalizar"] .pie { display: none; }
 }
 

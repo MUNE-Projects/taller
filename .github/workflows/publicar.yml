@@ -130,5 +130,5 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           for n in $(gh issue list --repo "$REPO" --label revision --state open --search "\"$PROMOCION $VERSION\" in:title" --json number --jq '.[].number'); do
-            gh issue close "$n" --repo "$REPO" --comment "Publicada desde el Panel por $POR."
+            gh issue close "$n" --repo "$REPO" --comment "Publicada desde MUNE Studio por $POR."
           done

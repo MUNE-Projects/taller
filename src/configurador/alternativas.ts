@@ -117,7 +117,7 @@ export function aplicarAlternativa( base: Vivienda, alternativa: Alternativa | n
 		// un muro nuevo o desplazado que atraviesa el mueble lo deja sin sitio
 		if ( murosNuevos.some( ( m ) => m.tipo !== 'pilar' && solapa( m.rect, e.rect ) ) ) {
 
-			informe.push( `${ nombre }: retirado, un tabique nuevo ocupa su posición` );
+			informe.push( `${ nombre }: se retira, porque un tabique nuevo ocupa su sitio` );
 			return [];
 
 		}
@@ -136,12 +136,12 @@ export function aplicarAlternativa( base: Vivienda, alternativa: Alternativa | n
 			const r: Rect = [ ...e.rect ];
 			if ( ahora.enX ) [ r[ 0 ], r[ 2 ] ] = [ a, b ];
 			else [ r[ 1 ], r[ 3 ] ] = [ a, b ];
-			informe.push( `${ nombre }: ajustado al muro que se conserva (${ fmtM( ahora.b - ahora.a ) } → ${ fmtM( b - a ) })` );
+			informe.push( `${ nombre }: se ajusta a la pared que se mantiene (${ fmtM( ahora.b - ahora.a ) } → ${ fmtM( b - a ) })` );
 			return [ { ...e, rect: r, origen: `${ e.origen } + recolocado` } ];
 
 		}
 
-		informe.push( `${ nombre }: retirado, se queda sin muro de apoyo` );
+		informe.push( `${ nombre }: se retira, porque se queda sin pared de apoyo` );
 		return [];
 
 	} );

@@ -17,13 +17,36 @@ export function esc(t: string): string {
 	return t.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 }
 
+/**
+ * ¿Es un mensaje escrito para personas? Los de nuestras reglas y funciones
+ * están en español y se pueden enseñar; los técnicos (en inglés, de la base de
+ * datos o del navegador) no: se quedan en la consola para diagnosticar.
+ */
+function paraPersonas(m: string): boolean {
+	return /^[¿¡A-ZÁÉÍÓÚÑ][^\n]{2,240}$/.test(m)
+		&& !/\b(the|is|of|for|with|to|violates|denied|invalid|error|failed|null|column|relation|function|syntax|jwt|token|duplicate|constraint|permission|row-level|undefined|unexpected)\b/i.test(m);
+}
+
 export function traducir(e: unknown): string {
 	const m = e instanceof Error ? e.message : typeof e === 'object' && e && 'message' in e ? String(e.message) : String(e);
-	if (/invalid login credentials/i.test(m)) return 'Correo o contraseña incorrectos.';
-	if (/rate limit|too many/i.test(m)) return 'Demasiados intentos. Espera unos minutos y vuelve a probar.';
-	if (/invalid totp|invalid code|expired/i.test(m)) return 'Código incorrecto o caducado. Prueba con el código que aparece ahora en la app.';
-	if (/failed to fetch|network/i.test(m)) return 'No hay conexión con el servidor. Revisa internet y vuelve a probar.';
-	return 'Algo ha fallado: ' + m;
+	if (/invalid login credentials/i.test(m)) return 'El correo o la contraseña no son correctos. Revísalos y vuelve a probar.';
+	if (/rate limit|too many/i.test(m)) return 'Has hecho demasiados intentos seguidos. Espera unos minutos y vuelve a probar.';
+	if (/invalid totp|invalid code|expired/i.test(m)) return 'El código no es correcto o ya ha caducado. Escribe el que aparece ahora en la app.';
+	if (/failed to fetch|network/i.test(m)) return 'No hay conexión a internet. Revisa la conexión y vuelve a probar.';
+	if (paraPersonas(m)) return m;
+	console.error('[MUNE Studio]', e);
+	return GENERICO;
+}
+
+const GENERICO = 'No se ha podido completar. Vuelve a probar en un momento; si sigue pasando, díselo a Claude.';
+
+/**
+ * Error con lo que ha pasado delante: «No se ha podido X. <motivo o qué hacer>».
+ * Si el motivo no es para personas, solo se dice qué hacer.
+ */
+export function fallo(que: string, e: unknown): string {
+	const t = traducir(e);
+	return t === GENERICO ? `${que}. Vuelve a probar en un momento; si sigue pasando, díselo a Claude.` : `${que}. ${t}`;
 }
 
 /** Conecta un formulario: desactiva el botón mientras trabaja y muestra errores. */
@@ -42,6 +65,9 @@ export function alEnviar(form: HTMLFormElement, accion: (datos: FormData) => Pro
 		}
 	});
 }
+
+/** «1 aviso», «3 avisos»: número con la palabra en singular o plural. */
+export const cuantos = (n: number, uno: string, varios: string) => `${n} ${n === 1 ? uno : varios}`;
 
 export const fecha = (iso: string) => new Date(iso).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
 

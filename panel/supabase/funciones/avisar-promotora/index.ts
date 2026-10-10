@@ -113,25 +113,25 @@ Deno.serve(async (req) => {
 		const { count } = await servicio.from('entregables').select('id', { count: 'exact', head: true })
 			.eq('promocion_id', promocion).eq('version', version).eq('tipo', 'plano');
 		if (!count) return responder(409, { error: 'Esa versión no tiene planos enviados' });
-		asunto = `${promo.nombre} · planos para validar (versión ${version.slice(1)})`;
-		texto = `MUNE ha preparado los planos comerciales de la versión ${version.slice(1)} de ${promo.nombre}.\n\n`
-			+ `Tenéis ${count} plano${count === 1 ? '' : 's'} para revisar en el portal. En cada uno podéis aprobarlo o pedir cambios explicando qué hay que corregir. La versión se publicará cuando estén todos aprobados.`;
+		asunto = `${promo.nombre} · planos comerciales para validar (${version})`;
+		texto = `MUNE ha preparado los planos comerciales de la ${version} de ${promo.nombre}.\n\n`
+			+ `Tienes ${count} plano${count === 1 ? '' : 's'} para revisar en MUNE Portal. Aprueba cada uno o pide cambios explicando qué hay que corregir. La versión se publicará cuando estén todos aprobados.`;
 		enlace = `${PORTAL}#/promocion/${promocion}/planos`;
 	}
 	if (tipo === 'publicada') {
 		const r = await fetch(`${ESCAPARATE}/${promocion}/version.json`, { cache: 'no-store' }).catch(() => null);
 		const publicada = r?.ok ? (await r.json().catch(() => null))?.version : null;
 		if (publicada !== version) return responder(409, { error: 'La web todavía no está en esa versión' });
-		asunto = `${promo.nombre} · versión ${version.slice(1)} publicada`;
-		texto = `La versión ${version.slice(1)} de ${promo.nombre} ya está publicada en la web.`;
+		asunto = `${promo.nombre} · ${version} publicada`;
+		texto = `La ${version} de ${promo.nombre} ya está publicada. Ya la pueden ver interesados y compradores.`;
 		enlace = `${ESCAPARATE}/${promocion}/`;
 	}
 	if (tipo === 'rechazado') {
 		const elemento = (doc!.requisitos as unknown as { elemento: string } | null)?.elemento ?? 'un documento';
 		claveAviso = `documento/${doc!.id}`;
 		asunto = `${promo.nombre} · documento por corregir: ${elemento}`;
-		texto = `Hemos revisado «${doc!.nombre}» (${elemento}, versión ${doc!.version}) de ${promo.nombre} y hay que corregirlo:\n\n«${doc!.nota ?? ''}»\n\n`
-			+ 'Podéis subir una versión nueva desde el portal, en la pestaña Documentación.';
+		texto = `El equipo de MUNE ha revisado «${doc!.nombre}» (${elemento}, versión ${doc!.version}) de ${promo.nombre} y necesita una corrección:\n\n«${doc!.nota ?? ''}»\n\n`
+			+ 'Sube una versión nueva desde MUNE Portal, en Documentación.';
 		enlace = `${PORTAL}#/promocion/${promocion}/documentacion`;
 	}
 

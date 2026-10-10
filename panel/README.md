@@ -16,6 +16,9 @@ con contraseña + código del móvil y registro de actividad.
   - `009_aviso_subida.sql`: aviso por email de cada documento subido (una sola vez por documento).
   - `014_codigos_comprador.sql`: códigos de comprador (solo su huella), límite de intentos, lo formalizado por cada comprador y `entrar_comprador` para la web pública (receta 24).
   - `015_sistema.sql`: llaves con su caducidad, `latido` (vigilancia automática), `avisos_sistema` y `estado_sistema` para el Inicio y la sección Sistema (receta 19).
+  - `018_fase_proyecto.sql` y `019_cambio_fase.sql`: fase del proyecto (anteproyecto, básico o ejecución) con su historial; cada documento queda marcado con la fase de ese momento; «Memoria de calidades técnica».
+  - `017_textos_requisitos.sql`: textos de la lista estándar de documentos (en singular; «Documentación técnica de materiales, acabados y equipamiento»).
+  - `016_formalizacion.sql`: contacto y datos de pago de la formalización de cada promoción (`guardar_formalizacion`), que `entrar_comprador` devuelve solo con un código válido (decisión 39).
   - `013_permisos_funciones.sql`: permisos de la cuenta interna de las funciones (service_role) sobre las tablas que usa `avisar-promotora`. **Ojo:** en el proyecto real esa cuenta no tiene permisos por defecto en las tablas nuevas; cada función que use la clave de servicio necesita su `grant`.
   - `012_avisos_promotora.sql`: avisos por email al equipo de la promotora (planos para validar, documento rechazado, versión publicada), sin repetir.
   - `011_planos.sql`: validación de planos por la promotora (planos de cada versión, aprobación heredada si no cambian, publicar solo con todo aprobado).

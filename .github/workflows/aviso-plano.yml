@@ -77,7 +77,7 @@ jobs:
             linea="- ✏️ **$(limpio "${PERSONA:-Alguien}")** pide cambios en **$(limpio "$PLANO")**: «$(limpio "$COMENTARIO")»"
           fi
           if [[ "$TODOS" == si ]]; then
-            linea="$linea"$'\n\n'"**Todos los planos de $VERSION están aprobados.** Ya puedes publicar $VERSION desde el Panel: https://panel.mune-projects.workers.dev/#/promocion/$PROMOCION/resumen"
+            linea="$linea"$'\n\n'"**Todos los planos de $VERSION están aprobados.** Ya puedes publicar $VERSION desde MUNE Studio: https://panel.mune-projects.workers.dev/#/promocion/$PROMOCION/resumen"
           fi
           gh label create planos --repo "$REPO" --color 2F5D50 \
             --description "Validación de planos por una promotora" 2>/dev/null || true
@@ -90,7 +90,7 @@ jobs:
             cuerpo=$(printf '%s\n' \
               "## 📐 Validación de planos · $(limpio "$NOMBRE") $VERSION" "" \
               "$linea" "" \
-              "**Míralo en tu Panel:** https://panel.mune-projects.workers.dev/#/promocion/$PROMOCION/resumen" "" \
+              "**Míralo en MUNE Studio:** https://panel.mune-projects.workers.dev/#/promocion/$PROMOCION/resumen" "" \
               "_Las próximas validaciones de esta versión se añadirán aquí como comentarios._")
             gh issue create --repo "$REPO" --label planos --title "$titulo" --body "$cuerpo"
           fi

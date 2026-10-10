@@ -22,10 +22,11 @@ Claude se usa **solo en producción** (preparar, interpretar, revisar), **nunca 
 - **Códigos de comprador** (Fase 1): se validan en Supabase. Se guarda solo su hash, con límite de intentos, regeneración y revocación. La web pública es estática y no depende de Supabase.
 - **Entorno en tres capas** (A precisa, B próxima, C lejana), con su fiabilidad indicada. Fuentes: generación propia, Catastro, IGN/PNOA/LiDAR y OSM. Google 3D Tiles queda excluido salvo aprobación expresa. Dron: solo un añadido opcional futuro.
 - **3D híbrido:** la arquitectura se genera desde datos; el mobiliario y los objetos son GLB reutilizables de la biblioteca. Se permiten assets externos gratuitos (también modelos 3D) si su licencia permite uso comercial y redistribución, y siempre registrados.
+- **Marca (decisión 39):** MUNE Projects = la empresa; **MUNE** = la plataforma y la marca visible («The agile visual platform»). Capas: **MUNE Portal** (la promotora), **MUNE Studio** (lo interno de MUNE: el Panel y el Studio) y la **experiencia pública de la promoción** (marca blanca). «Escaparate» es solo un nombre técnico interno. Textos: claros, directos, poco técnicos; tú en singular; «MUNE» para la plataforma y «el equipo de MUNE» para las personas; versiones «v7»; nunca errores técnicos a la vista. Arquitectura completa aprobada (decisión 40) en `docs/arquitectura-mune.md`: se implementa por pasos 0–5, uno por propuesta, y en el paso 1 desaparecen «Panel», «taller» y «escaparate» como nombres técnicos.
 - **Personas:**
-  - la **administradora** (Carolina) usa su **Panel**;
-  - las **promotoras** tendrán su **portal** (Fase 1): subir documentación, validar planos, ver versiones, marca;
-  - los **compradores** ven la visita pública y, con código, su parte privada.
+  - la **administradora** (Carolina) usa **MUNE Studio** (el Panel);
+  - las **promotoras** usan **MUNE Portal**: documentación, planos, compradores, ficha y formalización; marca y catálogo en la Fase 2;
+  - los **compradores** ven la experiencia pública y, con código, su parte privada (personalización, histórico y formalización).
 
 ## Reglas que nunca se rompen
 
@@ -56,8 +57,8 @@ Claude se usa **solo en producción** (preparar, interpretar, revisar), **nunca 
 | Solo lo publicado | GitHub `MUNE-Projects/escaparate` (privado): `main` = producción, `revision` = vista previa |
 | Web pública | https://escaparate.mune-projects.workers.dev/residencial-demo/ |
 | Vista previa | https://revision-escaparate.mune-projects.workers.dev/residencial-demo/ |
-| Panel | https://panel.mune-projects.workers.dev (vista previa: https://revision-panel.mune-projects.workers.dev) |
-| Portal de promotoras | https://portal.mune-projects.workers.dev (vista previa: https://revision-portal.mune-projects.workers.dev), código en `portal/` |
+| MUNE Studio (Panel) | https://panel.mune-projects.workers.dev (vista previa: https://revision-panel.mune-projects.workers.dev) |
+| MUNE Portal | https://portal.mune-projects.workers.dev (vista previa: https://revision-portal.mune-projects.workers.dev), código en `portal/` |
 | Base de datos y usuarios | Supabase, proyecto `mune-inmobiliarias` (UE, Irlanda), plan gratuito: `https://iowtdenlkxjqzlpwizgb.supabase.co` |
 | Alojamiento | Cloudflare Workers (cuenta con subdominio `mune-projects`), plan gratuito |
 
@@ -102,6 +103,7 @@ Ahora la web pública está en **v7**, y la **v8** (de prueba, idéntica) sigue 
 
   El Panel avisa en Inicio a 60 y 30 días, y la vigilancia manda email a 30 días (receta 19). Al renovarlas, apuntar la fecha en *Sistema → Ya la he renovado*.
 - La protección de ramas en almacenes privados es de pago: no está activada.
+- **Antes del primer cliente real:** sustituir el remitente `hello.muneprojects@gmail.com` por una dirección con dominio propio de MUNE (tiene coste: consultar antes).
 - El plan gratuito de Supabase se duerme tras 7 días sin uso; `vigilancia.yml` lo mantiene despierto. Si aun así se duerme, se despierta gratis desde el panel de Supabase.
 
 **Ahora: Fase 1 · Portal seguro**, aprobada por etapas (decisiones 17–25 de `docs/arquitectura.md`, que prevalecen):
@@ -111,7 +113,7 @@ Ahora la web pública está en **v7**, y la **v8** (de prueba, idéntica) sigue 
 3. ✔ documentación (recetas 2 y 13, email de subida): pestaña *Documentación* del Panel, `009_aviso_subida.sql`, `010_borrar.sql` (exportar todo en ZIP y borrar promociones o promotoras desactivadas: decisión 33), función `aviso-subida` + `aviso-documento.yml`, `herramientas/documentos.mjs` y `docs/recetas/`;
 4. ✔ validación de planos (decisión 34): `herramientas/planos.mjs` (planos de cada versión, al preparar), *Enviar los planos a la promotora* en el Panel, pestaña *Planos* del portal, `011_planos.sql`, `aviso-plano.yml`; solo se publica con todos aprobados. Avisos por email a la promotora (decisión 35): función `avisar-promotora`, `aviso-promotora.yml` (Gmail de MUNE, secreto `AVISOS_GMAIL_CLAVE`), `012_avisos_promotora.sql` y `013_permisos_funciones.sql` (en el proyecto real, la cuenta `service_role` de las funciones necesita `grant` explícito en cada tabla que use);
 5. ✔ códigos de comprador (receta 24, decisión 36): pestaña *Compradores* del Panel y del portal, `014_codigos_comprador.sql` (`entrar_comprador` desde el botón de la web pública); la web pública ya no lleva códigos ni selecciones. Sin precio de la vivienda ni datos personales del comprador (decisión 37): el comprador solo ve el total de su personalización, y su nombre y DNI van solo al PDF;
-6. bandeja de Inicio y avisos del sistema (receta 19, decisión 38): `015_sistema.sql` (llaves con caducidad, `latido`, `avisos_sistema`, `estado_sistema`), `panel/src/sistema.ts`, `vigilancia.yml` (cada 3 días: mantiene despierto Supabase y avisa por email de llaves y caídas);
+6. ✔ bandeja de Inicio y avisos del sistema (receta 19, decisión 38): `015_sistema.sql` (llaves con caducidad, `latido`, `avisos_sistema`, `estado_sistema`), `panel/src/sistema.ts`, `vigilancia.yml` (cada 3 días: mantiene despierto Supabase y avisa por email de llaves y caídas);
 7. copias en el almacén privado `copias` de GitHub y simulacro (receta 18);
 8. alta de promoción (receta 1) y ensayo con una promotora ficticia.
 
