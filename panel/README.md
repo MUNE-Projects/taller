@@ -14,6 +14,7 @@ con contraseña + código del móvil y registro de actividad.
   - `007_equipos.sql`: equipos por promoción (o acceso a todas las de la promotora), sin roles, y datos fiscales de promotoras y promociones;
   - `008_ficha_promocion.sql`: ficha de la promoción y lista estándar de documentos;
   - `009_aviso_subida.sql`: aviso por email de cada documento subido (una sola vez por documento).
+  - `013_permisos_funciones.sql`: permisos de la cuenta interna de las funciones (service_role) sobre las tablas que usa `avisar-promotora`. **Ojo:** en el proyecto real esa cuenta no tiene permisos por defecto en las tablas nuevas; cada función que use la clave de servicio necesita su `grant`.
   - `012_avisos_promotora.sql`: avisos por email al equipo de la promotora (planos para validar, documento rechazado, versión publicada), sin repetir.
   - `011_planos.sql`: validación de planos por la promotora (planos de cada versión, aprobación heredada si no cambian, publicar solo con todo aprobado).
   - `010_borrar.sql`: borrar desde el Panel una promoción o una promotora desactivada, con todo lo suyo (antes obliga a descargar la exportación).
