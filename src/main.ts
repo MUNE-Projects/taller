@@ -664,11 +664,17 @@ async function iniciar() {
 	} );
 
 	// ---------------------------------------------------------------- ficha
+	// El comprador ve su vivienda («Portal 3 · Bajo A»), no la tipología de la que sale.
+	function nombreVivienda( v: ViviendaPromocion ) {
+
+		return v.portal && ! v.ref.toLowerCase().includes( 'portal' ) ? `Portal ${ v.portal } · ${ v.ref }` : v.ref;
+
+	}
 	function actualizarFicha() {
 
 		const t = modelo.tipologia;
 		const v = fichaVivienda;
-		$( '#ficha-vivienda' ).textContent = comprador ? `${ v.ref } · ${ t.nombre }` : t.nombre;
+		$( '#ficha-vivienda' ).textContent = comprador ? nombreVivienda( v ) : t.nombre;
 		$( '#ficha-datos' ).textContent = `${ t.dormitorios } dormitorios · ${ t.banos } baños · ${ fmtM2( utilInterior() ) } útiles · terraza y porche de ${ fmtM2( v.superficies.exterior ) }`;
 		document.body.classList.toggle( 'comprador', !! comprador );
 
@@ -883,7 +889,7 @@ async function iniciar() {
 
 		$( '#titulo-resumen' ).textContent = pv.pack.titulo;
 		dialogo.querySelector( '.contenido' )!.innerHTML = `
-			<p class="fecha">${ PROMOCION.promocion.nombre } · ${ fichaVivienda.ref } · ${ modelo.tipologia.nombre }</p>
+			<p class="fecha">${ PROMOCION.promocion.nombre } · ${ nombreVivienda( fichaVivienda ) }</p>
 			<table>
 				<tbody>${ filas }</tbody>
 				<tfoot><tr class="total"><th scope="row">Total mejoras del pack</th><td></td><td>${ total ? `+${ fmtEuros( total ) }` : '0 €' }</td></tr></tfoot>
@@ -1083,7 +1089,7 @@ async function iniciar() {
 		promocion: PROMOCION, tipologia: modelo.tipologia, vivienda, ficha: comprador ? fichaVivienda : null,
 		distribucion: conf.alternativa ? ( modelo.alternativas.find( ( x ) => x.id === conf.alternativa )?.nombre ?? 'alternativa' ) : 'base',
 	} );
-	const nombreArchivo = ( base: string ) => `${ base }-${ PROMOCION.promocion.nombre }-${ modelo.tipologia.nombre }${ comprador ? `-${ fichaVivienda.ref }` : '' }`.toLowerCase().normalize( 'NFD' ).replace( /[^a-z0-9]+/g, '-' ).replace( /-$/, '' );
+	const nombreArchivo = ( base: string ) => `${ base }-${ PROMOCION.promocion.nombre }-${ comprador ? nombreVivienda( fichaVivienda ) : modelo.tipologia.nombre }`.toLowerCase().normalize( 'NFD' ).replace( /[^a-z0-9]+/g, '-' ).replace( /-$/, '' );
 	const opcionesPlano = () => abrirDescarga( 'Plano comercial', 'Plano a escala generado a partir del modelo de la vivienda, con superficies, leyenda, escala gráfica, orientación y la marca de la promoción.', [
 		{ titulo: 'PDF A3 vectorial', detalle: 'Para imprimir y adjuntar a la documentación comercial. Nítido a cualquier tamaño.', formato: 'PDF', hacer: async ( pr ) => {
 

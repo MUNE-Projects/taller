@@ -736,6 +736,8 @@ await caso( DEBE_FALLAR, '31. Códigos de comprador: otra promotora, el robot o 
 		tablaIntentos: await anonimo.from( 'intentos_comprador' ).select( '*' ),
 		seleccionesAnonimo: await anonimo.from( 'selecciones_comprador' ).select( '*' ),
 		seleccionesOtra: await aprobB.from( 'selecciones_comprador' ).insert( { promocion_id: 'prueba-a', vivienda_ref: 'Bajo A', pack: 'x', fecha: '2026-10-10' } ),
+		todosOtra: await aprobB.rpc( 'generar_codigos_pendientes', { p_promocion: 'prueba-a', p_viviendas: [ 'Bajo Z' ] } ),
+		todosAnonimo: await anonimo.rpc( 'generar_codigos_pendientes', { p_promocion: 'prueba-a', p_viviendas: [ 'Bajo Z' ] } ),
 	};
 	const noFallan = Object.keys( r ).filter( ( k ) => ! falla( r[ k ] ) );
 	if ( noFallan.length ) throw new Error( `no fallan: ${ noFallan.join( ', ' ) }` );
@@ -766,6 +768,16 @@ await caso( DEBE_FUNCIONAR, 'Códigos de comprador: la promotora genera y cambia
 		&& ! mal.error && mal.data === null && otraPromocion === null
 		&& viejo === null && mismo?.selecciones?.cocinas && nuevo?.vivienda === 'Bajo A' && Object.keys( nuevo.selecciones ).length === 0
 		&& fila.comprador === 2 && fila.accesos === 1 && ! ( 'huella' in fila );
+
+} );
+
+await caso( DEBE_FUNCIONAR, 'Códigos de comprador: la promotora genera de golpe los de las viviendas que no tienen (para el Excel), y valen', async () => {
+
+	const nuevos = await exigir( gestorA.rpc( 'generar_codigos_pendientes', { p_promocion: 'prueba-a', p_viviendas: [ 'Bajo A', 'Bajo B', 'Bajo B', ' 1ºC ' ] } ), 'todos' );
+	const refs = nuevos.map( ( x ) => x.vivienda_ref ).sort();
+	const entraB = ( await entrarComprador( nuevos.find( ( x ) => x.vivienda_ref === 'Bajo B' ).codigo ) ).data;
+	const otraVez = await exigir( gestorA.rpc( 'generar_codigos_pendientes', { p_promocion: 'prueba-a', p_viviendas: [ 'Bajo B' ] } ), 'otra vez' );
+	return JSON.stringify( refs ) === JSON.stringify( [ '1ºC', 'Bajo B' ] ) && entraB?.vivienda === 'Bajo B' && otraVez.length === 0;
 
 } );
 

@@ -120,6 +120,49 @@ end $$;
 revoke all on function public.generar_codigo_comprador(text, text, boolean) from public, anon;
 grant execute on function public.generar_codigo_comprador(text, text, boolean) to authenticated;
 
+-- Códigos de todas las viviendas que aún no tienen (la lista la manda el
+-- portal, de viviendas.json). Devuelve los códigos una sola vez, para el Excel.
+create or replace function public.generar_codigos_pendientes(p_promocion text, p_viviendas text[])
+returns table (vivienda_ref text, codigo text)
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+	ref text;
+	nuevo text;
+	n int := 0;
+begin
+	if not (public.es_admin() or public.es_miembro_de_promocion(p_promocion)) then
+		raise exception 'Sin permiso para los códigos de esta promoción';
+	end if;
+	if coalesce(array_length(p_viviendas, 1), 0) > 2000 then
+		raise exception 'Demasiadas viviendas';
+	end if;
+	for ref in select distinct btrim(x) from unnest(p_viviendas) x
+		where char_length(btrim(x)) between 1 and 60
+			and not exists (select 1 from public.codigos_comprador c
+				where c.promocion_id = p_promocion and c.vivienda_ref = btrim(x) and c.activo)
+		order by 1
+	loop
+		nuevo := 'c-' || substr(replace(gen_random_uuid()::text, '-', ''), 1, 12);
+		insert into public.codigos_comprador (promocion_id, vivienda_ref, huella, comprador)
+		values (p_promocion, ref, encode(sha256(convert_to(nuevo, 'UTF8')), 'hex'),
+			greatest(1, coalesce((select max(c.comprador) from public.codigos_comprador c
+				where c.promocion_id = p_promocion and c.vivienda_ref = ref), 1)));
+		vivienda_ref := ref;
+		codigo := nuevo;
+		n := n + 1;
+		return next;
+	end loop;
+	if n > 0 then
+		insert into public.registro (user_id, accion, detalle)
+		values (auth.uid(), 'genera los códigos de comprador', jsonb_build_object('promocion', p_promocion, 'viviendas', n));
+	end if;
+end $$;
+revoke all on function public.generar_codigos_pendientes(text, text[]) from public, anon;
+grant execute on function public.generar_codigos_pendientes(text, text[]) to authenticated;
+
 -- Estado de los códigos de una promoción (sin huellas).
 create or replace function public.codigos_de_promocion(p_promocion text)
 returns table (vivienda_ref text, comprador int, creado_en timestamptz, ultimo_acceso timestamptz, accesos int)

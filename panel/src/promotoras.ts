@@ -675,7 +675,7 @@ export async function pantallaPromocion(destino: HTMLElement, id: string, pestan
 	}
 
 	if (actual === 'compradores') {
-		await pintarCompradores(caja, { sb, esc, fecha, traducir, escaparate: ESCAPARATE, revision: REVISION }, p);
+		await pintarCompradores(caja, { sb, esc, fecha, traducir, escaparate: ESCAPARATE, revision: REVISION, modo: 'administradora' }, p);
 	}
 
 	if (actual === 'peticiones') {

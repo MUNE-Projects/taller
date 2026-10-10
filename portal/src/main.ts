@@ -374,7 +374,7 @@ async function pantallaPromocion(id: string, pestana = 'resumen', extra = '', me
 	}
 
 	if (actual === 'compradores') {
-		await pintarCompradores(caja, { sb, esc, fecha, traducir, escaparate: ESCAPARATE, revision: REVISION }, p);
+		await pintarCompradores(caja, { sb, esc, fecha, traducir, escaparate: ESCAPARATE, revision: REVISION, modo: 'promotora' }, p);
 	}
 
 	if (actual === 'datos') {

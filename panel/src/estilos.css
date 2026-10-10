@@ -203,7 +203,13 @@ h3.subtitulo { margin: 18px 0 6px; font-size: 14px; font-weight: 600; }
 .estado.rechazado { background: #f8e6e6; color: var(--error); }
 
 /* Códigos de comprador (Etapa 5) */
-.acciones-fila { white-space: nowrap; }
+.col-acciones { white-space: nowrap; }
 .cambio { display: grid; gap: 6px; justify-items: start; white-space: normal; margin-top: 6px; }
 .codigo-nuevo { display: grid; gap: 8px; margin-bottom: 14px; padding: 14px 16px; border-radius: 10px; background: var(--acento-suave); border: 1px solid var(--acento); }
 .codigo-nuevo .codigo { font: 600 22px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.06em; color: var(--tinta); user-select: all; }
+
+.compradores:not(.con-acciones) .col-acciones { display: none; }
+.buscador { max-width: 320px; margin: 10px 0 4px; }
+.ayuda-codigos { margin: 6px 0; font-size: 14px; color: var(--tinta-2); }
+.ayuda-codigos summary { cursor: pointer; color: var(--acento); }
+tr[hidden] { display: none; }

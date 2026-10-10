@@ -1,10 +1,11 @@
 # Receta 24 · Códigos de comprador
 
 **Lo dices así:** «Dame un código para el 2ºB de Residencial X» (o lo hace la promotora desde su portal).
-**Tipo:** sin Claude: Panel o portal, pestaña **Compradores** de la promoción.
+**Tipo:** sin Claude. Lo hace la **promotora** en su portal (pestaña **Compradores**). En el Panel, la administradora consulta; generar o cambiar queda plegado en «Ayudar con un código», para cuando le escriben pidiendo ayuda.
 
 ## Cómo funciona
-- **Un código por vivienda** (`c-` y 12 cifras). Lo genera la promotora (portal) o la administradora (Panel). Solo se ve **al generarlo**: en Supabase queda su huella, nunca el código. Si se pierde, se cambia.
+- **Un código por vivienda** (`c-` y 12 cifras). Solo se ve **al generarlo**: en Supabase queda su huella, nunca el código (decidido el 10/10/2026: si un comprador lo olvida, se cambia, no se busca).
+- **Todos a la vez:** «Generar los códigos de todas las viviendas y descargar el Excel» crea los que faltan y descarga un **Excel (.xlsx)** con vivienda, portal, planta, código y enlace directo. También uno a uno, con *Copiar código*, *Copiar mensaje para el comprador* y *Descargar en Excel*. Hay un buscador de viviendas.
 - Se lo da la promotora o el comercial al comprador. Con él entra en la web pública: «¿Ya eres comprador? Accede para personalizar tu vivienda», o directamente con el enlace `…/<promoción>/#c-…`.
 - **Cambiar código** pregunta para quién es:
   - **mismo comprador** (lo ha perdido): conserva lo que tenía formalizado;
@@ -13,6 +14,7 @@
 - **No caducan:** valen hasta que se cambian o se borra la promoción.
 - **Límite de intentos:** 10 fallos en 15 minutos desde la misma dirección (o 300 en una hora en la promoción) bloquean un rato.
 - La pestaña muestra si el comprador ya ha entrado, cuándo fue la última vez y cuántas veces.
+- En la web, el comprador ve **su vivienda** («Portal 3 · Bajo A»), no la tipología de la que sale.
 
 ## Piezas
 - `panel/supabase/014_codigos_comprador.sql`: códigos (huella), selecciones formalizadas de cada comprador, intentos, `generar_codigo_comprador`, `codigos_de_promocion`, `entrar_comprador` (la llama la web pública, sin sesión).
