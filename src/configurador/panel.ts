@@ -81,11 +81,12 @@ export class Panel {
 		const chip = h( 'span', { class: `estado-pack ${ estado }` } );
 		if ( estado !== 'disponible' ) chip.insertAdjacentHTML( 'afterbegin', CANDADO );
 		chip.append( ETIQUETA_ESTADO[ estado ] );
-		// próximamente: solo nombre, estado y un aviso neutro (sin fechas, precios
-		// ni opciones, que todavía pueden cambiar)
+		// próximamente: solo nombre, estado, un aviso neutro y la fecha de apertura
+		// si existe (sin precios ni opciones, que todavía pueden cambiar)
 		if ( estado === 'proximamente' ) return h( 'section', { class: 'pack', 'data-estado': estado, 'aria-label': `${ pack.titulo }: ${ ETIQUETA_ESTADO[ estado ] }` },
 			h( 'header', { class: 'cabecera-pack' }, h( 'div', { class: 'titulo-pack' }, h( 'h3', {}, pack.titulo ), chip ) ),
-			h( 'p', { class: 'nota-pack' }, 'Este pack se abrirá más adelante. Te avisaremos cuando empiece su periodo de selección.' ) );
+			h( 'p', { class: 'nota-pack' }, 'Este pack se abrirá más adelante. La promotora te avisará cuando empiece su periodo de selección.' ),
+			pack.desde ? h( 'p', { class: 'periodo-pack' }, textoPeriodo( pack, estado ) ) : null );
 		const cabecera = h( 'header', { class: 'cabecera-pack' },
 			h( 'div', { class: 'titulo-pack' }, h( 'h3', {}, pack.titulo ), chip ),
 			h( 'p', { class: 'periodo-pack' }, textoPeriodo( pack, estado ) ),

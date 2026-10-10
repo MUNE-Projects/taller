@@ -71,7 +71,7 @@ export async function pintarCompradores(caja: HTMLElement, d: Dependencias, p: P
 		<h2>Compradores</h2>
 		<p class="ayuda">${admin
 			? 'Los códigos los genera y entrega la promotora desde MUNE Portal. Aquí ves qué viviendas tienen código y si el comprador ya ha entrado.'
-			: 'Un código por vivienda. Dáselo al comprador: con él entra en la web de la promoción, en «¿Ya eres comprador? Entra para personalizar tu vivienda». Los códigos solo se ven al generarlos: descarga el Excel y guárdalo. Si un comprador pierde el suyo, cámbialo por otro.'}</p>
+			: 'Cada vivienda tiene un código de acceso. Compártelo con el comprador para que pueda entrar en su vivienda y acceder a su personalización. Los códigos solo se muestran al generarlos, así que descarga el Excel y guárdalo. Si un comprador pierde el suyo, cámbialo por otro.'}</p>
 		<p class="promo-versiones">${conCodigo} de ${refs.length} vivienda${refs.length === 1 ? '' : 's'} con código</p>
 		${aviso ? `<p class="aviso" role="status">${esc(aviso)}</p>` : ''}
 		<div data-codigo-nuevo></div>
@@ -142,7 +142,7 @@ export async function pintarCompradores(caja: HTMLElement, d: Dependencias, p: P
 		fila.querySelectorAll<HTMLButtonElement>('[data-generar]').forEach((b) => b.addEventListener('click', async () => {
 			const ref = fila.dataset.vivienda!;
 			const tipo = b.dataset.generar!;
-			if (tipo === 'nuevo' && !confirm(`¿Código para un comprador nuevo de ${ref}?\n\nEl comprador nuevo empieza de cero: no verá nada de lo que eligió el anterior (queda en el historial). El código actual dejará de valer.`)) return;
+			if (tipo === 'nuevo' && !confirm(`¿Código para un comprador nuevo de ${ref}?\n\nEl nuevo comprador empezará de cero y no verá las selecciones del anterior. Las selecciones anteriores se conservarán en el historial interno de la vivienda. El código actual dejará de valer.`)) return;
 			b.disabled = true;
 			const { data: codigo, error: e } = await d.sb.rpc('generar_codigo_comprador', { p_promocion: p.id, p_vivienda: ref, p_nuevo_comprador: tipo === 'nuevo' });
 			if (e || typeof codigo !== 'string') { b.disabled = false; alert(d.traducir(e)); return; }

@@ -197,7 +197,7 @@ function conectarFiscal(guardar: (d: FormData) => PromiseLike<{ error: unknown }
 const ESTADOS_PROMO: Record<string, [string, string]> = {
 	documentacion: ['Recogiendo documentación', 'pendiente'],
 	en_produccion: ['En producción', 'pendiente'],
-	en_validacion: ['Planos por validar', 'pendiente'],
+	en_validacion: ['Planos comerciales por validar', 'pendiente'],
 	publicada: ['Publicada', 'al-dia'],
 };
 
@@ -253,7 +253,7 @@ interface Documento { id: number; requisito_id: number; nombre: string; ruta: st
 interface Entregable { id: number; version: string; tipo: string; tipologia: string | null; nombre: string; ruta: string }
 
 const TIPOS_ENTREGABLE: Record<string, string> = { infografia: 'Infografía', pdf: 'PDF' };
-const PESTANAS: [string, string][] = [['resumen', 'Resumen'], ['documentacion', 'Documentación'], ['planos', 'Planos'], ['compradores', 'Compradores'], ['datos', 'Ficha y datos']];
+const PESTANAS: [string, string][] = [['resumen', 'Resumen'], ['documentacion', 'Documentación'], ['planos', 'Planos comerciales'], ['compradores', 'Compradores'], ['datos', 'Ficha y datos']];
 
 async function pantallaPromocion(id: string, pestana = 'resumen', extra = '', mensaje = ''): Promise<void> {
 	const [promo, reqs, docs, versiones] = await Promise.all([
@@ -348,7 +348,7 @@ async function pantallaPromocion(id: string, pestana = 'resumen', extra = '', me
 		}).join('')}</div>`).join('');
 		caja.innerHTML = `
 			<h2>Documentación</h2>
-			<p class="ayuda">Lo que necesitamos para preparar la promoción. Puedes subir archivos de hasta 50 MB. Si te equivocas, sube una versión nueva: las anteriores se conservan.</p>
+			<p class="ayuda">Lo que necesitamos para preparar la promoción. Puedes subir archivos de hasta 50 MB. Si necesitas sustituir un archivo, sube una versión nueva. Las anteriores se conservan.</p>
 			${htmlDocs || '<p class="vacio">El equipo de MUNE aún no ha preparado la lista de documentos de esta promoción.</p>'}`;
 		app.querySelectorAll<HTMLInputElement>('[data-subir]').forEach((input) => input.addEventListener('change', () => {
 			const archivo = input.files?.[0];
@@ -366,7 +366,7 @@ async function pantallaPromocion(id: string, pestana = 'resumen', extra = '', me
 				.eq('promocion_id', id).neq('tipo', 'plano').order('creado_en', { ascending: false });
 			const extras = (otros ?? []) as Entregable[];
 			caja.innerHTML = `${version ? await htmlLista(id, version, versiones)
-				: '<h2>Planos comerciales</h2><p class="vacio">Todavía no hay planos para validar. Cuando MUNE los prepare a partir de tu documentación, aparecerán aquí.</p>'}
+				: '<h2>Planos comerciales</h2><p class="vacio">Todavía no hay planos comerciales para validar. Cuando MUNE los prepare a partir de tu documentación, aparecerán aquí.</p>'}
 				${extras.length ? `<h2 class="separado">Otros entregables</h2>${extras.map((e) => `<div class="entregable">
 					<span>${esc(TIPOS_ENTREGABLE[e.tipo] ?? e.tipo)} · ${esc(e.version)}<br><span class="promo-lugar">${esc(e.nombre)}</span></span>
 					<button class="boton secundario pequeno" type="button" data-bajar="entregables" data-ruta="${esc(e.ruta)}" data-nombre="${esc(e.nombre)}">Descargar</button>
@@ -381,13 +381,13 @@ async function pantallaPromocion(id: string, pestana = 'resumen', extra = '', me
 	if (actual === 'datos') {
 		caja.innerHTML = `
 			<h2>Ficha de la promoción</h2>
-			<p class="ayuda">Los datos básicos del proyecto. La referencia catastral nos permite recrear el entorno de la parcela.</p>
+			<p class="ayuda">Los datos básicos del proyecto. La referencia catastral nos ayuda a situar correctamente la parcela y preparar su entorno.</p>
 			${formFicha(p as unknown as Ficha)}
 			<h2 class="separado">Datos fiscales de la promoción</h2>
 			<p class="ayuda">La sociedad que lleva esta promoción. Si es la misma que la de la promotora, pulsa «Copiar los datos de la promotora».</p>
 			${formFiscal(p, false, true)}
 			<h2 class="separado">Formalización de la personalización</h2>
-			<p class="ayuda">Cuando un comprador termina su personalización, descarga un documento, lo firma y lo envía junto con el justificante de pago. Indica aquí a quién tiene que enviarlo y, si el pago es por transferencia, los datos de la cuenta. Solo lo ven los compradores que entran con su código.</p>
+			<p class="ayuda">Cuando un comprador termina su personalización, descarga el documento de selección y lo firma. Indica aquí a quién debe enviarlo y, si las mejoras se pagan por transferencia, los datos de la cuenta. Solo lo ven los compradores que entran con su código.</p>
 			${formFormalizacion((p as unknown as { formalizacion: Formalizacion }).formalizacion)}`;
 		conectarFormulario('[data-ficha]', (d) => sb.rpc('guardar_ficha_promocion', datosFicha(p.id, d)));
 		conectarFormulario('[data-formalizacion]', (d) => sb.rpc('guardar_formalizacion', datosFormalizacion(p.id, d)));

@@ -902,9 +902,9 @@ Es una aproximación ligera; no reproduzcas un producto concreto. Responde SOLO 
 		const m = api.modelo();
 		// lo que ya está integrado en los datos
 		const integrado: Record<string, string> = {
-			tipologias: `${ p.tipologias.length } tipología(s) modelada(s)`,
+			tipologias: `${ p.tipologias.length } ${ p.tipologias.length === 1 ? 'tipología modelada' : 'tipologías modeladas' }`,
 			superficies: `Útil ${ m.vivienda.meta.superficies_oficiales.interior } m² · exterior ${ m.vivienda.meta.superficies_oficiales.exterior } m²`,
-			viviendas: `${ p.viviendas.length } vivienda(s): ${ p.viviendas.map( ( v ) => v.ref ).join( ', ' ) }`,
+			viviendas: `${ p.viviendas.length } ${ p.viviendas.length === 1 ? 'vivienda' : 'viviendas' }: ${ p.viviendas.map( ( v ) => v.ref ).join( ', ' ) }`,
 			'memoria-calidades': 'Acabados de la memoria aplicados al catálogo',
 			branding: `Marca «${ p.marca.promotora }» aplicada`,
 			acabados: `${ api.catalogo.categorias.length } categorías de personalización`,

@@ -14,7 +14,7 @@
 
 import { datosFormalizacion, formFormalizacion, type Formalizacion } from './formalizacion';
 import { pintarActividad } from './actividad';
-import { alEnviar, anotar, conectarPlegables, esc, fallo, fecha, sb, traducir } from './comun';
+import { alEnviar, anotar, conectarPlegables, cuantos, esc, fallo, fecha, sb, traducir } from './comun';
 import { pintarDocumentacion } from './documentacion';
 import { exportarPromocion, exportarPromotora, type Resultado } from './exportar';
 import { pintarPeticiones } from './peticiones';
@@ -40,7 +40,7 @@ const CAMPOS_PROMOCION = `id, nombre, ubicacion, estado, activa, promotora_id, r
 const ESTADOS: Record<string, string> = {
 	documentacion: 'Recogiendo documentación',
 	en_produccion: 'En producción',
-	en_validacion: 'Planos por validar',
+	en_validacion: 'Planos comerciales por validar',
 	publicada: 'Publicada',
 };
 
@@ -434,7 +434,7 @@ function conectarExportar(raiz: HTMLElement, boton: HTMLButtonElement, exportar:
 		boton.disabled = true;
 		try {
 			const r = await exportar((t) => avisar(t));
-			avisar(r.avisos.length ? `La exportación se ha descargado (${r.archivos} archivos), pero con ${r.avisos.length} aviso(s): míralos en el archivo LEEME.txt del ZIP.`
+			avisar(r.avisos.length ? `La exportación se ha descargado (${r.archivos} archivos), pero con ${cuantos(r.avisos.length, 'aviso', 'avisos')}: míralos en el archivo LEEME.txt del ZIP.`
 				: `Exportación descargada: ${r.archivos} archivos. Está en tu carpeta de Descargas.`, r.avisos.length > 0);
 		} catch (e) {
 			avisar(traducir(e), true);
@@ -486,7 +486,7 @@ function pintarZonaBorrado(zona: HTMLElement, b: Borrado): void {
 		try {
 			const r = await b.exportar((t) => { progreso.textContent = t; });
 			progreso.textContent = r.avisos.length
-				? `✓ Descargada (${r.archivos} archivos), con ${r.avisos.length} aviso(s): revisa el LEEME.txt antes de borrar.`
+				? `✓ Descargada (${r.archivos} archivos), con ${cuantos(r.avisos.length, 'aviso', 'avisos')}: revisa el LEEME.txt antes de borrar.`
 				: `✓ Descargada: ${r.archivos} archivos. Guárdala bien antes de seguir.`;
 			campo.disabled = false;
 			campo.focus();
@@ -552,8 +552,8 @@ async function pintarBorradoPromocion(zona: HTMLElement, p: Promocion): Promise<
 	]);
 	pintarZonaBorrado(zona, {
 		que: 'la promoción', nombre: p.nombre,
-		detalle: `<p>Se borrará todo lo de <strong>${esc(p.nombre)}</strong>: ${docs} documento(s) subido(s), ${planos} plano(s) entregado(s),
-			${(archivos.data as unknown[] | null)?.length ?? 0} archivo(s) guardado(s), ${equipo} acceso(s) de su equipo y ${peticiones} petición(es) de cambios.</p>${web}`,
+		detalle: `<p>Se borrará todo lo de <strong>${esc(p.nombre)}</strong>: ${cuantos(docs, 'documento subido', 'documentos subidos')}, ${cuantos(planos, 'plano entregado', 'planos entregados')},
+			${cuantos((archivos.data as unknown[] | null)?.length ?? 0, 'archivo guardado', 'archivos guardados')}, ${cuantos(equipo, 'acceso de su equipo', 'accesos de su equipo')} y ${cuantos(peticiones, 'petición de cambios', 'peticiones de cambios')}.</p>${web}`,
 		exportar: (progreso) => exportarPromocion(p.id, progreso),
 		archivos: () => sb.rpc('archivos_de_promocion', { p_id: p.id }),
 		borrar: (nombre) => sb.rpc('borrar_promocion', { p_id: p.id, p_nombre: nombre }),
@@ -568,8 +568,8 @@ async function pintarBorradoPromotora(zona: HTMLElement, po: Promotora, promocio
 	]);
 	pintarZonaBorrado(zona, {
 		que: 'la promotora', nombre: po.nombre,
-		detalle: `<p>Se borrará <strong>${esc(po.nombre)}</strong> con todo lo suyo: ${promociones.length} promoción(es) (también las activas),
-			${docs} documento(s) subido(s), ${(archivos.data as unknown[] | null)?.length ?? 0} archivo(s) guardado(s), ${personas} acceso(s) y ${peticiones} petición(es) de cambios.</p>${web}`,
+		detalle: `<p>Se borrará <strong>${esc(po.nombre)}</strong> con todo lo suyo: ${cuantos(promociones.length, 'promoción', 'promociones')} (también las activas),
+			${cuantos(docs, 'documento subido', 'documentos subidos')}, ${cuantos((archivos.data as unknown[] | null)?.length ?? 0, 'archivo guardado', 'archivos guardados')}, ${cuantos(personas, 'acceso', 'accesos')} y ${cuantos(peticiones, 'petición de cambios', 'peticiones de cambios')}.</p>${web}`,
 		exportar: (progreso) => exportarPromotora(po.id, progreso),
 		archivos: () => sb.rpc('archivos_de_promotora', { p_id: po.id }),
 		borrar: (nombre) => sb.rpc('borrar_promotora', { p_id: po.id, p_nombre: nombre }),

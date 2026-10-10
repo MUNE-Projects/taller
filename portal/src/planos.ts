@@ -60,7 +60,7 @@ export async function htmlLista(id: string, version: string, versiones: string[]
 	const actual = version === versiones[0];
 	const aprobados = planos.filter((p) => p.decision === 'aprobado').length;
 	return `
-		<h2>Planos comerciales · ${esc(version)}</h2>
+		<h2>Validación de planos comerciales · ${esc(version)}</h2>
 		${actual ? `<p class="ayuda">MUNE los ha preparado a partir de los planos acotados de la promoción. Revisa cada uno y apruébalo, o pide cambios explicando qué hay que corregir. Lo que apruebes es lo que se publicará.</p>`
 			: '<p class="ayuda">Es una versión anterior y solo se puede consultar.</p>'}
 		<p class="promo-versiones">${aprobados} de ${planos.length} aprobados</p>
@@ -121,7 +121,7 @@ export async function pintarDetalle(caja: HTMLElement, id: string, planoId: numb
 				<div class="acciones"><button class="boton" type="submit">Aprobar este plano</button></div>
 			</form>
 			<form class="peticion-form" data-rechazar novalidate>
-				<h2>O pedir cambios</h2>
+				<h2>Pedir cambios</h2>
 				<label>Qué hay que corregir
 					<textarea name="comentario" rows="3" maxlength="4000" placeholder="Por ejemplo: el dormitorio 2 mide 3,10 m de ancho, no 2,90."></textarea></label>
 				<p class="error" role="alert"></p>
@@ -148,7 +148,7 @@ export async function pintarDetalle(caja: HTMLElement, id: string, planoId: numb
 	const aprobar = caja.querySelector<HTMLFormElement>('[data-aprobar]');
 	if (aprobar) alEnviar(aprobar, async (d) => {
 		if (!d.get('confirmado')) throw new Error('Marca la casilla para confirmar que lo has revisado.');
-		if (!confirm(`¿Aprobar el plano «${p.titulo}»?\n\nUna vez aprobado no se puede deshacer. Si después ves algo que corregir, escribe al equipo de MUNE y preparará una versión nueva.`)) {
+		if (!confirm(`¿Aprobar el plano «${p.titulo}»?\n\nUna vez aprobado quedará validado para esta versión. Si más adelante detectas algo que corregir, el equipo de MUNE preparará una versión nueva.`)) {
 			aprobar.querySelector<HTMLButtonElement>('button[type=submit]')!.disabled = false;
 			return;
 		}

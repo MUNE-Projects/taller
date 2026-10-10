@@ -18,7 +18,7 @@ interface Documento {
 	estado: string; nota: string | null; subido_por: string; subido_en: string; revisado_en: string | null;
 }
 
-const BLOQUES = ['Planos', 'Memoria de calidades', 'Superficies', 'Marca', 'Datos legales', 'Personalización'];
+const BLOQUES = ['Planos', 'Viviendas y superficies', 'Materiales y acabados', 'Proyecto', 'Marca', 'Datos legales', 'Personalización'];
 const ESTADOS_DOC: Record<string, [string, string]> = {
 	pendiente: ['En revisión', 'pendiente'],
 	vigente: ['Aceptado', 'al-dia'],

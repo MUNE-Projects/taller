@@ -113,7 +113,7 @@ Deno.serve(async (req) => {
 		const { count } = await servicio.from('entregables').select('id', { count: 'exact', head: true })
 			.eq('promocion_id', promocion).eq('version', version).eq('tipo', 'plano');
 		if (!count) return responder(409, { error: 'Esa versión no tiene planos enviados' });
-		asunto = `${promo.nombre} · planos para validar (${version})`;
+		asunto = `${promo.nombre} · planos comerciales para validar (${version})`;
 		texto = `MUNE ha preparado los planos comerciales de la ${version} de ${promo.nombre}.\n\n`
 			+ `Tienes ${count} plano${count === 1 ? '' : 's'} para revisar en MUNE Portal. Aprueba cada uno o pide cambios explicando qué hay que corregir. La versión se publicará cuando estén todos aprobados.`;
 		enlace = `${PORTAL}#/promocion/${promocion}/planos`;

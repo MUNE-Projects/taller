@@ -108,7 +108,7 @@ function leeme(titulo: string, cuerpo: string, avisos: string[]): string {
 		'  · peticiones/: fotos de referencia de las peticiones de cambios.',
 		'La experiencia 3D y los datos de construcción de cada promoción no van en esta exportación: MUNE los guarda aparte (almacén privado «taller» de GitHub).',
 		'',
-		avisos.length ? `ATENCIÓN, ${avisos.length} aviso(s):\n${avisos.map((a) => `  ! ${a}`).join('\n')}` : 'Todos los archivos se han descargado completos y coinciden con los originales.',
+		avisos.length ? `ATENCIÓN, ${avisos.length} ${avisos.length === 1 ? 'aviso' : 'avisos'}:\n${avisos.map((a) => `  ! ${a}`).join('\n')}` : 'Todos los archivos se han descargado completos y coinciden con los originales.',
 		'',
 		cuerpo,
 		'',

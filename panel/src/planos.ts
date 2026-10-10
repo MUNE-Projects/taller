@@ -87,7 +87,7 @@ async function enviar(revision: string, id: string, m: Manifiesto, progreso: (t:
 	progreso('Guardando los planos…');
 	const { error } = await sb.from('entregables').insert(filas);
 	if (error) throw error;
-	// la promoción pasa a «Planos por validar» en MUNE Portal
+	// la promoción pasa a «Planos comerciales por validar» en MUNE Portal
 	await sb.from('promociones').update({ estado: 'en_validacion' }).eq('id', id);
 	await anotar('envía los planos a la promotora', { promocion: id, version: m.version, planos: filas.length });
 }

@@ -66,6 +66,9 @@ export function alEnviar(form: HTMLFormElement, accion: (datos: FormData) => Pro
 	});
 }
 
+/** «1 aviso», «3 avisos»: número con la palabra en singular o plural. */
+export const cuantos = (n: number, uno: string, varios: string) => `${n} ${n === 1 ? uno : varios}`;
+
 export const fecha = (iso: string) => new Date(iso).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
 
 export async function anotar(accion: string, detalle: Record<string, unknown> = {}): Promise<void> {

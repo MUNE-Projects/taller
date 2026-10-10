@@ -230,7 +230,7 @@ export async function generarPDF( d: DatosDocumento ): Promise<Blob> {
 	y += 3;
 	titulo( 'Conformidad', y );
 	y += 4;
-	const decl = partir( `Como comprador/a de la vivienda ${ v.ref } de ${ p.promocion.nombre }, declaro conocer y aceptar la selección de este pack y su importe.`, anchoUtil, 8.5 );
+	const decl = partir( `En relación con la vivienda ${ v.ref } de ${ p.promocion.nombre }, declaro conocer y aceptar la selección indicada en este documento y su importe.`, anchoUtil, 8.5 );
 	texto( decl, M, y + 3, 8.5, GRIS );
 	y += decl.length * 3.8 + 8;
 	const campo = ( etiqueta: string, x: number, ancho: number, valor = '' ) => {
