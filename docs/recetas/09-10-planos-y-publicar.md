@@ -8,10 +8,10 @@
    - Construye la web pública (sin Studio ni secretos).
    - **Genera los planos comerciales** de la versión con `herramientas/planos.mjs`: uno por tipología y variante (espejo…) y por cada distribución alternativa; en las unifamiliares (`"tipo": "unifamiliar"` en `promocion.json`), uno por vivienda. Quedan en `planos/` de la vista previa, con `planos.json` (títulos, viviendas y huellas).
 2. `git push` de `revision` del escaparate y aviso «… lista para revisar» (`avisar.yml`).
-3. **Tu revisión:** abres la vista previa. Si está bien, en el Panel → promoción → *Resumen y versiones* → **Enviar los planos a la promotora**. El Panel copia los planos al almacén privado (comprobando su huella) y la promoción pasa a «Planos para validar». Hasta entonces la promotora no ve nada.
+3. **Tu revisión:** abres la vista previa. Si está bien, en el Panel → promoción → *Resumen y versiones* → **Enviar los planos a la promotora**. El Panel copia los planos al almacén privado (comprobando su huella) y la promoción pasa a «Planos para validar», y el equipo de la promotora recibe un email (función `avisar-promotora`). Hasta entonces la promotora no ve nada.
 4. **La promotora** (portal → pestaña *Planos*): cada plano se aprueba (con la casilla «He revisado…») o se piden cambios explicando qué corregir. Te llega un email por cada uno, y otro cuando están todos aprobados.
    - Si piden cambios: se corrige y se prepara una **versión nueva** (vuelta al paso 1). Los planos que no cambian (misma huella de datos) conservan su aprobación: solo se validan los que cambian.
-5. **Publicar:** el botón *Publicar vN* del Panel solo se activa con **todos** los planos aprobados (lo comprueba también la función `ejecutar`). Lo pulsas tú, o me pides que lo haga.
+5. **Publicar:** el botón *Publicar vN* del Panel solo se activa con **todos** los planos aprobados (lo comprueba también la función `ejecutar`). Lo pulsas tú, o me pides que lo haga. Al terminar, el equipo de la promotora recibe el email «versión publicada».
 
 ## Garantías
 - Queda registrado quién aprobó cada plano, cuándo y la huella del archivo exacto. Una validación no se puede cambiar ni repetir, y solo se validan los planos de la última versión enviada.

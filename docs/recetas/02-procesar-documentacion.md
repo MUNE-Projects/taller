@@ -16,7 +16,7 @@
    - que es legible y está completo;
    - que cuadra con lo demás (superficies frente al cuadro oficial, número de viviendas frente a la ficha, tipologías frente a la tabla de viviendas).
 5. **Punto de control:** Claude te presenta una tabla con cada documento, su propuesta (vigente o rechazado) y, si rechaza, la nota exacta que verá la promotora. No marca nada sin tu OK.
-6. Con tu OK: `node herramientas/documentos.mjs estado <id> vigente` o `estado <id> rechazado --nota "…"`.
+6. Con tu OK: `node herramientas/documentos.mjs estado <id> vigente` o `estado <id> rechazado --nota "…"`. Al rechazar, el equipo de la promotora recibe un email con la nota.
 7. Informe breve en la conversación: qué se marcó, qué falta por entregar y las incoherencias encontradas.
 
 ## Registro

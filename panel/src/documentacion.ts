@@ -8,6 +8,7 @@
 // Las reglas (005, 008) dejan a la administradora cambiar solo el estado y la
 // nota; nadie puede borrar ni sobrescribir un documento.
 
+import { avisarPromotora } from './avisos';
 import { alEnviar, anotar, conectarPlegables, esc, fecha, sb, traducir } from './comun';
 
 interface PromocionMin { id: string; nombre: string; promotora_id: string }
@@ -119,7 +120,9 @@ export async function pintarDocumentacion(caja: HTMLElement, p: PromocionMin): P
 		if (nota.length < 5) throw new Error('Explica por qué se rechaza, para que la promotora sepa qué corregir.');
 		const { error } = await sb.from('documentos').update({ estado: 'rechazado', nota }).eq('id', Number(form.dataset.rechazo));
 		if (error) throw error;
+		const aviso = await avisarPromotora({ tipo: 'rechazado', documento_id: Number(form.dataset.rechazo) });
 		await recargar();
+		alert(`Documento rechazado. ${aviso}`);
 	}));
 	const ajustar = caja.querySelector<HTMLButtonElement>('[data-ajustar]')!;
 	const lista = caja.querySelector<HTMLElement>('[data-requisitos]')!;

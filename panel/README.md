@@ -14,6 +14,7 @@ con contraseña + código del móvil y registro de actividad.
   - `007_equipos.sql`: equipos por promoción (o acceso a todas las de la promotora), sin roles, y datos fiscales de promotoras y promociones;
   - `008_ficha_promocion.sql`: ficha de la promoción y lista estándar de documentos;
   - `009_aviso_subida.sql`: aviso por email de cada documento subido (una sola vez por documento).
+  - `012_avisos_promotora.sql`: avisos por email al equipo de la promotora (planos para validar, documento rechazado, versión publicada), sin repetir.
   - `011_planos.sql`: validación de planos por la promotora (planos de cada versión, aprobación heredada si no cambian, publicar solo con todo aprobado).
   - `010_borrar.sql`: borrar desde el Panel una promoción o una promotora desactivada, con todo lo suyo (antes obliga a descargar la exportación).
 
@@ -22,6 +23,7 @@ con contraseña + código del móvil y registro de actividad.
 - Función de Supabase `invitar` (`supabase/funciones/invitar/index.ts`): dar acceso al portal (receta 14). Crea la cuenta y Supabase envía el email de invitación; usa la clave de servicio que Supabase da a la función, que no sale de sus servidores.
 - Función de Supabase `aviso-subida` (`supabase/funciones/aviso-subida/index.ts`): la llama el portal tras cada subida y lanza `.github/workflows/aviso-documento.yml`, que te manda el email por GitHub.
 - Textos de los emails del portal (invitación y contraseña nueva): `supabase/emails/`.
+- Función de Supabase `avisar-promotora` (`supabase/funciones/avisar-promotora/index.ts`): emails al equipo de la promotora (planos para validar, documento rechazado, versión publicada) a través de `.github/workflows/aviso-promotora.yml` y el Gmail de MUNE.
 - Función de Supabase `ejecutar` (`supabase/funciones/ejecutar/index.ts`): botones Publicar y Volver, a través de `.github/workflows/publicar.yml`.
 - Mapa completo del Panel y brazo ejecutor: `docs/panel.md`.
 - Versiones: el Panel lee el `version.json` de cada promoción en producción y en la vista previa del escaparate. No existe ninguna lista pública de promociones.

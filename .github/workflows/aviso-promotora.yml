@@ -1,0 +1,89 @@
+# Aviso por email a la promotora: lo lanza la función «avisar-promotora» de
+# Supabase (planos para validar, documento por corregir, versión publicada).
+# Envía un email a cada persona del equipo desde el Gmail de MUNE, con la
+# contraseña de aplicación guardada en el secreto AVISOS_GMAIL_CLAVE. Gratis.
+#
+# Los correos llegan como dato de entrada: solo los ve quien tiene acceso a
+# este almacén privado, y en el registro del proceso aparecen ocultos.
+
+name: Aviso por email a la promotora
+run-name: aviso a la promotora
+
+on:
+  workflow_dispatch:
+    inputs:
+      para:
+        required: true
+        type: string
+      asunto:
+        required: true
+        type: string
+      texto:
+        required: true
+        type: string
+      enlace:
+        required: true
+        type: string
+
+permissions: {}
+
+jobs:
+  enviar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      PARA: ${{ inputs.para }}
+      ASUNTO: ${{ inputs.asunto }}
+      TEXTO: ${{ inputs.texto }}
+      ENLACE: ${{ inputs.enlace }}
+      CLAVE: ${{ secrets.AVISOS_GMAIL_CLAVE }}
+    steps:
+      - name: Ocultar los correos en el registro
+        run: |
+          IFS=',' read -ra correos <<< "$PARA"
+          for c in "${correos[@]}"; do echo "::add-mask::$c"; done
+      - name: Enviar
+        shell: python3 {0}
+        run: |
+          import html, os, re, smtplib, ssl, sys
+          from email.message import EmailMessage
+          from email.utils import formataddr
+
+          REMITENTE = 'hello.muneprojects@gmail.com'
+          clave = os.environ.get('CLAVE', '').replace(' ', '')
+          if not clave:
+              sys.exit('::error::Falta el secreto AVISOS_GMAIL_CLAVE (contraseña de aplicación del Gmail de MUNE)')
+          para = [c.strip() for c in os.environ['PARA'].split(',') if c.strip()]
+          if not para or len(para) > 50 or not all(re.fullmatch(r'[^\s@,<>]+@[^\s@,<>]+\.[^\s@,<>]+', c) for c in para):
+              sys.exit('::error::Destinatarios no válidos')
+          asunto = os.environ['ASUNTO'].replace('\n', ' ')[:200]
+          texto = os.environ['TEXTO'][:3000]
+          enlace = os.environ['ENLACE']
+          if not re.fullmatch(r'https://(portal|escaparate)\.mune-projects\.workers\.dev/[^\s"<>]*', enlace):
+              sys.exit('::error::Enlace no válido')
+
+          etiqueta = 'Ver la web' if '//escaparate.' in enlace else 'Abrir en el portal'
+          parrafos = ''.join(f'<p style="margin:0 0 14px">{html.escape(p).replace(chr(10), "<br>")}</p>' for p in texto.split('\n\n'))
+          cuerpo_html = f'''<!doctype html><html lang="es"><body style="margin:0;background:#f5f3ef;font-family:Helvetica,Arial,sans-serif;color:#1c1c1a">
+            <div style="max-width:560px;margin:0 auto;padding:28px 20px">
+              <p style="font-size:12px;letter-spacing:.12em;color:#8b867d;margin:0 0 18px">MUNE</p>
+              <div style="background:#fcfbf9;border:1px solid #e6e3dd;border-radius:12px;padding:24px;font-size:15px;line-height:1.5">
+                <p style="margin:0 0 14px">Hola:</p>{parrafos}
+                <p style="margin:20px 0 0"><a href="{html.escape(enlace)}" style="display:inline-block;background:#2f5d50;color:#fff;text-decoration:none;padding:11px 16px;border-radius:8px;font-weight:600">{etiqueta}</a></p>
+              </div>
+              <p style="font-size:12px;color:#8b867d;margin:18px 0 0">MUNE Projects · Este es un aviso automático; no hace falta responder.</p>
+            </div></body></html>'''
+          cuerpo_texto = f'Hola:\n\n{texto}\n\n{enlace}\n\nMUNE Projects · Aviso automático.'
+
+          contexto = ssl.create_default_context()
+          with smtplib.SMTP_SSL('smtp.gmail.com', 465, context=contexto, timeout=30) as smtp:
+              smtp.login(REMITENTE, clave)
+              for destino in para:
+                  m = EmailMessage()
+                  m['From'] = formataddr(('MUNE', REMITENTE))
+                  m['To'] = destino
+                  m['Subject'] = asunto
+                  m.set_content(cuerpo_texto)
+                  m.add_alternative(cuerpo_html, subtype='html')
+                  smtp.send_message(m)
+          print(f'Enviado a {len(para)} persona(s).')

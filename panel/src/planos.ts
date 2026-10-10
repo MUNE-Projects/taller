@@ -8,6 +8,7 @@
 // los ve en su portal y los aprueba o pide cambios. La versión solo se puede
 // publicar con todos sus planos aprobados (011_planos.sql, función «ejecutar»).
 
+import { avisarPromotora } from './avisos';
 import { anotar, esc, fecha, sb, traducir } from './comun';
 
 export interface PlanoManifiesto {
@@ -101,6 +102,9 @@ function chip(p: PlanoEstado): string {
  * Bloque «Planos de vN» dentro de Versiones: enviar a la promotora o ver cómo
  * va la validación. Llama a alCambiar cuando cambia algo (para repintar).
  */
+/** Frase que se muestra una vez, al repintar tras enviar los planos. */
+let trasEnviar = '';
+
 export function pintarPlanos(caja: HTMLElement, revision: string, id: string, version: string, m: Manifiesto | null, planos: PlanoEstado[], alCambiar: () => void): void {
 	if (!m && !planos.length) {
 		caja.innerHTML = '';
@@ -122,6 +126,8 @@ export function pintarPlanos(caja: HTMLElement, revision: string, id: string, ve
 			aviso.classList.remove('error');
 			try {
 				await enviar(revision, id, m, (t) => { aviso.textContent = t; });
+				aviso.textContent = 'Avisando a la promotora por email…';
+				trasEnviar = `✓ Planos enviados. ${await avisarPromotora({ tipo: 'planos', promocion: id, version })}`;
 				alCambiar();
 			} catch (e) {
 				aviso.classList.add('error');
@@ -132,9 +138,12 @@ export function pintarPlanos(caja: HTMLElement, revision: string, id: string, ve
 		return;
 	}
 
+	const mensaje = trasEnviar;
+	trasEnviar = '';
 	const aprobados = planos.filter((p) => p.decision === 'aprobado').length;
 	caja.innerHTML = `
 		<h3 class="subtitulo">Planos de ${esc(version)} · ${aprobados} de ${planos.length} aprobados</h3>
+		${mensaje ? `<p class="aviso" role="status">${esc(mensaje)}</p>` : ''}
 		<div class="lista-planos">${planos.map((p) => `
 			<div class="fila-plano">
 				<span><strong>${esc(p.titulo)}</strong><br><span class="promo-lugar">${esc(p.detalle ?? '')}${p.viviendas ? ` · ${esc(p.viviendas)}` : ''}</span>
