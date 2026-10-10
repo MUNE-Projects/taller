@@ -1,4 +1,4 @@
-// Portal de las promotoras: pantallas (entrar, inicio, cada promoción).
+// MUNE Portal (espacio de trabajo de las promotoras): pantallas (entrar, inicio, cada promoción).
 // Lo común (sesión de Supabase, utilidades) está en comun.ts; la validación de
 // planos, en planos.ts.
 
@@ -12,7 +12,7 @@ import { htmlLista, leerPlanos, pintarDetalle, versionesConPlanos } from './plan
 async function decidir(): Promise<void> {
 	const { data: { session } } = await sb.auth.getSession();
 	if (!session) {
-		if (errorEnlace) return pantallaEntrada('El enlace del email ha caducado o ya se usó. Si es tu primera vez, pide que te reenvíen la invitación; si no, usa «¿Has olvidado tu contraseña?».');
+		if (errorEnlace) return pantallaEntrada('El enlace del email ha caducado o ya se ha usado. Si es tu primera vez, pide al equipo de MUNE que te reenvíe la invitación; si no, pulsa «¿Has olvidado tu contraseña?».');
 		return pantallaEntrada();
 	}
 	if (tipoEnlace === 'invite' || tipoEnlace === 'recovery') return pantallaClave(tipoEnlace);
@@ -47,7 +47,7 @@ function pantallaOlvido(): void {
 	pintar(`<form class="caja" novalidate>
 		${CABECERA}
 		<h1>Contraseña nueva</h1>
-		<p>Escribe tu correo. Si tiene acceso al portal, te llegará un email con un enlace para elegir una contraseña nueva.</p>
+		<p>Escribe tu correo. Si tiene acceso a MUNE Portal, te llegará un email con un enlace para elegir una contraseña nueva.</p>
 		<label>Correo <input name="correo" type="email" autocomplete="username" required autofocus></label>
 		<p class="error" role="alert"></p>
 		<button class="boton" type="submit">Enviar el enlace</button>
@@ -69,7 +69,7 @@ function pantallaClave(tipo: 'invite' | 'recovery'): void {
 	pintar(`<form class="caja" novalidate>
 		${CABECERA}
 		<h1>${tipo === 'invite' ? 'Te damos la bienvenida' : 'Elige una contraseña nueva'}</h1>
-		<p>${tipo === 'invite' ? 'Elige la contraseña con la que entrarás al portal a partir de ahora. ' : ''}Usa al menos ${MIN_CLAVE} caracteres. Te recomendamos guardarla en un gestor de contraseñas.</p>
+		<p>${tipo === 'invite' ? 'Elige la contraseña con la que entrarás en MUNE Portal a partir de ahora. ' : ''}Usa al menos ${MIN_CLAVE} caracteres. Te recomendamos guardarla en un gestor de contraseñas.</p>
 		<label>Contraseña <input name="clave" type="password" autocomplete="new-password" minlength="${MIN_CLAVE}" required autofocus></label>
 		<label>Repite la contraseña <input name="repetida" type="password" autocomplete="new-password" required></label>
 		<p class="error" role="alert"></p>
@@ -78,7 +78,7 @@ function pantallaClave(tipo: 'invite' | 'recovery'): void {
 	alEnviar(app.querySelector('form')!, async (d) => {
 		const clave = String(d.get('clave'));
 		if (clave.length < MIN_CLAVE) throw new Error(`La contraseña tiene que tener al menos ${MIN_CLAVE} caracteres.`);
-		if (clave !== String(d.get('repetida'))) throw new Error('Las dos contraseñas no coinciden.');
+		if (clave !== String(d.get('repetida'))) throw new Error('Las dos contraseñas no coinciden. Escríbelas de nuevo.');
 		const { error } = await sb.auth.updateUser({ password: clave });
 		if (error) throw error;
 		await navegar();
@@ -99,7 +99,7 @@ async function navegar(): Promise<void> {
 	if (!data) {
 		await sb.auth.signOut();
 		pintar(`<div class="caja">${CABECERA}<h1>Sin acceso</h1>
-			<p>Esta cuenta no tiene acceso al portal ahora mismo. Si crees que es un error, contacta con MUNE Projects.</p>
+			<p>Esta cuenta no tiene acceso a MUNE Portal ahora mismo. Si crees que es un error, escribe al equipo de MUNE.</p>
 			<button class="boton secundario" type="button" data-volver>Volver</button></div>`);
 		app.querySelector('[data-volver]')!.addEventListener('click', () => pantallaEntrada());
 		return;
@@ -174,7 +174,7 @@ function conectarFormulario(selector: string, guardar: (d: FormData) => PromiseL
 	alEnviar(form, async (d) => {
 		const { error } = await guardar(d);
 		if (error) throw error;
-		form.querySelector<HTMLElement>('[data-guardado]')!.textContent = '✓ Datos guardados.';
+		form.querySelector<HTMLElement>('[data-guardado]')!.textContent = 'Datos guardados.';
 		form.querySelector<HTMLButtonElement>('button[type=submit]')!.disabled = false;
 	});
 	return form;
@@ -197,7 +197,7 @@ function conectarFiscal(guardar: (d: FormData) => PromiseLike<{ error: unknown }
 const ESTADOS_PROMO: Record<string, [string, string]> = {
 	documentacion: ['Recogiendo documentación', 'pendiente'],
 	en_produccion: ['En producción', 'pendiente'],
-	en_validacion: ['Planos para validar', 'pendiente'],
+	en_validacion: ['Planos por validar', 'pendiente'],
 	publicada: ['Publicada', 'al-dia'],
 };
 
@@ -215,15 +215,15 @@ async function pantallaInicio(): Promise<void> {
 					<span><strong>${esc(p.nombre)}</strong><br><span class="promo-lugar">${esc(p.ubicacion)}</span></span>
 					<span class="estado ${clase}">${esc(etiqueta)}</span>
 				</a>`;
-			}).join('')}</div>` : '<p class="vacio">Todavía no hay promociones. Cuando MUNE Projects dé de alta la primera, aparecerá aquí.</p>'}
+			}).join('')}</div>` : '<p class="vacio">Todavía no hay promociones. Cuando el equipo de MUNE dé de alta la primera, aparecerá aquí.</p>'}
 		</section>
 		<section class="tarjeta">
 			<h2>Datos de ${esc(acceso?.promotoras?.nombre ?? 'la promotora')}</h2>
-			<p class="ayuda">Los datos generales de la promotora. Cada promoción tiene además los suyos propios, por si es una sociedad distinta.</p>
+			<p class="ayuda">Los datos generales de la promotora. Cada promoción puede tener además los suyos, por si la lleva otra sociedad.</p>
 			${formFiscal(acceso?.promotoras ?? { razon_social: null, cif: null, domicilio_fiscal: null }, true, false)}
 		</section>
 	</div>`);
-	app.querySelector('[data-salir]')!.addEventListener('click', salir);
+	app.querySelector('[data-salir]')!.addEventListener('click', () => void salir());
 	conectarFiscal((d) => sb.rpc('guardar_datos_promotora', {
 		p_promotora: acceso!.promotoras!.id, p_razon_social: String(d.get('razon_social')), p_cif: String(d.get('cif')),
 		p_domicilio_fiscal: String(d.get('domicilio_fiscal')), p_contacto: String(d.get('contacto')),
@@ -294,7 +294,7 @@ async function pantallaPromocion(id: string, pestana = 'resumen', extra = '', me
 		${mensaje ? `<p class="aviso" role="status">${esc(mensaje)}</p>` : ''}
 		<section class="tarjeta" data-pestana><p class="cargando">Cargando…</p></section>
 	</div>`);
-	app.querySelector('[data-salir]')!.addEventListener('click', salir);
+	app.querySelector('[data-salir]')!.addEventListener('click', () => void salir());
 	const caja = app.querySelector<HTMLElement>('[data-pestana]')!;
 
 	if (actual === 'resumen') {
@@ -304,13 +304,13 @@ async function pantallaPromocion(id: string, pestana = 'resumen', extra = '', me
 			<p class="promo-versiones" data-publicada>Comprobando la versión publicada…</p>
 			<div class="lista-promos separado">
 				<a class="promo-enlace" href="#/promocion/${esc(id)}/documentacion"><span><strong>Documentación</strong><br>
-					<span class="promo-lugar">${faltan ? `Faltan ${faltan} documento(s) obligatorio(s)` : 'Todos los obligatorios entregados'}${rechazados ? ` · ${rechazados} por corregir` : ''}</span></span>
+					<span class="promo-lugar">${faltan ? `${faltan === 1 ? 'Falta 1 documento obligatorio' : `Faltan ${faltan} documentos obligatorios`}` : 'Todos los documentos obligatorios entregados'}${rechazados ? ` · ${rechazados} por corregir` : ''}</span></span>
 					<span class="estado ${faltan + rechazados ? 'pendiente' : 'al-dia'}">${faltan + rechazados ? 'Pendiente' : 'Al día'}</span></a>
 				<a class="promo-enlace" href="#/promocion/${esc(id)}/planos"><span><strong>Planos comerciales</strong><br>
-					<span class="promo-lugar">${versiones.length ? `Versión ${esc(versiones[0].slice(1))}: ${aprobados} de ${planosActuales.length} aprobados` : 'Todavía no hay planos para validar'}</span></span>
+					<span class="promo-lugar">${versiones.length ? `${esc(versiones[0])}: ${aprobados} de ${planosActuales.length} aprobados` : 'Todavía no hay planos para validar'}</span></span>
 					${versiones.length ? `<span class="estado ${porValidar ? 'pendiente' : 'al-dia'}">${porValidar ? `${porValidar} por validar` : aprobados === planosActuales.length ? 'Aprobados' : 'Cambios pedidos'}</span>` : ''}</a>
-				<a class="promo-enlace" href="#/promocion/${esc(id)}/datos"><span><strong>Ficha y datos fiscales</strong><br>
-					<span class="promo-lugar">Dirección, tipo, viviendas y la sociedad de la promoción</span></span></a>
+				<a class="promo-enlace" href="#/promocion/${esc(id)}/datos"><span><strong>Ficha y datos</strong><br>
+					<span class="promo-lugar">Dirección, tipo, viviendas, sociedad y formalización de la personalización</span></span></a>
 			</div>`;
 		void pintarPublicada(p.id);
 	}
@@ -323,9 +323,9 @@ async function pantallaPromocion(id: string, pestana = 'resumen', extra = '', me
 			const anteriores = documentos.filter((d) => d.requisito_id === r.id);
 			const ultimo = anteriores[0];
 			const estado = !ultimo ? (r.obligatorio ? ['Falta por entregar', 'pendiente'] : ['Opcional', ''])
-				: ultimo.estado === 'vigente' ? ['Revisado y vigente', 'al-dia']
-				: ultimo.estado === 'rechazado' ? ['Rechazado: sube una versión nueva', 'rechazado']
-				: ['Recibido · en revisión', ''];
+				: ultimo.estado === 'vigente' ? ['Aceptado', 'al-dia']
+				: ultimo.estado === 'rechazado' ? ['Rechazado', 'rechazado']
+				: ['En revisión', ''];
 			return `<article class="requisito">
 				<div class="requisito-cabeza">
 					<span class="requisito-nombre">${esc(r.elemento)}</span>
@@ -333,7 +333,7 @@ async function pantallaPromocion(id: string, pestana = 'resumen', extra = '', me
 				</div>
 				${r.descripcion ? `<p class="requisito-desc">${esc(r.descripcion)}</p>` : ''}
 				${r.plantilla ? `<a class="enlace" href="${esc(r.plantilla)}" download>Descargar la plantilla</a>` : ''}
-				${ultimo?.estado === 'rechazado' && ultimo.nota ? `<p class="requisito-nota">${esc(ultimo.nota)}</p>` : ''}
+				${ultimo?.estado === 'rechazado' ? `<p class="requisito-nota">${ultimo.nota ? `${esc(ultimo.nota)} ` : ''}Sube una versión nueva con lo corregido.</p>` : ''}
 				${anteriores.length ? `<div class="historial">${anteriores.map((d) => `<div class="historial-fila">
 					<span>v${d.version} · ${esc(d.nombre)} · ${esc(fecha(d.subido_en))}</span>
 					<button class="enlace" type="button" data-bajar="documentos" data-ruta="${esc(d.ruta)}" data-nombre="${esc(d.nombre)}">Descargar</button>
@@ -348,8 +348,8 @@ async function pantallaPromocion(id: string, pestana = 'resumen', extra = '', me
 		}).join('')}</div>`).join('');
 		caja.innerHTML = `
 			<h2>Documentación</h2>
-			<p class="ayuda">Lo que necesitamos para preparar la promoción. Puedes subir archivos de hasta 50 MB; si te equivocas, sube una versión nueva: las anteriores se conservan.</p>
-			${htmlDocs || '<p class="vacio">MUNE Projects todavía no ha preparado la lista de documentos de esta promoción.</p>'}`;
+			<p class="ayuda">Lo que necesitamos para preparar la promoción. Puedes subir archivos de hasta 50 MB. Si te equivocas, sube una versión nueva: las anteriores se conservan.</p>
+			${htmlDocs || '<p class="vacio">El equipo de MUNE aún no ha preparado la lista de documentos de esta promoción.</p>'}`;
 		app.querySelectorAll<HTMLInputElement>('[data-subir]').forEach((input) => input.addEventListener('change', () => {
 			const archivo = input.files?.[0];
 			if (archivo) void subir(p.id, p.promotora_id, Number(input.dataset.subir), archivo, input);
@@ -366,9 +366,9 @@ async function pantallaPromocion(id: string, pestana = 'resumen', extra = '', me
 				.eq('promocion_id', id).neq('tipo', 'plano').order('creado_en', { ascending: false });
 			const extras = (otros ?? []) as Entregable[];
 			caja.innerHTML = `${version ? await htmlLista(id, version, versiones)
-				: '<h2>Planos comerciales</h2><p class="vacio">Todavía no hay planos para validar. Cuando MUNE los prepare a partir de vuestra documentación, aparecerán aquí.</p>'}
+				: '<h2>Planos comerciales</h2><p class="vacio">Todavía no hay planos para validar. Cuando MUNE los prepare a partir de tu documentación, aparecerán aquí.</p>'}
 				${extras.length ? `<h2 class="separado">Otros entregables</h2>${extras.map((e) => `<div class="entregable">
-					<span>${esc(TIPOS_ENTREGABLE[e.tipo] ?? e.tipo)} · versión ${esc(e.version.slice(1))}<br><span class="promo-lugar">${esc(e.nombre)}</span></span>
+					<span>${esc(TIPOS_ENTREGABLE[e.tipo] ?? e.tipo)} · ${esc(e.version)}<br><span class="promo-lugar">${esc(e.nombre)}</span></span>
 					<button class="boton secundario pequeno" type="button" data-bajar="entregables" data-ruta="${esc(e.ruta)}" data-nombre="${esc(e.nombre)}">Descargar</button>
 				</div>`).join('')}` : ''}`;
 		}
@@ -381,13 +381,13 @@ async function pantallaPromocion(id: string, pestana = 'resumen', extra = '', me
 	if (actual === 'datos') {
 		caja.innerHTML = `
 			<h2>Ficha de la promoción</h2>
-			<p class="ayuda">Los datos básicos del proyecto. La referencia catastral nos sirve para recrear el entorno de la parcela.</p>
+			<p class="ayuda">Los datos básicos del proyecto. La referencia catastral nos permite recrear el entorno de la parcela.</p>
 			${formFicha(p as unknown as Ficha)}
 			<h2 class="separado">Datos fiscales de la promoción</h2>
-			<p class="ayuda">La sociedad de esta promoción. Si es la misma que la de la promotora, pulsa «Copiar los datos de la promotora».</p>
+			<p class="ayuda">La sociedad que lleva esta promoción. Si es la misma que la de la promotora, pulsa «Copiar los datos de la promotora».</p>
 			${formFiscal(p, false, true)}
 			<h2 class="separado">Formalización de la personalización</h2>
-			<p class="ayuda">Cuando un comprador termina su selección, descarga un documento, lo firma y lo envía con el justificante de pago. Indica a quién debe enviarlo y, si hay pago por transferencia, los datos de la cuenta. Solo lo ven los compradores que entran con su código.</p>
+			<p class="ayuda">Cuando un comprador termina su personalización, descarga un documento, lo firma y lo envía junto con el justificante de pago. Indica aquí a quién tiene que enviarlo y, si el pago es por transferencia, los datos de la cuenta. Solo lo ven los compradores que entran con su código.</p>
 			${formFormalizacion((p as unknown as { formalizacion: Formalizacion }).formalizacion)}`;
 		conectarFormulario('[data-ficha]', (d) => sb.rpc('guardar_ficha_promocion', datosFicha(p.id, d)));
 		conectarFormulario('[data-formalizacion]', (d) => sb.rpc('guardar_formalizacion', datosFormalizacion(p.id, d)));
@@ -407,7 +407,7 @@ async function pintarPublicada(id: string): Promise<void> {
 		if (!r.ok) throw new Error();
 		const v = await r.json() as { version: string; fecha: string };
 		destino.innerHTML = `Versión publicada: <strong>${esc(v.version)}</strong> · ${esc(fecha(v.fecha))} ·
-			<a href="${esc(`${ESCAPARATE}/${id}/`)}" target="_blank" rel="noopener noreferrer">Ver la web pública</a>`;
+			<a href="${esc(`${ESCAPARATE}/${id}/`)}" target="_blank" rel="noopener noreferrer">Ver la experiencia publicada</a>`;
 	} catch {
 		destino.textContent = 'Todavía no hay ninguna versión publicada.';
 	}
@@ -424,7 +424,7 @@ async function descargar(b: HTMLButtonElement): Promise<void> {
 		a.rel = 'noopener';
 		a.click();
 	} catch (e) {
-		alert(traducir(e));
+		alert(traducir(e, 'descargar el archivo'));
 	} finally {
 		b.disabled = false;
 	}
@@ -447,8 +447,8 @@ async function subir(promocion: string, promotora: string, requisito: number, ar
 	aviso.classList.remove('error');
 	input.disabled = true;
 	try {
-		if (archivo.size > MAX_TAM) throw new Error('El archivo pesa más de 50 MB. Si es más grande, contacta con MUNE Projects.');
-		if (archivo.size === 0) throw new Error('El archivo está vacío.');
+		if (archivo.size > MAX_TAM) throw new Error('El archivo pesa más de 50 MB y no se ha podido subir. Si necesitas enviar uno más grande, escribe al equipo de MUNE.');
+		if (archivo.size === 0) throw new Error('El archivo está vacío. Comprueba que es el correcto y vuelve a subirlo.');
 		aviso.textContent = `Subiendo «${archivo.name}»… Con archivos grandes puede tardar un poco; no cierres la página.`;
 		const ruta = `${promotora}/${promocion}/${requisito}/${Date.now()}-${nombreSeguro(archivo.name)}`;
 		const tipo = archivo.type || 'application/octet-stream';
@@ -461,17 +461,17 @@ async function subir(promocion: string, promotora: string, requisito: number, ar
 			promocion_id: promocion, requisito_id: requisito, nombre: archivo.name.slice(0, 200), ruta, tipo: tipo.slice(0, 120), tamano: archivo.size, huella: firma,
 		}).select('id').single();
 		if (error) throw error;
-		// Aviso por email a MUNE Projects (si falla, el documento ya está subido igualmente).
+		// Aviso por email al equipo de MUNE (si falla, el documento ya está subido igualmente).
 		void sb.functions.invoke('aviso-subida', { body: { documento_id: subido.id } }).catch(() => undefined);
 		await pantallaPromocion(promocion, 'documentacion');
 		const nuevo = app.querySelector<HTMLElement>(`[data-progreso="${requisito}"]`);
 		if (nuevo) {
 			nuevo.hidden = false;
-			nuevo.textContent = `✓ «${archivo.name}» recibido. Lo revisaremos y verás aquí su estado.`;
+			nuevo.textContent = `Hemos recibido «${archivo.name}». Lo revisaremos y verás aquí su estado.`;
 		}
 	} catch (e) {
 		aviso.classList.add('error');
-		aviso.textContent = traducir(e);
+		aviso.textContent = traducir(e, 'subir el archivo');
 		input.disabled = false;
 		input.value = '';
 	}
@@ -479,11 +479,11 @@ async function subir(promocion: string, promotora: string, requisito: number, ar
 
 // ── Sesión ────────────────────────────────────────────────────────────────
 
-async function salir(): Promise<void> {
+async function salir(porInactividad = false): Promise<void> {
 	acceso = null;
 	await sb.auth.signOut();
 	history.replaceState(null, '', location.pathname);
-	pantallaEntrada();
+	pantallaEntrada(porInactividad ? 'Tu sesión se ha cerrado tras un rato sin actividad. Vuelve a entrar.' : '');
 }
 
 let ultimaActividad = Date.now();
@@ -491,12 +491,12 @@ for (const ev of ['pointerdown', 'keydown']) addEventListener(ev, () => { ultima
 setInterval(async () => {
 	if (Date.now() - ultimaActividad < INACTIVIDAD_MAX) return;
 	const { data: { session } } = await sb.auth.getSession();
-	if (session) await salir();
+	if (session) await salir(true);
 }, 60_000);
 
 function fallo(e: unknown): void {
-	pintar(`<div class="caja">${CABECERA}<h1>No se pudo cargar</h1><p class="error">${esc(traducir(e))}</p>
-		<button class="boton" type="button" data-reintentar>Reintentar</button></div>`);
+	pintar(`<div class="caja">${CABECERA}<h1>No se ha podido cargar</h1><p class="error">${esc(traducir(e))}</p>
+		<button class="boton" type="button" data-reintentar>Volver a probar</button></div>`);
 	app.querySelector('[data-reintentar]')!.addEventListener('click', () => location.reload());
 }
 
