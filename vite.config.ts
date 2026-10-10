@@ -21,6 +21,9 @@ const sinDatosDeStudio = (): Plugin => ( {
 		if ( ! /promociones[\\/][^\\/]+[\\/]promocion\.json$/.test( id ) ) return null;
 		const datos = JSON.parse( codigo );
 		delete datos.studio;
+		// contacto y datos de pago de la formalización: solo con código (Supabase)
+		delete datos.pagos;
+		if ( datos.marca ) delete datos.marca.comercial;
 		// los códigos y lo formalizado por cada comprador viven en Supabase, nunca en la web;
 		// el precio de venta no está en la plataforma (si quedara en datos antiguos, no sale)
 		for ( const v of datos.viviendas ?? [] ) {

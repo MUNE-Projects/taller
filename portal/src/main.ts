@@ -2,6 +2,7 @@
 // Lo común (sesión de Supabase, utilidades) está en comun.ts; la validación de
 // planos, en planos.ts.
 
+import { datosFormalizacion, formFormalizacion, type Formalizacion } from './formalizacion';
 import { ESCAPARATE, REVISION, INACTIVIDAD_MAX, MAX_TAM, MIN_CLAVE, CABECERA, alEnviar, app, errorEnlace, esc, fecha, pintar, sb, tipoEnlace, traducir } from './comun';
 import { pintarCompradores } from './compradores';
 import { htmlLista, leerPlanos, pintarDetalle, versionesConPlanos } from './planos';
@@ -252,12 +253,12 @@ interface Documento { id: number; requisito_id: number; nombre: string; ruta: st
 interface Entregable { id: number; version: string; tipo: string; tipologia: string | null; nombre: string; ruta: string }
 
 const TIPOS_ENTREGABLE: Record<string, string> = { infografia: 'Infografía', pdf: 'PDF' };
-const PESTANAS: [string, string][] = [['resumen', 'Resumen'], ['documentacion', 'Documentación'], ['planos', 'Planos'], ['compradores', 'Compradores'], ['datos', 'Ficha y datos fiscales']];
+const PESTANAS: [string, string][] = [['resumen', 'Resumen'], ['documentacion', 'Documentación'], ['planos', 'Planos'], ['compradores', 'Compradores'], ['datos', 'Ficha y datos']];
 
 async function pantallaPromocion(id: string, pestana = 'resumen', extra = '', mensaje = ''): Promise<void> {
 	const [promo, reqs, docs, versiones] = await Promise.all([
 		sb.from('promociones').select(`id, nombre, ubicacion, estado, promotora_id, razon_social, cif, domicilio_fiscal, direccion, codigo_postal,
-			municipio, provincia, referencia_catastral, tipo, num_viviendas, num_portales, num_plantas, fecha_entrega`).eq('id', id).maybeSingle(),
+			municipio, provincia, referencia_catastral, tipo, num_viviendas, num_portales, num_plantas, fecha_entrega, formalizacion`).eq('id', id).maybeSingle(),
 		sb.from('requisitos').select('id, bloque, elemento, descripcion, obligatorio, orden, plantilla').eq('promocion_id', id).order('orden').order('id'),
 		sb.from('documentos').select('id, requisito_id, nombre, ruta, version, estado, nota, subido_en').eq('promocion_id', id).order('version', { ascending: false }),
 		versionesConPlanos(id),
@@ -384,8 +385,12 @@ async function pantallaPromocion(id: string, pestana = 'resumen', extra = '', me
 			${formFicha(p as unknown as Ficha)}
 			<h2 class="separado">Datos fiscales de la promoción</h2>
 			<p class="ayuda">La sociedad de esta promoción. Si es la misma que la de la promotora, pulsa «Copiar los datos de la promotora».</p>
-			${formFiscal(p, false, true)}`;
+			${formFiscal(p, false, true)}
+			<h2 class="separado">Formalización de la personalización</h2>
+			<p class="ayuda">Cuando un comprador termina su selección, descarga un documento, lo firma y lo envía con el justificante de pago. Indica a quién debe enviarlo y, si hay pago por transferencia, los datos de la cuenta. Solo lo ven los compradores que entran con su código.</p>
+			${formFormalizacion((p as unknown as { formalizacion: Formalizacion }).formalizacion)}`;
 		conectarFormulario('[data-ficha]', (d) => sb.rpc('guardar_ficha_promocion', datosFicha(p.id, d)));
+		conectarFormulario('[data-formalizacion]', (d) => sb.rpc('guardar_formalizacion', datosFormalizacion(p.id, d)));
 		conectarFiscal((d) => sb.rpc('guardar_datos_promocion', {
 			p_promocion: p.id, p_razon_social: String(d.get('razon_social')), p_cif: String(d.get('cif')), p_domicilio_fiscal: String(d.get('domicilio_fiscal')),
 		}));

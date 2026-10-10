@@ -16,6 +16,7 @@ const ACCIONES: Record<string, string> = {
 	datos_promotora: 'guarda los datos de la promotora',
 	datos_promocion: 'guarda los datos fiscales de la promoción',
 	ficha_promocion: 'guarda la ficha de la promoción',
+	formalizacion_promocion: 'guarda la formalización de la promoción',
 	lista_estandar: 'prepara la lista estándar de documentos',
 };
 

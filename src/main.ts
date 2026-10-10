@@ -866,7 +866,8 @@ async function iniciar() {
 	// versiones anteriores recordaban el nombre y el DNI en el navegador: se borran
 	guardar( 'inmobiliarias:comprador', null );
 	const escapar = ( t: string ) => t.replace( /[&<>"]/g, ( c ) => ( { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' } )[ c ]! );
-	const conceptoPago = ( pack: string ) => ( PROMOCION.pagos?.concepto ?? '{ref} · {pack}' )
+	const formalizacion = () => fichaVivienda.formalizacion ?? {};
+	const conceptoPago = ( pack: string ) => ( formalizacion().pago?.concepto ?? '{promocion} · {ref} · {pack}' )
 		.replace( '{ref}', fichaVivienda.ref ).replace( '{pack}', pack ).replace( '{promocion}', PROMOCION.promocion.nombre );
 	const mostrarResumen = ( packId: string ) => {
 
@@ -880,25 +881,29 @@ async function iniciar() {
 
 		} ).join( '' );
 		const total = conf.totalPack( packId );
-		const pg = PROMOCION.pagos;
+		const { pago: pg, contacto } = formalizacion();
+		// a quién se envía el documento firmado (lo configura la promotora en MUNE Portal)
+		const destino = contacto?.email
+			? `${ contacto.nombre ? `${ escapar( contacto.nombre ) }, ` : '' }<a href="mailto:${ escapar( contacto.email ) }">${ escapar( contacto.email ) }</a>${ contacto.telefono ? ` (${ escapar( contacto.telefono ) })` : '' }`
+			: 'tu comercial';
 
 		$( '#titulo-resumen' ).textContent = pv.pack.titulo;
 		dialogo.querySelector( '.contenido' )!.innerHTML = `
 			<p class="fecha">${ PROMOCION.promocion.nombre } · ${ nombreVivienda( fichaVivienda ) }</p>
 			<table>
 				<tbody>${ filas }</tbody>
-				<tfoot><tr class="total"><th scope="row">Total mejoras del pack</th><td></td><td>${ total ? `+${ fmtEuros( total ) }` : '0 €' }</td></tr></tfoot>
+				<tfoot><tr class="total"><th scope="row">Total de este pack</th><td></td><td>${ total ? `+${ fmtEuros( total ) }` : '0 €' }</td></tr></tfoot>
 			</table>
 			<fieldset class="datos-comprador">
-				<legend>Datos del comprador <span>(opcional: también puede rellenarlos a mano en el documento)</span></legend>
+				<legend>Tus datos <span>(opcional: también puedes escribirlos a mano en el documento)</span></legend>
 				<label>Nombre y apellidos<input name="nombre" autocomplete="name" value=""></label>
 				<label>DNI / NIE<input name="dni" autocomplete="off" value=""></label>
 			</fieldset>
-			${ total && pg ? `<div class="pago">
-				<p><strong>Pago por transferencia: ${ fmtEuros( total ) }</strong></p>
-				<p>${ pg.titular } · ${ pg.iban }<br>Concepto: ${ escapar( conceptoPago( pv.pack.titulo ) ) }</p>
+			${ total && pg?.iban ? `<div class="pago">
+				<p><strong>Transferencia: ${ fmtEuros( total ) }</strong></p>
+				<p>${ escapar( pg.titular ?? '' ) } · ${ escapar( pg.iban ) }<br>Concepto: ${ escapar( conceptoPago( pv.pack.titulo ) ) }</p>
 			</div>` : '' }
-			<ol class="pasos"><li>Descargue el documento</li><li>Fírmelo</li>${ total ? '<li>Realice la transferencia</li>' : '' }<li>Envíe a su comercial el documento firmado${ total ? ' y el justificante de pago' : '' }</li></ol>`;
+			<ol class="pasos"><li>Descarga el documento.</li><li>Fírmalo.</li>${ total ? '<li>Haz la transferencia.</li>' : '' }<li>Envía el documento firmado${ total ? ' y el justificante' : '' } a ${ destino }.</li></ol>`;
 		dialogo.showModal();
 
 	};

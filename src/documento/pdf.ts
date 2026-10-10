@@ -44,7 +44,9 @@ export async function generarPDF( d: DatosDocumento ): Promise<Blob> {
 
 	const { promocion: p, vivienda: v, tipologia: t, conf, pack: pv } = d;
 	const marca = p.marca;
-	const pagos = p.pagos;
+	const { pago: pagos, contacto } = v.formalizacion ?? {};
+	// a quién se envía el documento firmado (lo configura la promotora en MUNE Portal)
+	const destino = contacto?.email ?? 'tu comercial';
 	const acento = rgb( marca.colorPrincipal );
 	const suave: RGB = acento.map( ( x ) => Math.round( x + ( 255 - x ) * 0.9 ) ) as RGB;
 	const doc = new jsPDF( { unit: 'mm', format: 'a4', compress: true } );
@@ -164,15 +166,15 @@ export async function generarPDF( d: DatosDocumento ): Promise<Blob> {
 	texto( 'Formalización y pago', M, y, 17, TINTA, 'bold' );
 	y += 7;
 	const intro = partir( total
-		? 'Para formalizar su selección, descargue y firme este documento, realice la transferencia correspondiente por el importe indicado y envíe a su comercial el documento firmado junto con el justificante de pago.'
-		: 'Este pack no incluye mejoras con coste. Para dejar constancia de su selección, firme este documento y envíelo a su comercial.', anchoUtil, 9.5 );
+		? `Para formalizar tu selección, firma este documento, haz la transferencia por el importe indicado y envía el documento firmado y el justificante a ${ destino }.`
+		: `Este pack no tiene mejoras con coste. Para dejar constancia de tu selección, firma este documento y envíalo a ${ destino }.`, anchoUtil, 9.5 );
 	texto( intro, M, y, 9.5, GRIS );
 	y += intro.length * 4.3 + 5;
 
 	// pasos
 	const pasos = total
-		? [ [ 'Descargar', 'Este documento' ], [ 'Firmar', 'Complete sus datos y firme' ], [ 'Transferencia', `Por ${ fmtEuros( total ) }` ], [ 'Enviar', 'Documento firmado y justificante a su comercial' ] ]
-		: [ [ 'Descargar', 'Este documento' ], [ 'Firmar', 'Complete sus datos y firme' ], [ 'Enviar', 'Documento firmado a su comercial' ] ];
+		? [ [ 'Descargar', 'Este documento' ], [ 'Firmar', 'Completa tus datos y firma' ], [ 'Transferir', `${ fmtEuros( total ) }` ], [ 'Enviar', 'Documento firmado y justificante' ] ]
+		: [ [ 'Descargar', 'Este documento' ], [ 'Firmar', 'Completa tus datos y firma' ], [ 'Enviar', 'Documento firmado' ] ];
 	const anchoPaso = anchoUtil / pasos.length;
 	pasos.forEach( ( [ a, b ], i ) => {
 
@@ -186,7 +188,7 @@ export async function generarPDF( d: DatosDocumento ): Promise<Blob> {
 	} );
 	y += 18;
 
-	if ( total && pagos ) {
+	if ( total && pagos?.iban ) {
 
 		titulo( 'Datos para la transferencia', y );
 		y += 4;
@@ -194,12 +196,12 @@ export async function generarPDF( d: DatosDocumento ): Promise<Blob> {
 		doc.setLineWidth( 0.4 );
 		const filas: [ string, string ][] = [
 			[ 'Importe', fmtEuros( total ) ],
-			[ 'Beneficiario', pagos.titular ],
-			[ 'Entidad', pagos.banco ],
+			...( pagos.titular ? [ [ 'Beneficiario', pagos.titular ] as [ string, string ] ] : [] ),
+			...( pagos.banco ? [ [ 'Entidad', pagos.banco ] as [ string, string ] ] : [] ),
 			[ 'IBAN', pagos.iban ],
 			...( pagos.bic ? [ [ 'BIC / SWIFT', pagos.bic ] as [ string, string ] ] : [] ),
 			[ 'Concepto', d.concepto ],
-			...( pagos.plazoDias ? [ [ 'Plazo', `${ pagos.plazoDias } días naturales desde la firma, y siempre dentro del periodo del pack (hasta el ${ fmtFecha( pv.pack.hasta ) })` ] as [ string, string ] ] : [] ),
+			...( pagos.plazoDias ? [ [ 'Plazo', `${ pagos.plazoDias } días naturales desde la firma, siempre antes del ${ fmtFecha( pv.pack.hasta ) } (fin del periodo del pack)` ] as [ string, string ] ] : [] ),
 		];
 		const alto = filas.reduce( ( s, [ , b ] ) => s + Math.max( 1, partir( b, anchoUtil - 50, 9.5 ).length ) * 4.6 + 3, 0 ) + 4;
 		doc.roundedRect( M, y, anchoUtil, alto, 2, 2, 'S' );
@@ -252,8 +254,7 @@ export async function generarPDF( d: DatosDocumento ): Promise<Blob> {
 	doc.roundedRect( M + anchoUtil * 0.52, y + 2.5, anchoUtil * 0.48, 26, 1.5, 1.5, 'S' );
 	y += 35;
 
-	const com = marca.comercial;
-	if ( com ) texto( `Su comercial: ${ com.nombre } · ${ com.telefono } · ${ com.email }`, M, y, 8.5, GRIS );
+	if ( contacto?.email ) texto( `Envía la documentación a: ${ [ contacto.nombre, contacto.email, contacto.telefono ].filter( Boolean ).join( ' · ' ) }`, M, y, 8.5, GRIS );
 
 	// ---------------------------------------------------------------- pie en todas las páginas
 	const paginas = doc.getNumberOfPages();

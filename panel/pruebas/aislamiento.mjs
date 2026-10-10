@@ -771,6 +771,31 @@ await caso( DEBE_FUNCIONAR, 'Códigos de comprador: la promotora genera y cambia
 
 } );
 
+const formalizar = ( sb, promocion, email, iban = 'ES91 2100 0418 4502 0005 1332' ) => sb.rpc( 'guardar_formalizacion', {
+	p_promocion: promocion, p_contacto_nombre: 'Comercial', p_contacto_email: email, p_contacto_telefono: '600 000 000',
+	p_titular: 'Promotora A S.L.', p_banco: 'Banco', p_iban: iban, p_bic: '', p_concepto: '{ref} · {pack}', p_plazo_dias: 10, p_instrucciones: '',
+} );
+
+await caso( DEBE_FALLAR, '33. Formalización: otra promotora, el robot o alguien sin sesión intentan cambiar el contacto o los datos de pago; nadie sin código los lee', async () => {
+
+	const r = await Promise.all( [ formalizar( aprobB, 'prueba-a', 'x@b.es' ), formalizar( robot, 'prueba-a', 'x@b.es' ), formalizar( anonimo, 'prueba-a', 'x@b.es' ) ] );
+	const leeAnonimo = await anonimo.from( 'promociones' ).select( 'formalizacion' ).eq( 'id', 'prueba-a' );
+	const leeB = await aprobB.from( 'promociones' ).select( 'formalizacion' ).eq( 'id', 'prueba-a' );
+	const ibanMal = await formalizar( gestorA, 'prueba-a', 'ventas@a.es', 'ES12' );
+	return r.every( falla ) && ( falla( leeAnonimo ) || vacio( leeAnonimo ) ) && vacio( leeB ) && falla( ibanMal );
+
+} );
+
+await caso( DEBE_FUNCIONAR, 'Formalización: la promotora guarda contacto y datos de pago, y el comprador los recibe solo al entrar con su código', async () => {
+
+	await exigir( formalizar( gestorA, 'prueba-a', 'Ventas@A.es' ), 'guardar' );
+	const codigo = await exigir( generar( gestorA, 'Ático Z' ), 'código' );
+	const dentro = ( await entrarComprador( codigo ) ).data;
+	const f = dentro?.formalizacion;
+	return f?.contacto?.email === 'ventas@a.es' && f?.pago?.iban === 'ES91 2100 0418 4502 0005 1332' && f?.pago?.plazoDias === 10;
+
+} );
+
 await caso( DEBE_FUNCIONAR, 'Códigos de comprador: la promotora genera de golpe los de las viviendas que no tienen (para el Excel), y valen', async () => {
 
 	const nuevos = await exigir( gestorA.rpc( 'generar_codigos_pendientes', { p_promocion: 'prueba-a', p_viviendas: [ 'Bajo A', 'Bajo B', 'Bajo B', ' 1ºC ' ] } ), 'todos' );

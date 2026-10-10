@@ -12,6 +12,7 @@
 // Todo lo comprueban las reglas de la base de datos (005–008): solo la
 // administradora, con el código del móvil.
 
+import { datosFormalizacion, formFormalizacion, type Formalizacion } from './formalizacion';
 import { pintarActividad } from './actividad';
 import { alEnviar, anotar, conectarPlegables, esc, fecha, sb, traducir } from './comun';
 import { pintarDocumentacion } from './documentacion';
@@ -27,14 +28,14 @@ interface Ficha {
 	referencia_catastral: string | null; tipo: string | null; num_viviendas: number | null; num_portales: number | null;
 	num_plantas: number | null; fecha_entrega: string | null;
 }
-interface Promocion extends DatosFiscales, Ficha { id: string; nombre: string; ubicacion: string; estado: string; activa: boolean; promotora_id: string }
+interface Promocion extends DatosFiscales, Ficha { id: string; nombre: string; ubicacion: string; estado: string; activa: boolean; promotora_id: string; formalizacion?: Formalizacion }
 interface Acceso {
 	id: number; user_id: string; promocion_id: string | null; nombre: string; email: string; cargo: string;
 	activo: boolean; aceptada: boolean; ultima_entrada: string | null;
 }
 
 const CAMPOS_PROMOCION = `id, nombre, ubicacion, estado, activa, promotora_id, razon_social, cif, domicilio_fiscal,
-	direccion, codigo_postal, municipio, provincia, referencia_catastral, tipo, num_viviendas, num_portales, num_plantas, fecha_entrega`;
+	direccion, codigo_postal, municipio, provincia, referencia_catastral, tipo, num_viviendas, num_portales, num_plantas, fecha_entrega, formalizacion`;
 
 const ESTADOS: Record<string, string> = {
 	documentacion: 'Recogiendo documentación',
@@ -657,7 +658,17 @@ export async function pantallaPromocion(destino: HTMLElement, id: string, pestan
 			<h2 class="separado">Datos fiscales de la promoción</h2>
 			<p class="ayuda">La sociedad de esta promoción (puede ser distinta de la de la promotora).</p>
 			${formFiscal(p, false, false)}
-			<p class="ok" data-guardado-fiscal role="status"></p>`;
+			<p class="ok" data-guardado-fiscal role="status"></p>
+			<h2 class="separado">Formalización de la personalización</h2>
+			<p class="ayuda">A quién envía el comprador su documento firmado y los datos para la transferencia. Normalmente lo rellena la promotora en MUNE Portal; solo lo ven los compradores con código.</p>
+			${formFormalizacion(p.formalizacion)}`;
+		const form = caja.querySelector<HTMLFormElement>('[data-formalizacion]')!;
+		alEnviar(form, async (d) => {
+			const { error: e } = await sb.rpc('guardar_formalizacion', datosFormalizacion(id, d));
+			if (e) throw e;
+			form.querySelector<HTMLElement>('[data-guardado]')!.textContent = '✓ Guardado.';
+			form.querySelector<HTMLButtonElement>('button[type=submit]')!.disabled = false;
+		});
 		const ficha = caja.querySelector<HTMLFormElement>('[data-ficha]')!;
 		alEnviar(ficha, async (d) => {
 			const { error: e } = await sb.rpc('guardar_ficha_promocion', datosFicha(id, d));
