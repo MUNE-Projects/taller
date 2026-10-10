@@ -26,7 +26,7 @@ interface Promotora extends DatosFiscales { id: string; nombre: string; activa: 
 interface Ficha {
 	direccion: string | null; codigo_postal: string | null; municipio: string | null; provincia: string | null;
 	referencia_catastral: string | null; tipo: string | null; num_viviendas: number | null; num_portales: number | null;
-	num_plantas: number | null; fecha_entrega: string | null;
+	num_plantas: number | null; fecha_entrega: string | null; fase_proyecto?: string | null;
 }
 interface Promocion extends DatosFiscales, Ficha { id: string; nombre: string; ubicacion: string; estado: string; activa: boolean; promotora_id: string; formalizacion?: Formalizacion }
 interface Acceso {
@@ -35,7 +35,7 @@ interface Acceso {
 }
 
 const CAMPOS_PROMOCION = `id, nombre, ubicacion, estado, activa, promotora_id, razon_social, cif, domicilio_fiscal,
-	direccion, codigo_postal, municipio, provincia, referencia_catastral, tipo, num_viviendas, num_portales, num_plantas, fecha_entrega, formalizacion`;
+	direccion, codigo_postal, municipio, provincia, referencia_catastral, tipo, num_viviendas, num_portales, num_plantas, fecha_entrega, fase_proyecto, formalizacion`;
 
 const ESTADOS: Record<string, string> = {
 	documentacion: 'Recogiendo documentación',
@@ -151,7 +151,7 @@ function tablaPersonas(lista: Acceso[]): string {
 function formAcceso(clave: string, texto: string): string {
 	return `<div class="acciones"><button class="boton secundario pequeno" type="button" data-abrir="acceso">${esc(texto)}</button></div>
 		<form class="peticion-form" data-dar-acceso="${esc(clave)}" data-plegable="acceso" novalidate hidden>
-			<p class="ayuda">Recibirá un email para crear su contraseña y entrar en MUNE Portal. Podrá subir documentación, aprobar planos o pedir cambios y descargar archivos.</p>
+			<p class="ayuda">Recibirá un email para crear su contraseña y entrar en MUNE Portal, con acceso ${clave === 'todas' ? 'a todas las promociones de la promotora' : 'a esta promoción'}.</p>
 			<label>Nombre <input name="nombre" maxlength="120" required></label>
 			<label>Correo <input name="email" type="email" maxlength="200" required></label>
 			<label>Cargo (opcional) <input name="cargo" maxlength="120" placeholder="Por ejemplo: Dirección comercial"></label>
@@ -234,6 +234,10 @@ function formFicha(p: Ficha): string {
 		<label>Número de portales o bloques <input name="num_portales" type="number" min="1" max="500" value="${num(p.num_portales)}"></label>
 		<label>Número de plantas <input name="num_plantas" type="number" min="1" max="100" value="${num(p.num_plantas)}"></label>
 		<label>Fecha prevista de entrega (opcional) <input name="fecha_entrega" type="date" value="${esc(p.fecha_entrega ?? '')}"></label>
+		<label>Fase del proyecto <select name="fase_proyecto"><option value="">Sin indicar</option>
+			<option value="anteproyecto" ${p.fase_proyecto === 'anteproyecto' ? 'selected' : ''}>Anteproyecto</option>
+			<option value="basico" ${p.fase_proyecto === 'basico' ? 'selected' : ''}>Proyecto básico</option>
+			<option value="ejecucion" ${p.fase_proyecto === 'ejecucion' ? 'selected' : ''}>Proyecto de ejecución</option></select></label>
 		<p class="error" role="alert"></p>
 		<div class="acciones"><button class="boton" type="submit">Guardar ficha</button></div>
 		<p class="ok" data-guardado role="status"></p>
@@ -252,6 +256,7 @@ function datosFicha(promocion: string, d: FormData): Record<string, unknown> {
 		p_referencia_catastral: String(d.get('referencia_catastral') ?? ''), p_tipo: String(d.get('tipo') ?? ''),
 		p_num_viviendas: entero('num_viviendas'), p_num_portales: entero('num_portales'), p_num_plantas: entero('num_plantas'),
 		p_fecha_entrega: String(d.get('fecha_entrega') ?? '') || null,
+		p_fase_proyecto: String(d.get('fase_proyecto') ?? '') || null,
 	};
 }
 

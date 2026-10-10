@@ -205,8 +205,13 @@ Solo tienen las capacidades que les asigna un administrador, en cada promoción.
 
 ### Alta de una promotora
 
-1. MUNE Projects la da de alta en MUNE Studio con sus **administradores de la promotora**.
+1. MUNE Projects la da de alta en MUNE Studio, en un solo formulario:
+   - los **datos de la empresa**: razón social, CIF, domicilio fiscal y persona de contacto (nombre, email o teléfono);
+   - sus **administradores de la promotora**, que reciben la invitación.
 2. A partir de ahí, la propia promotora gestiona su equipo desde **Equipo**, en MUNE Portal.
+3. Si algún dato de la empresa cambia, el administrador de la promotora puede corregirlo desde el Portal.
+
+MUNE Studio ve siempre a todas las personas de cada promotora, con sus accesos y capacidades.
 
 ---
 
@@ -287,6 +292,21 @@ Cada email indica la promoción, la versión, qué hay que revisar, el enlace a 
 - Botones: «Aprobar Experiencia 3D» y «Pedir cambios».
 
 ---
+
+## 4 bis. Textos legales de la promotora
+
+La promotora escribe sus propios textos legales en MUNE Portal (*Ficha y datos*, con la capacidad `datos` o como administrador):
+
+| Texto | Dónde aparece |
+|---|---|
+| Planos comerciales | Al pie de cada plano comercial (PDF y PNG) |
+| Imágenes y renders | En cada Render HD |
+| Experiencia 3D | En pequeño, siempre visible mientras se navega por MUNE Experience |
+| Personalización | En el configurador del comprador y en el documento de selección (PDF) |
+
+- Hoy esos textos vienen fijos en los datos de cada promoción, que prepara MUNE. Pasan a guardarse en Supabase, por promoción.
+- Entran en la siguiente versión que se prepare, como cualquier otro cambio: se revisan en la vista previa y se publican con la versión.
+- Se implementan en el **paso 2**. Su uso en la Experience, los planos y los renders llega con la siguiente versión preparada.
 
 ## 5. Exportar personalizaciones
 
@@ -372,7 +392,12 @@ La evolución hacia fases o grupos configurables se revisará aparte. Hasta ento
 
 ---
 
-## 9. Documentación técnica con varios archivos (propuesta, pendiente de OK)
+## 8 bis. Documentación de la promoción
+
+- **Fase del proyecto:** la promoción indica en su ficha si está en *anteproyecto*, *proyecto básico* o *proyecto de ejecución*. No es un documento que entregar. Cada documento subido queda marcado con la fase de ese momento (`018_fase_proyecto.sql`).
+- **Memoria de calidades técnica:** es el nombre del documento. En el Portal aparece con su explicación: no es la memoria comercial, sino la documentación técnica de lo que hay que reproducir.
+
+## 9. Documentación técnica con varios archivos (aprobado: paso 2)
 
 **Hoy:** cada requisito de la lista de documentos guarda **una cadena de versiones**. Cada archivo nuevo **sustituye** al anterior, que se conserva en el historial. Por eso la «Documentación técnica de materiales, acabados y equipamiento» solo puede tener un archivo vigente.
 
@@ -386,7 +411,9 @@ La evolución hacia fases o grupos configurables se revisará aparte. Hasta ento
 - **Se activa** en la documentación técnica y en «Proyecto básico o de ejecución», donde la información suele venir repartida en varios archivos: memoria técnica, cuadros de carpinterías y acabados, detalles y fichas técnicas.
 - **Herramientas:** la herramienta de revisión (`documentos.mjs`) y MUNE Studio muestran cada archivo por separado. La revisión es por archivo, como ahora.
 
-Se implementaría dentro del **paso 2**.
+- **Nombrar cada archivo:** al añadir un archivo, la persona indica qué contiene. Lo elige de una lista propia de ese documento (por ejemplo, para la memoria de calidades técnica: *Memoria técnica*, *Cuadro de carpinterías*, *Cuadro de acabados*, *Detalles constructivos*, *Fichas técnicas de fabricantes*, *Otro*) y, si quiere, lo detalla («Ventanas fachada sur»). Así cada archivo llega identificado para preparar el proyecto y el 3D, sin depender del nombre del archivo.
+
+Se implementa dentro del **paso 2**.
 
 ---
 
@@ -396,7 +423,7 @@ Se implementaría dentro del **paso 2**.
 |---|---|
 | **0** | Revisión de marca y textos, con todos los cambios editoriales de esta decisión. Después del merge: los pasos de Supabase (`016`, `017`, la función `avisar-promotora` y los 2 emails) |
 | **1** | Nombres y estructura: `taller` → `studio`, `escaparate` → `experience`, Panel → Studio, Workers, carpetas, 2FA, documentación y Supabase visible |
-| **2** | Equipos, administración y validaciones: administradores, capacidades, separación entre `compradores` y `personalizacion`, Equipo en el Portal, validación de planos comerciales y de Experiencia 3D, varios aprobadores, trazabilidad, emails y varios archivos por requisito |
+| **2** | Equipos, administración y validaciones: alta de promotora con datos y administradores, administradores, capacidades, separación entre `compradores` y `personalizacion`, Equipo en el Portal, validación de planos comerciales y de Experiencia 3D, varios aprobadores, trazabilidad, emails, varios archivos por documento (con nombre) y textos legales |
 | **3** | Exportar personalizaciones formalizadas. Si es pequeño y limpio, se añade al final del paso 2 |
 | **4** | Experience integrada en el Portal: modo profesional, previsualización de la personalización, Render HD, materiales y fin del acceso profesional público |
 | **5** | Datos privados fuera de lo público |

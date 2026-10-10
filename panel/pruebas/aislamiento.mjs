@@ -440,7 +440,7 @@ await caso( DEBE_FUNCIONAR, 'Lista estándar de documentos: solo la administrado
 	await exigir( admin.from( 'requisitos' ).update( { activo: false } ).eq( 'id', lista.at( -1 ).id ), 'quitar' );
 	const quitarIntruso = await aprobA.from( 'requisitos' ).update( { activo: false } ).eq( 'id', lista[ 0 ].id ).select();
 	const vista = ( await aprobA.from( 'requisitos' ).select( 'id' ).eq( 'promocion_id', 'prueba-a3' ) ).data;
-	return falla( intruso ) && falla( repetida ) && n === 11 && lista.some( ( r ) => r.plantilla === '/plantillas/tabla-viviendas.xlsx' )
+	return falla( intruso ) && falla( repetida ) && n === 10 && lista.some( ( r ) => r.plantilla === '/plantillas/tabla-viviendas.xlsx' )
 		&& ( falla( quitarIntruso ) || vacio( quitarIntruso ) ) && vista.length === lista.length - 1;
 
 } );

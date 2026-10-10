@@ -15,10 +15,12 @@ interface PromocionMin { id: string; nombre: string; promotora_id: string }
 interface Requisito { id: number; bloque: string; elemento: string; descripcion: string; obligatorio: boolean; activo: boolean }
 interface Documento {
 	id: number; requisito_id: number; nombre: string; ruta: string; tamano: number; version: number;
-	estado: string; nota: string | null; subido_por: string; subido_en: string; revisado_en: string | null;
+	estado: string; nota: string | null; subido_por: string; subido_en: string; revisado_en: string | null; fase?: string | null;
 }
 
-const BLOQUES = ['Planos', 'Viviendas y superficies', 'Materiales y acabados', 'Proyecto', 'Marca', 'Datos legales', 'Personalización'];
+const BLOQUES = ['Planos', 'Viviendas y superficies', 'Calidades', 'Marca', 'Datos legales', 'Personalización'];
+/** Fase del proyecto con la que queda marcado cada documento (018_fase_proyecto.sql). */
+const FASES: Record<string, string> = { anteproyecto: 'Anteproyecto', basico: 'Proyecto básico', ejecucion: 'Proyecto de ejecución' };
 const ESTADOS_DOC: Record<string, [string, string]> = {
 	pendiente: ['En revisión', 'pendiente'],
 	vigente: ['Aceptado', 'al-dia'],
@@ -43,7 +45,7 @@ async function descargar(ruta: string, nombre: string, promocion: string): Promi
 export async function pintarDocumentacion(caja: HTMLElement, p: PromocionMin): Promise<void> {
 	const [reqs, docs, personas] = await Promise.all([
 		sb.from('requisitos').select('id, bloque, elemento, descripcion, obligatorio, activo').eq('promocion_id', p.id).order('orden').order('id'),
-		sb.from('documentos').select('id, requisito_id, nombre, ruta, tamano, version, estado, nota, subido_por, subido_en, revisado_en')
+		sb.from('documentos').select('id, requisito_id, nombre, ruta, tamano, version, estado, nota, subido_por, subido_en, revisado_en, fase')
 			.eq('promocion_id', p.id).order('version', { ascending: false }),
 		sb.from('miembros').select('user_id, nombre').eq('promotora_id', p.promotora_id),
 	]);
@@ -81,7 +83,7 @@ export async function pintarDocumentacion(caja: HTMLElement, p: PromocionMin): P
 					<span class="estado ${clase}">${esc(etiqueta)}</span>
 				</div>
 				${versiones.length ? `<div class="historial">${versiones.map((d, i) => `<div class="historial-fila">
-					<span><strong>v${d.version}</strong> · ${esc(d.nombre)} · ${esc(tamano(d.tamano))} · ${esc(fecha(d.subido_en))} · ${esc(quien.get(d.subido_por) ?? '—')}
+					<span><strong>v${d.version}</strong> · ${esc(d.nombre)} · ${esc(tamano(d.tamano))} · ${esc(fecha(d.subido_en))}${d.fase ? ` · ${FASES[d.fase] ?? ''}` : ''} · ${esc(quien.get(d.subido_por) ?? '—')}
 						${i > 0 || d.estado !== 'pendiente' ? ` · <span class="estado ${ESTADOS_DOC[d.estado]?.[1] ?? ''}">${esc(ESTADOS_DOC[d.estado]?.[0] ?? d.estado)}</span>` : ''}</span>
 					<button class="enlace" type="button" data-bajar="${d.id}">Descargar</button>
 				</div>${d.nota ? `<p class="promo-lugar nota-doc">Nota: ${esc(d.nota)}</p>` : ''}`).join('')}</div>

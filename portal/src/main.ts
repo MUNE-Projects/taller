@@ -148,6 +148,10 @@ function formFicha(p: Ficha): string {
 		<label>Número de portales o bloques <input name="num_portales" type="number" min="1" max="500" value="${num(p.num_portales)}"></label>
 		<label>Número de plantas <input name="num_plantas" type="number" min="1" max="100" value="${num(p.num_plantas)}"></label>
 		<label>Fecha prevista de entrega (opcional) <input name="fecha_entrega" type="date" value="${esc(p.fecha_entrega ?? '')}"></label>
+		<label>Fase del proyecto <select name="fase_proyecto"><option value="">Sin indicar</option>
+			<option value="anteproyecto" ${p.fase_proyecto === 'anteproyecto' ? 'selected' : ''}>Anteproyecto</option>
+			<option value="basico" ${p.fase_proyecto === 'basico' ? 'selected' : ''}>Proyecto básico</option>
+			<option value="ejecucion" ${p.fase_proyecto === 'ejecucion' ? 'selected' : ''}>Proyecto de ejecución</option></select></label>
 		<p class="error" role="alert"></p>
 		<div class="acciones"><button class="boton" type="submit">Guardar ficha</button></div>
 		<p class="ok" data-guardado role="status"></p>
@@ -165,6 +169,7 @@ function datosFicha(promocion: string, d: FormData): Record<string, unknown> {
 		p_referencia_catastral: String(d.get('referencia_catastral') ?? ''), p_tipo: String(d.get('tipo') ?? ''),
 		p_num_viviendas: entero('num_viviendas'), p_num_portales: entero('num_portales'), p_num_plantas: entero('num_plantas'),
 		p_fecha_entrega: String(d.get('fecha_entrega') ?? '') || null,
+		p_fase_proyecto: String(d.get('fase_proyecto') ?? '') || null,
 	};
 }
 
@@ -247,9 +252,12 @@ interface Requisito { id: number; bloque: string; elemento: string; descripcion:
 interface Ficha {
 	direccion: string | null; codigo_postal: string | null; municipio: string | null; provincia: string | null;
 	referencia_catastral: string | null; tipo: string | null; num_viviendas: number | null; num_portales: number | null;
-	num_plantas: number | null; fecha_entrega: string | null;
+	num_plantas: number | null; fecha_entrega: string | null; fase_proyecto?: string | null;
 }
-interface Documento { id: number; requisito_id: number; nombre: string; ruta: string; version: number; estado: string; nota: string | null; subido_en: string }
+/** Fase del proyecto (ficha de la promoción), con la que queda marcado cada documento. */
+const FASES: Record<string, string> = { anteproyecto: 'Anteproyecto', basico: 'Proyecto básico', ejecucion: 'Proyecto de ejecución' };
+
+interface Documento { id: number; requisito_id: number; nombre: string; ruta: string; version: number; estado: string; nota: string | null; subido_en: string; fase?: string | null }
 interface Entregable { id: number; version: string; tipo: string; tipologia: string | null; nombre: string; ruta: string }
 
 const TIPOS_ENTREGABLE: Record<string, string> = { infografia: 'Infografía', pdf: 'PDF' };
@@ -258,9 +266,9 @@ const PESTANAS: [string, string][] = [['resumen', 'Resumen'], ['documentacion', 
 async function pantallaPromocion(id: string, pestana = 'resumen', extra = '', mensaje = ''): Promise<void> {
 	const [promo, reqs, docs, versiones] = await Promise.all([
 		sb.from('promociones').select(`id, nombre, ubicacion, estado, promotora_id, razon_social, cif, domicilio_fiscal, direccion, codigo_postal,
-			municipio, provincia, referencia_catastral, tipo, num_viviendas, num_portales, num_plantas, fecha_entrega, formalizacion`).eq('id', id).maybeSingle(),
+			municipio, provincia, referencia_catastral, tipo, num_viviendas, num_portales, num_plantas, fecha_entrega, fase_proyecto, formalizacion`).eq('id', id).maybeSingle(),
 		sb.from('requisitos').select('id, bloque, elemento, descripcion, obligatorio, orden, plantilla').eq('promocion_id', id).order('orden').order('id'),
-		sb.from('documentos').select('id, requisito_id, nombre, ruta, version, estado, nota, subido_en').eq('promocion_id', id).order('version', { ascending: false }),
+		sb.from('documentos').select('id, requisito_id, nombre, ruta, version, estado, nota, subido_en, fase').eq('promocion_id', id).order('version', { ascending: false }),
 		versionesConPlanos(id),
 	]);
 	for (const r of [promo, reqs, docs]) if (r.error) throw r.error;
@@ -335,7 +343,7 @@ async function pantallaPromocion(id: string, pestana = 'resumen', extra = '', me
 				${r.plantilla ? `<a class="enlace" href="${esc(r.plantilla)}" download>Descargar la plantilla</a>` : ''}
 				${ultimo?.estado === 'rechazado' ? `<p class="requisito-nota">${ultimo.nota ? `${esc(ultimo.nota)} ` : ''}Sube una versión nueva con lo corregido.</p>` : ''}
 				${anteriores.length ? `<div class="historial">${anteriores.map((d) => `<div class="historial-fila">
-					<span>v${d.version} · ${esc(d.nombre)} · ${esc(fecha(d.subido_en))}</span>
+					<span>v${d.version} · ${esc(d.nombre)} · ${esc(fecha(d.subido_en))}${d.fase ? ` · ${FASES[d.fase] ?? ''}` : ''}</span>
 					<button class="enlace" type="button" data-bajar="documentos" data-ruta="${esc(d.ruta)}" data-nombre="${esc(d.nombre)}">Descargar</button>
 				</div>`).join('')}</div>` : ''}
 				<div class="acciones">
