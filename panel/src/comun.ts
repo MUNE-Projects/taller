@@ -17,13 +17,25 @@ export function esc(t: string): string {
 	return t.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 }
 
+/**
+ * ¿Es un mensaje escrito para personas? Los de nuestras reglas y funciones
+ * están en español y se pueden enseñar; los técnicos (en inglés, de la base de
+ * datos o del navegador) no: se quedan en la consola para diagnosticar.
+ */
+function paraPersonas(m: string): boolean {
+	return /^[¿¡A-ZÁÉÍÓÚÑ][^\n]{2,240}$/.test(m)
+		&& !/\b(the|is|of|for|with|to|violates|denied|invalid|error|failed|null|column|relation|function|syntax|jwt|token|duplicate|constraint|permission|row-level|undefined|unexpected)\b/i.test(m);
+}
+
 export function traducir(e: unknown): string {
 	const m = e instanceof Error ? e.message : typeof e === 'object' && e && 'message' in e ? String(e.message) : String(e);
 	if (/invalid login credentials/i.test(m)) return 'Correo o contraseña incorrectos.';
 	if (/rate limit|too many/i.test(m)) return 'Demasiados intentos. Espera unos minutos y vuelve a probar.';
 	if (/invalid totp|invalid code|expired/i.test(m)) return 'Código incorrecto o caducado. Prueba con el código que aparece ahora en la app.';
-	if (/failed to fetch|network/i.test(m)) return 'No hay conexión con el servidor. Revisa internet y vuelve a probar.';
-	return 'Algo ha fallado: ' + m;
+	if (/failed to fetch|network/i.test(m)) return 'No hay conexión. Revisa internet y vuelve a probar.';
+	if (paraPersonas(m)) return m;
+	console.error('[MUNE Studio]', e);
+	return 'No se ha podido completar. Vuelve a probar; si sigue pasando, díselo a Claude.';
 }
 
 /** Conecta un formulario: desactiva el botón mientras trabaja y muestra errores. */
