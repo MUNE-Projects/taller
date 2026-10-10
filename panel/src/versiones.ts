@@ -5,9 +5,10 @@
 // el brazo ejecutor (función «ejecutar» de Supabase → GitHub Actions).
 
 import { alEnviar, anotar, esc, fecha, sb } from './comun';
+import { MOTIVO_NO_PUBLICAR, estadoPlanos, leerManifiesto, pintarPlanos, resumenListos } from './planos';
 
-export const ESCAPARATE = 'https://escaparate.mune-projects.workers.dev';
-export const REVISION = 'https://revision-escaparate.mune-projects.workers.dev';
+export const ESCAPARATE: string = import.meta.env.VITE_ESCAPARATE ?? 'https://escaparate.mune-projects.workers.dev';
+export const REVISION: string = import.meta.env.VITE_REVISION ?? 'https://revision-escaparate.mune-projects.workers.dev';
 
 export interface Version { version: string; fecha: string }
 export interface EstadoVersiones { pub: Version | null; rev: Version | null; pendiente: boolean; sinComprobar: boolean }
@@ -103,6 +104,11 @@ export async function pintarVersiones(destino: HTMLElement, p: { id: string; nom
 	const { pub, rev, pendiente } = e;
 	const id = p.id;
 	const volver = pub ? anteriores(pub.version) : [];
+	// planos de la versión en revisión: sin todos aprobados no se publica
+	const manifiesto = pendiente ? await leerManifiesto(REVISION, id, rev!.version) : null;
+	const planos = pendiente ? await estadoPlanos(id, rev!.version).catch(() => []) : [];
+	const listos = resumenListos(planos, !!manifiesto);
+	const bloqueo = listos === 'listos' || listos === 'sin_planos' ? '' : MOTIVO_NO_PUBLICAR[listos];
 	destino.innerHTML = `
 		<div class="promo-cabeza">
 			<p class="promo-versiones">${pub ? `Publicada: <strong>${esc(pub.version)}</strong> · ${esc(fecha(pub.fecha))}` : e.sinComprobar ? 'Publicada: sin comprobar' : 'Sin publicar'}
@@ -112,10 +118,12 @@ export async function pintarVersiones(destino: HTMLElement, p: { id: string; nom
 		<div class="acciones">
 			${pub ? enlace(`${ESCAPARATE}/${id}/`, `Ver publicada (${pub.version})`, 'abre la publicada', { id, version: pub.version }) : ''}
 			${pendiente ? enlace(`${REVISION}/${id}/`, `Ver vista previa (${rev!.version})`, 'abre la vista previa', { id, version: rev!.version }, true) : ''}
-			${pendiente ? `<button class="boton" type="button" data-publicar>Publicar ${esc(rev!.version)}</button>` : ''}
+			${pendiente ? `<button class="boton" type="button" data-publicar ${bloqueo ? 'disabled' : ''}>Publicar ${esc(rev!.version)}</button>` : ''}
 			${volver.length ? '<button class="boton secundario" type="button" data-abrir-volver>Volver a una anterior</button>' : ''}
 		</div>
+		${bloqueo ? `<p class="ayuda">${esc(bloqueo)}</p>` : ''}
 		<p class="aviso" data-progreso role="status" hidden></p>
+		<div data-planos></div>
 		${volver.length ? `<form class="peticion-form" data-volver hidden novalidate>
 			<label>Volver la web pública de ${esc(p.nombre)} a la versión
 				<select name="version">${volver.reverse().map((v) => `<option>${v}</option>`).join('')}</select>
@@ -133,6 +141,7 @@ export async function pintarVersiones(destino: HTMLElement, p: { id: string; nom
 	const aviso = destino.querySelector<HTMLElement>('[data-progreso]')!;
 	const repintar = () => void pintarVersiones(destino, p);
 	anotarEnlaces(destino);
+	if (pendiente) pintarPlanos(destino.querySelector<HTMLElement>('[data-planos]')!, REVISION, id, rev!.version, manifiesto, planos, repintar);
 
 	destino.querySelector<HTMLButtonElement>('[data-publicar]')?.addEventListener('click', async (ev) => {
 		const b = ev.currentTarget as HTMLButtonElement;

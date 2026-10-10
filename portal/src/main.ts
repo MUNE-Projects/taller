@@ -1,72 +1,9 @@
-import { createClient } from '@supabase/supabase-js';
+// Portal de las promotoras: pantallas (entrar, inicio, cada promoción).
+// Lo común (sesión de Supabase, utilidades) está en comun.ts; la validación de
+// planos, en planos.ts.
 
-// Portal de las promotoras. Cada persona entra con su correo y su contraseña
-// (la elige al aceptar la invitación) y solo ve las promociones de su
-// promotora: lo comprueban las reglas de la base de datos
-// (panel/supabase/005_portal.sql), no esta página.
-//
-// Datos públicos del proyecto de Supabase: la clave «publishable» está pensada
-// para ir en el navegador y por sí sola no da acceso a nada.
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL ?? 'https://iowtdenlkxjqzlpwizgb.supabase.co';
-const SUPABASE_CLAVE_PUBLICA = import.meta.env.VITE_SUPABASE_CLAVE ?? 'sb_publishable_LLvwP-xexV-Hlz2R585IQQ_H2NfJebR';
-const ESCAPARATE = 'https://escaparate.mune-projects.workers.dev';
-
-// La sesión vive solo en esta pestaña y caduca tras un rato sin actividad.
-const INACTIVIDAD_MAX = 60 * 60 * 1000;
-const MAX_TAM = 50 * 1024 * 1024;
-const MIN_CLAVE = 10;
-
-// Los enlaces de los emails (invitación o contraseña nueva) llegan con la
-// sesión en la dirección. Se mira de qué tipo es antes de que Supabase la lea.
-const enlaceEmail = new URLSearchParams(location.hash.slice(1));
-const tipoEnlace = enlaceEmail.get('type');
-const errorEnlace = enlaceEmail.get('error_description');
-
-const sb = createClient(SUPABASE_URL, SUPABASE_CLAVE_PUBLICA, {
-	auth: { storage: window.sessionStorage, persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
-});
-
-const app = document.getElementById('app')!;
-
-function esc(t: string): string {
-	return t.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
-}
-
-function pintar(html: string): void {
-	app.innerHTML = html;
-	app.querySelector<HTMLElement>('[autofocus]')?.focus();
-}
-
-function traducir(e: unknown): string {
-	const m = e instanceof Error ? e.message : typeof e === 'object' && e && 'message' in e ? String(e.message) : String(e);
-	if (/invalid login credentials/i.test(m)) return 'Correo o contraseña incorrectos.';
-	if (/rate limit|too many/i.test(m)) return 'Demasiados intentos. Espera unos minutos y vuelve a probar.';
-	if (/should be different/i.test(m)) return 'La contraseña nueva tiene que ser distinta de la anterior.';
-	if (/password/i.test(m) && /weak|short|characters/i.test(m)) return `La contraseña es demasiado débil. Usa al menos ${MIN_CLAVE} caracteres, mezclando letras y números.`;
-	if (/payload too large|exceeded the maximum/i.test(m)) return 'El archivo pesa más de 50 MB.';
-	if (/failed to fetch|network/i.test(m)) return 'No hay conexión con el servidor. Revisa internet y vuelve a probar.';
-	return 'Algo ha fallado: ' + m;
-}
-
-/** Conecta un formulario: desactiva el botón mientras trabaja y muestra errores. */
-function alEnviar(form: HTMLFormElement, accion: (datos: FormData) => Promise<void>): void {
-	const boton = form.querySelector<HTMLButtonElement>('button[type=submit]')!;
-	const error = form.querySelector<HTMLElement>('.error')!;
-	form.addEventListener('submit', async (ev) => {
-		ev.preventDefault();
-		boton.disabled = true;
-		error.textContent = '';
-		try {
-			await accion(new FormData(form));
-		} catch (e) {
-			error.textContent = traducir(e);
-			boton.disabled = false;
-		}
-	});
-}
-
-const CABECERA = '<p class="marca">MUNE · Portal de promotoras</p>';
-const fecha = (iso: string) => new Date(iso).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+import { ESCAPARATE, INACTIVIDAD_MAX, MAX_TAM, MIN_CLAVE, CABECERA, alEnviar, app, errorEnlace, esc, fecha, pintar, sb, tipoEnlace, traducir } from './comun';
+import { htmlLista, leerPlanos, pintarDetalle, versionesConPlanos } from './planos';
 
 // ── Decide qué pantalla toca ──────────────────────────────────────────────
 
@@ -166,8 +103,8 @@ async function navegar(): Promise<void> {
 		return;
 	}
 	acceso = data as unknown as Acceso;
-	const ruta = location.hash.match(/^#\/promocion\/([a-z0-9-]{1,60})$/);
-	return ruta ? pantallaPromocion(ruta[1]) : pantallaInicio();
+	const ruta = location.hash.match(/^#\/promocion\/([a-z0-9-]{1,60})(?:\/([a-z]{1,20})(?:\/([a-z0-9]{1,12}))?)?$/);
+	return ruta ? pantallaPromocion(ruta[1], ruta[2], ruta[3] ?? '') : pantallaInicio();
 }
 
 addEventListener('hashchange', () => { if (acceso) void navegar().catch(fallo); });
@@ -302,7 +239,7 @@ async function navegarSinPintar(): Promise<void> {
 	if (data) acceso = data as unknown as Acceso;
 }
 
-// ── Una promoción: documentación, planos y entregables, versión publicada ─
+// ── Una promoción, por pestañas: #/promocion/<id>/<pestaña>[/<plano o versión>] ─
 
 interface Requisito { id: number; bloque: string; elemento: string; descripcion: string; obligatorio: boolean; orden: number; plantilla: string | null }
 interface Ficha {
@@ -312,80 +249,36 @@ interface Ficha {
 }
 interface Documento { id: number; requisito_id: number; nombre: string; ruta: string; version: number; estado: string; nota: string | null; subido_en: string }
 interface Entregable { id: number; version: string; tipo: string; tipologia: string | null; nombre: string; ruta: string }
-interface Validacion { entregable_id: number; decision: string; comentario: string | null; momento: string }
 
-const TIPOS_ENTREGABLE: Record<string, string> = { plano: 'Plano comercial', infografia: 'Infografía', pdf: 'PDF' };
-const numVersion = (v: string) => Number(v.slice(1));
+const TIPOS_ENTREGABLE: Record<string, string> = { infografia: 'Infografía', pdf: 'PDF' };
+const PESTANAS: [string, string][] = [['resumen', 'Resumen'], ['documentacion', 'Documentación'], ['planos', 'Planos'], ['datos', 'Ficha y datos fiscales']];
 
-async function pantallaPromocion(id: string): Promise<void> {
-	const [promo, reqs, docs, entr, vals] = await Promise.all([
-		sb.from('promociones').select(`id, nombre, ubicacion, promotora_id, razon_social, cif, domicilio_fiscal, direccion, codigo_postal,
+async function pantallaPromocion(id: string, pestana = 'resumen', extra = '', mensaje = ''): Promise<void> {
+	const [promo, reqs, docs, versiones] = await Promise.all([
+		sb.from('promociones').select(`id, nombre, ubicacion, estado, promotora_id, razon_social, cif, domicilio_fiscal, direccion, codigo_postal,
 			municipio, provincia, referencia_catastral, tipo, num_viviendas, num_portales, num_plantas, fecha_entrega`).eq('id', id).maybeSingle(),
 		sb.from('requisitos').select('id, bloque, elemento, descripcion, obligatorio, orden, plantilla').eq('promocion_id', id).order('orden').order('id'),
 		sb.from('documentos').select('id, requisito_id, nombre, ruta, version, estado, nota, subido_en').eq('promocion_id', id).order('version', { ascending: false }),
-		sb.from('entregables').select('id, version, tipo, tipologia, nombre, ruta').eq('promocion_id', id).order('creado_en', { ascending: false }),
-		sb.from('validaciones').select('entregable_id, decision, comentario, momento').eq('promocion_id', id),
+		versionesConPlanos(id),
 	]);
-	for (const r of [promo, reqs, docs, entr, vals]) if (r.error) throw r.error;
+	for (const r of [promo, reqs, docs]) if (r.error) throw r.error;
 	if (!promo.data) {
 		location.hash = '#/';
 		return;
 	}
 	const p = promo.data;
+	const actual = PESTANAS.some(([k]) => k === pestana) ? pestana : 'resumen';
 	const requisitos = (reqs.data ?? []) as Requisito[];
 	const documentos = (docs.data ?? []) as Documento[];
-	const entregables = (entr.data ?? []) as Entregable[];
-	const validaciones = new Map(((vals.data ?? []) as Validacion[]).map((v) => [v.entregable_id, v]));
-
-	// Documentación agrupada por bloque, en el orden de la lista.
-	const bloques = new Map<string, Requisito[]>();
-	for (const r of requisitos) bloques.set(r.bloque, [...(bloques.get(r.bloque) ?? []), r]);
-	const htmlDocs = [...bloques].map(([bloque, rs]) => `<div class="bloque"><h3>${esc(bloque)}</h3>${rs.map((r) => {
-		const versiones = documentos.filter((d) => d.requisito_id === r.id);
-		const ultimo = versiones[0];
-		const estado = !ultimo ? (r.obligatorio ? ['Falta por entregar', 'pendiente'] : ['Opcional', ''])
-			: ultimo.estado === 'vigente' ? ['Revisado y vigente', 'al-dia']
-			: ultimo.estado === 'rechazado' ? ['Rechazado: sube una versión nueva', 'rechazado']
-			: ['Recibido · en revisión', ''];
-		return `<article class="requisito">
-			<div class="requisito-cabeza">
-				<span class="requisito-nombre">${esc(r.elemento)}</span>
-				<span class="estado ${estado[1]}">${esc(estado[0])}</span>
-			</div>
-			${r.descripcion ? `<p class="requisito-desc">${esc(r.descripcion)}</p>` : ''}
-			${r.plantilla ? `<a class="enlace" href="${esc(r.plantilla)}" download>Descargar la plantilla</a>` : ''}
-			${ultimo?.estado === 'rechazado' && ultimo.nota ? `<p class="requisito-nota">${esc(ultimo.nota)}</p>` : ''}
-			${versiones.length ? `<div class="historial">${versiones.map((d) => `<div class="historial-fila">
-				<span>v${d.version} · ${esc(d.nombre)} · ${esc(fecha(d.subido_en))}</span>
-				<button class="enlace" type="button" data-bajar="documentos" data-ruta="${esc(d.ruta)}" data-nombre="${esc(d.nombre)}">Descargar</button>
-			</div>`).join('')}</div>` : ''}
-			<div class="acciones">
-				<label class="boton secundario pequeno subir">${versiones.length ? 'Subir versión nueva' : 'Subir archivo'}
-					<input type="file" data-subir="${r.id}">
-				</label>
-			</div>
-			<p class="aviso" data-progreso="${r.id}" role="status" hidden></p>
-		</article>`;
-	}).join('')}</div>`).join('');
-
-	// Entregables por versión, de la más reciente a la más antigua.
-	const porVersion = new Map<string, Entregable[]>();
-	for (const e of [...entregables].sort((a, b) => numVersion(b.version) - numVersion(a.version))) {
-		porVersion.set(e.version, [...(porVersion.get(e.version) ?? []), e]);
-	}
-	const htmlEntr = [...porVersion].map(([version, es]) => `<div class="bloque"><h3>Versión ${esc(version.slice(1))}</h3>${es.map((e) => {
-		const v = validaciones.get(e.id);
-		const validacion = e.tipo !== 'plano' ? ''
-			: !v ? '<span class="estado pendiente">Pendiente de validación</span>'
-			: v.decision === 'aprobado' ? `<span class="estado al-dia">Aprobado el ${esc(fecha(v.momento))}</span>`
-			: `<span class="estado rechazado">Rechazado el ${esc(fecha(v.momento))}</span>`;
-		return `<div class="entregable">
-			<span>${esc(TIPOS_ENTREGABLE[e.tipo] ?? e.tipo)}${e.tipologia ? ` · tipología ${esc(e.tipologia)}` : ''}<br><span class="promo-lugar">${esc(e.nombre)}</span></span>
-			<span class="acciones">${validacion}
-				<button class="boton secundario pequeno" type="button" data-bajar="entregables" data-ruta="${esc(e.ruta)}" data-nombre="${esc(e.nombre)}">Descargar</button>
-			</span>
-		</div>`;
-	}).join('')}</div>`).join('');
+	const planosActuales = versiones.length ? await leerPlanos(id, versiones[0]) : [];
+	const porValidar = planosActuales.filter((x) => !x.decision).length;
+	const aprobados = planosActuales.filter((x) => x.decision === 'aprobado').length;
+	const faltan = requisitos.filter((r) => r.obligatorio && !documentos.some((d) => d.requisito_id === r.id)).length;
+	const rechazados = requisitos.filter((r) => documentos.find((d) => d.requisito_id === r.id)?.estado === 'rechazado').length;
+	const contador: Record<string, string> = {
+		documentacion: faltan + rechazados ? `${faltan + rechazados} pendiente${faltan + rechazados === 1 ? '' : 's'}` : '',
+		planos: porValidar ? `${porValidar} por validar` : '',
+	};
 
 	pintar(`<div class="escritorio">
 		${cabeceraSesion()}
@@ -393,40 +286,107 @@ async function pantallaPromocion(id: string): Promise<void> {
 		<section class="tarjeta">
 			<h2>${esc(p.nombre)}</h2>
 			<p class="promo-lugar">${esc(p.ubicacion)}</p>
-			<p class="promo-versiones" data-publicada>Comprobando la versión publicada…</p>
+			<nav class="pestanas" aria-label="Secciones de la promoción">${PESTANAS.map(([k, t]) =>
+				`<a href="#/promocion/${esc(id)}/${k}" ${k === actual ? 'aria-current="page"' : ''}>${esc(t)}${contador[k] ? `<b class="contador">${esc(contador[k])}</b>` : ''}</a>`).join('')}</nav>
 		</section>
-		<section class="tarjeta">
+		${mensaje ? `<p class="aviso" role="status">${esc(mensaje)}</p>` : ''}
+		<section class="tarjeta" data-pestana><p class="cargando">Cargando…</p></section>
+	</div>`);
+	app.querySelector('[data-salir]')!.addEventListener('click', salir);
+	const caja = app.querySelector<HTMLElement>('[data-pestana]')!;
+
+	if (actual === 'resumen') {
+		const [etiqueta, clase] = ESTADOS_PROMO[p.estado] ?? [p.estado, ''];
+		caja.innerHTML = `
+			<div class="promo-cabeza"><h2>Resumen</h2><span class="estado ${clase}">${esc(etiqueta)}</span></div>
+			<p class="promo-versiones" data-publicada>Comprobando la versión publicada…</p>
+			<div class="lista-promos separado">
+				<a class="promo-enlace" href="#/promocion/${esc(id)}/documentacion"><span><strong>Documentación</strong><br>
+					<span class="promo-lugar">${faltan ? `Faltan ${faltan} documento(s) obligatorio(s)` : 'Todos los obligatorios entregados'}${rechazados ? ` · ${rechazados} por corregir` : ''}</span></span>
+					<span class="estado ${faltan + rechazados ? 'pendiente' : 'al-dia'}">${faltan + rechazados ? 'Pendiente' : 'Al día'}</span></a>
+				<a class="promo-enlace" href="#/promocion/${esc(id)}/planos"><span><strong>Planos comerciales</strong><br>
+					<span class="promo-lugar">${versiones.length ? `Versión ${esc(versiones[0].slice(1))}: ${aprobados} de ${planosActuales.length} aprobados` : 'Todavía no hay planos para validar'}</span></span>
+					${versiones.length ? `<span class="estado ${porValidar ? 'pendiente' : 'al-dia'}">${porValidar ? `${porValidar} por validar` : aprobados === planosActuales.length ? 'Aprobados' : 'Cambios pedidos'}</span>` : ''}</a>
+				<a class="promo-enlace" href="#/promocion/${esc(id)}/datos"><span><strong>Ficha y datos fiscales</strong><br>
+					<span class="promo-lugar">Dirección, tipo, viviendas y la sociedad de la promoción</span></span></a>
+			</div>`;
+		void pintarPublicada(p.id);
+	}
+
+	if (actual === 'documentacion') {
+		// Documentación agrupada por bloque, en el orden de la lista.
+		const bloques = new Map<string, Requisito[]>();
+		for (const r of requisitos) bloques.set(r.bloque, [...(bloques.get(r.bloque) ?? []), r]);
+		const htmlDocs = [...bloques].map(([bloque, rs]) => `<div class="bloque"><h3>${esc(bloque)}</h3>${rs.map((r) => {
+			const anteriores = documentos.filter((d) => d.requisito_id === r.id);
+			const ultimo = anteriores[0];
+			const estado = !ultimo ? (r.obligatorio ? ['Falta por entregar', 'pendiente'] : ['Opcional', ''])
+				: ultimo.estado === 'vigente' ? ['Revisado y vigente', 'al-dia']
+				: ultimo.estado === 'rechazado' ? ['Rechazado: sube una versión nueva', 'rechazado']
+				: ['Recibido · en revisión', ''];
+			return `<article class="requisito">
+				<div class="requisito-cabeza">
+					<span class="requisito-nombre">${esc(r.elemento)}</span>
+					<span class="estado ${estado[1]}">${esc(estado[0])}</span>
+				</div>
+				${r.descripcion ? `<p class="requisito-desc">${esc(r.descripcion)}</p>` : ''}
+				${r.plantilla ? `<a class="enlace" href="${esc(r.plantilla)}" download>Descargar la plantilla</a>` : ''}
+				${ultimo?.estado === 'rechazado' && ultimo.nota ? `<p class="requisito-nota">${esc(ultimo.nota)}</p>` : ''}
+				${anteriores.length ? `<div class="historial">${anteriores.map((d) => `<div class="historial-fila">
+					<span>v${d.version} · ${esc(d.nombre)} · ${esc(fecha(d.subido_en))}</span>
+					<button class="enlace" type="button" data-bajar="documentos" data-ruta="${esc(d.ruta)}" data-nombre="${esc(d.nombre)}">Descargar</button>
+				</div>`).join('')}</div>` : ''}
+				<div class="acciones">
+					<label class="boton secundario pequeno subir">${anteriores.length ? 'Subir versión nueva' : 'Subir archivo'}
+						<input type="file" data-subir="${r.id}">
+					</label>
+				</div>
+				<p class="aviso" data-progreso="${r.id}" role="status" hidden></p>
+			</article>`;
+		}).join('')}</div>`).join('');
+		caja.innerHTML = `
+			<h2>Documentación</h2>
+			<p class="ayuda">Lo que necesitamos para preparar la promoción. Puedes subir archivos de hasta 50 MB; si te equivocas, sube una versión nueva: las anteriores se conservan.</p>
+			${htmlDocs || '<p class="vacio">MUNE Projects todavía no ha preparado la lista de documentos de esta promoción.</p>'}`;
+		app.querySelectorAll<HTMLInputElement>('[data-subir]').forEach((input) => input.addEventListener('change', () => {
+			const archivo = input.files?.[0];
+			if (archivo) void subir(p.id, p.promotora_id, Number(input.dataset.subir), archivo, input);
+		}));
+	}
+
+	if (actual === 'planos') {
+		const alValidar = (m: string) => void pantallaPromocion(id, 'planos', '', m).catch(fallo);
+		if (/^[0-9]{1,12}$/.test(extra)) {
+			await pintarDetalle(caja, id, Number(extra), versiones, alValidar);
+		} else {
+			const version = versiones.includes(extra) ? extra : versiones[0];
+			const { data: otros } = await sb.from('entregables').select('id, version, tipo, tipologia, nombre, ruta')
+				.eq('promocion_id', id).neq('tipo', 'plano').order('creado_en', { ascending: false });
+			const extras = (otros ?? []) as Entregable[];
+			caja.innerHTML = `${version ? await htmlLista(id, version, versiones)
+				: '<h2>Planos comerciales</h2><p class="vacio">Todavía no hay planos para validar. Cuando MUNE los prepare a partir de vuestra documentación, aparecerán aquí.</p>'}
+				${extras.length ? `<h2 class="separado">Otros entregables</h2>${extras.map((e) => `<div class="entregable">
+					<span>${esc(TIPOS_ENTREGABLE[e.tipo] ?? e.tipo)} · versión ${esc(e.version.slice(1))}<br><span class="promo-lugar">${esc(e.nombre)}</span></span>
+					<button class="boton secundario pequeno" type="button" data-bajar="entregables" data-ruta="${esc(e.ruta)}" data-nombre="${esc(e.nombre)}">Descargar</button>
+				</div>`).join('')}` : ''}`;
+		}
+	}
+
+	if (actual === 'datos') {
+		caja.innerHTML = `
 			<h2>Ficha de la promoción</h2>
 			<p class="ayuda">Los datos básicos del proyecto. La referencia catastral nos sirve para recrear el entorno de la parcela.</p>
 			${formFicha(p as unknown as Ficha)}
-		</section>
-		<section class="tarjeta">
-			<h2>Documentación</h2>
-			<p class="ayuda">Lo que necesitamos para preparar la promoción. Puedes subir archivos de hasta 50 MB; si te equivocas, sube una versión nueva: las anteriores se conservan.</p>
-			${htmlDocs || '<p class="vacio">MUNE Projects todavía no ha preparado la lista de documentos de esta promoción.</p>'}
-		</section>
-		<section class="tarjeta">
-			<h2>Planos y entregables</h2>
-			${htmlEntr || '<p class="vacio">Todavía no hay planos ni entregables. Aparecerán aquí cuando estén listos.</p>'}
-		</section>
-		<section class="tarjeta">
-			<h2>Datos fiscales de la promoción</h2>
+			<h2 class="separado">Datos fiscales de la promoción</h2>
 			<p class="ayuda">La sociedad de esta promoción. Si es la misma que la de la promotora, pulsa «Copiar los datos de la promotora».</p>
-			${formFiscal(p, false, true)}
-		</section>
-	</div>`);
-	app.querySelector('[data-salir]')!.addEventListener('click', salir);
-	conectarFormulario('[data-ficha]', (d) => sb.rpc('guardar_ficha_promocion', datosFicha(p.id, d)));
-	conectarFiscal((d) => sb.rpc('guardar_datos_promocion', {
-		p_promocion: p.id, p_razon_social: String(d.get('razon_social')), p_cif: String(d.get('cif')), p_domicilio_fiscal: String(d.get('domicilio_fiscal')),
-	}));
-	void pintarPublicada(p.id);
+			${formFiscal(p, false, true)}`;
+		conectarFormulario('[data-ficha]', (d) => sb.rpc('guardar_ficha_promocion', datosFicha(p.id, d)));
+		conectarFiscal((d) => sb.rpc('guardar_datos_promocion', {
+			p_promocion: p.id, p_razon_social: String(d.get('razon_social')), p_cif: String(d.get('cif')), p_domicilio_fiscal: String(d.get('domicilio_fiscal')),
+		}));
+	}
 
 	app.querySelectorAll<HTMLButtonElement>('[data-bajar]').forEach((b) => b.addEventListener('click', () => void descargar(b)));
-	app.querySelectorAll<HTMLInputElement>('[data-subir]').forEach((input) => input.addEventListener('change', () => {
-		const archivo = input.files?.[0];
-		if (archivo) void subir(p.id, p.promotora_id, Number(input.dataset.subir), archivo, input);
-	}));
 }
 
 async function pintarPublicada(id: string): Promise<void> {
@@ -493,7 +453,7 @@ async function subir(promocion: string, promotora: string, requisito: number, ar
 		if (error) throw error;
 		// Aviso por email a MUNE Projects (si falla, el documento ya está subido igualmente).
 		void sb.functions.invoke('aviso-subida', { body: { documento_id: subido.id } }).catch(() => undefined);
-		await pantallaPromocion(promocion);
+		await pantallaPromocion(promocion, 'documentacion');
 		const nuevo = app.querySelector<HTMLElement>(`[data-progreso="${requisito}"]`);
 		if (nuevo) {
 			nuevo.hidden = false;

@@ -626,6 +626,58 @@ await caso( DEBE_FUNCIONAR, 'La administradora borra una promotora desactivada c
 
 } );
 
+// ─── Validación de planos (011_planos.sql) ──────────────────────────────────
+
+const h = ( t ) => huella( Buffer.from( t ) );
+// La administradora envía los planos de una versión (sin archivo: aquí solo cuentan las fichas).
+const enviarPlanos = ( version, planos ) => admin.from( 'entregables' ).insert( planos.map( ( [ clave, datos ], orden ) => ( {
+	promocion_id: 'prueba-a', version, tipo: 'plano', tipologia: clave, nombre: `${ clave }.pdf`, ruta: `prueba-a/${ version }/${ clave }.pdf`,
+	huella: h( `${ version }-${ clave }` ), clave, titulo: `Tipología ${ clave.toUpperCase() }`, orden, huella_datos: h( datos ),
+} ) ) ).select( 'id, clave' );
+const v2 = await exigir( enviarPlanos( 'v2', [ [ 'a', 'geometria-a' ], [ 'b', 'geometria-b' ] ] ), 'planos v2' );
+const plano = ( lista, clave ) => lista.find( ( x ) => x.clave === clave ).id;
+
+await caso( DEBE_FALLAR, '29. Planos: una promotora intenta crear planos, ver los de otra, validar dos veces o validar una versión anterior', async () => {
+
+	const crear = await aprobA.from( 'entregables' ).insert( { promocion_id: 'prueba-a', version: 'v9', tipo: 'plano', nombre: 'x.pdf', ruta: 'prueba-a/v9/x.pdf', huella: h( 'x' ) } );
+	const ajenos = await aprobB.rpc( 'planos_de_version', { p_promocion: 'prueba-a', p_version: 'v2' } );
+	const sinSesion = await anonimo.rpc( 'planos_listos', { p_promocion: 'prueba-a', p_version: 'v2' } );
+	await exigir( aprobA.from( 'validaciones' ).insert( { entregable_id: plano( v2, 'a' ), decision: 'aprobado', confirmado: true } ), 'aprobar a v2' );
+	const otraVez = await gestorA.from( 'validaciones' ).insert( { entregable_id: plano( v2, 'a' ), decision: 'rechazado', comentario: 'no me gusta' } );
+	const aB = await aprobB.from( 'validaciones' ).insert( { entregable_id: plano( v2, 'b' ), decision: 'aprobado', confirmado: true } );
+	// un plano de la v1 (versión anterior) ya no se puede validar
+	const [ viejo ] = await exigir( admin.from( 'entregables' ).insert( { promocion_id: 'prueba-a', version: 'v1', tipo: 'plano', clave: 'z', nombre: 'z.pdf', ruta: 'prueba-a/v1/z.pdf', huella: h( 'z' ) } ).select( 'id' ), 'plano v1' );
+	const anterior = await aprobA.from( 'validaciones' ).insert( { entregable_id: viejo.id, decision: 'aprobado', confirmado: true } );
+	const r = { crear, ajenos, sinSesion, otraVez, aB, anterior };
+	const noFallan = Object.keys( r ).filter( ( k ) => ! falla( r[ k ] ) );
+	if ( noFallan.length ) throw new Error( `no fallan: ${ noFallan.join( ', ' ) }` );
+	return true;
+
+} );
+
+await caso( DEBE_FUNCIONAR, 'Planos: la promotora valida, se publica solo con todo aprobado y lo que no cambia conserva su aprobación', async () => {
+
+	const listos = async ( v ) => ( await exigir( admin.rpc( 'planos_listos', { p_promocion: 'prueba-a', p_version: v } ), 'planos_listos' ) );
+	const antes = await listos( 'v2' ); // a aprobado, b pendiente
+	const { data: rech } = await exigir( gestorA.from( 'validaciones' ).insert( { entregable_id: plano( v2, 'b' ), decision: 'rechazado', comentario: 'La terraza mide 24 m²' } ).select( 'id' ), 'pedir cambios b' ).then( ( d ) => ( { data: d } ) );
+	const cambios = await listos( 'v2' );
+	// aviso por email: solo quien validó, y una vez
+	const ajeno = await aprobA.rpc( 'marcar_aviso_validacion', { p_validacion: rech[ 0 ].id } );
+	const primero = await gestorA.rpc( 'marcar_aviso_validacion', { p_validacion: rech[ 0 ].id } );
+	const segundo = await gestorA.rpc( 'marcar_aviso_validacion', { p_validacion: rech[ 0 ].id } );
+	// v3: «a» no cambia (misma huella de datos) y «b» corregido
+	const v3 = await exigir( enviarPlanos( 'v3', [ [ 'a', 'geometria-a' ], [ 'b', 'geometria-b-corregida' ] ] ), 'planos v3' );
+	const enV3 = await exigir( gestorA.rpc( 'planos_de_version', { p_promocion: 'prueba-a', p_version: 'v3' } ), 'planos v3 del equipo' );
+	const pendiente = await listos( 'v3' );
+	await exigir( gestorA.from( 'validaciones' ).insert( { entregable_id: plano( v3, 'b' ), decision: 'aprobado', confirmado: true } ), 'aprobar b v3' );
+	const final = await listos( 'v3' );
+	const a3 = enV3.find( ( x ) => x.clave === 'a' );
+	return antes === 'pendientes' && cambios === 'cambios' && ajeno.data === false && primero.data === true && segundo.data === false
+		&& a3.decision === 'aprobado' && a3.heredada_de === 'v2' && pendiente === 'pendientes' && final === 'listos'
+		&& ( await listos( 'v7' ) ) === 'sin_enviar';
+
+} );
+
 // ─── Accesos e invitaciones (función «invitar», receta 14) ──────────────────
 
 const invitar = ( sb, cuerpo ) => sb.functions.invoke( 'invitar', { body: cuerpo } );

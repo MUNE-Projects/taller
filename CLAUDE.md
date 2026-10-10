@@ -66,9 +66,10 @@ Claude se usa **solo en producción** (preparar, interpretar, revisar), **nunca 
 - **Propuestas:** los cambios del taller se suben a la rama **`revision`** y se abre una propuesta (PR) hacia `main`. La descripción lleva arriba el enlace de **vista previa**, una lista «Qué revisar» y «Para aprobar: Merge pull request → Confirm merge». Ella revisa y aprueba. El nombre de la rama de trabajo de la sesión no debe aparecer en direcciones que ella vea.
 - **Nueva versión de una promoción** (recetas 9 y 10):
   1. `node herramientas/publicacion.mjs preparar <id> --cambios "…" --confirmar`, con el escaparate en la rama `revision`.
-  2. `git push` de `revision` del escaparate.
+  2. `git push` de `revision` del escaparate. `preparar` ya genera los planos comerciales de la versión (`herramientas/planos.mjs`).
   3. Lanzar el proceso `avisar.yml` del taller (`promocion`, `version`, `cambios`). GitHub le manda el email «… lista para revisar».
-  4. **Ella publica desde el Panel**: botón *Publicar vN* → función `ejecutar` de Supabase → `publicar.yml` → escaparate `main` → Cloudflare. Solo se publica la versión revisada.
+  4. Tras revisar la vista previa, ella pulsa *Enviar los planos a la promotora*, y la promotora los aprueba en su portal (receta en `docs/recetas/09-10-planos-y-publicar.md`).
+  5. **Ella publica desde el Panel** (solo se activa con todos los planos aprobados): botón *Publicar vN* → función `ejecutar` de Supabase → `publicar.yml` → escaparate `main` → Cloudflare. Solo se publica la versión revisada.
 - **Volver atrás:** también desde el Panel (*Volver a una anterior*, con motivo).
 - **El registro de versiones** (`promociones/<id>/publicaciones.json`) solo lo escribe el ejecutor, en `main`.
 - **Documentación de las promotoras** (recetas 2 y 13, `docs/recetas/`): «revisa lo nuevo de X» → `node herramientas/documentos.mjs pendientes | bajar <id> | estado <id> vigente|rechazado --nota "…"`; «¿hay algo nuevo?» → `node herramientas/documentos.mjs novedades`. **Nunca marques un documento sin su OK.**
@@ -107,8 +108,8 @@ Ahora la web pública está en **v7**, y la **v8** (de prueba, idéntica) sigue 
 
 1. ✔ cimientos de datos y prueba de aislamiento (`005_portal.sql`, `panel/pruebas/`, `aislamiento.yml`);
 2. ✔ portal de promotoras y accesos (receta 14): `portal/`, sección *Promotoras* del Panel, función `invitar`, `006_accesos.sql`, `007_equipos.sql` (equipos por promoción, sin roles, datos fiscales: decisión 28) y `008_ficha_promocion.sql` (ficha y lista estándar de documentos: decisión 29);
-3. documentación (recetas 2 y 13, email de subida): pestaña *Documentación* del Panel, `009_aviso_subida.sql`, `010_borrar.sql` (exportar todo en ZIP y borrar promociones o promotoras desactivadas: decisión 33), función `aviso-subida` + `aviso-documento.yml`, `herramientas/documentos.mjs` y `docs/recetas/`;
-4. validación de planos;
+3. ✔ documentación (recetas 2 y 13, email de subida): pestaña *Documentación* del Panel, `009_aviso_subida.sql`, `010_borrar.sql` (exportar todo en ZIP y borrar promociones o promotoras desactivadas: decisión 33), función `aviso-subida` + `aviso-documento.yml`, `herramientas/documentos.mjs` y `docs/recetas/`;
+4. validación de planos (decisión 34): `herramientas/planos.mjs` (planos de cada versión, al preparar), *Enviar los planos a la promotora* en el Panel, pestaña *Planos* del portal, `011_planos.sql`, `aviso-plano.yml`; solo se publica con todos aprobados;
 5. códigos de comprador (receta 24), desde el botón que ya existe en la web pública;
 6. bandeja de Inicio y avisos del sistema;
 7. copias en el almacén privado `copias` de GitHub y simulacro (receta 18);

@@ -42,7 +42,7 @@ Bandeja con lo pendiente de todas las promociones:
 
 | Pestaña | Contenido y acciones |
 |---|---|
-| **Resumen** | Estado, versión publicada, versión pendiente, enlaces a la visita y a la vista previa. *Exportar todo (ZIP)*. Desactivar o activar; si está desactivada, *Borrar definitivamente* (antes descarga la exportación y escribe su nombre) |
+| **Resumen** | Estado, versión publicada, versión pendiente, enlaces a la visita y a la vista previa. Planos de la versión en revisión: *Enviar los planos a la promotora* y estado de su validación; *Publicar* solo se activa con todos aprobados (Etapa 4). *Exportar todo (ZIP)*. Desactivar o activar; si está desactivada, *Borrar definitivamente* (antes descarga la exportación y escribe su nombre) |
 | **Documentación** | Lista de lo que tiene que entregar la promotora, con lo recibido, versiones y estado (por revisar, vigente, rechazado con nota). Descargar, marcar como vigente o rechazar. Ajustar la lista. «Revisa lo nuevo de X» → Claude (receta 2) |
 | **Tipologías y viviendas** | Tipología → Variante → Unidad, superficies. Códigos de comprador: generar, regenerar y revocar (Fase 1, receta 24) |
 | **Mobiliario y acabados** | Por tipología y estancia, estilos y piezas del catálogo (por ejemplo «Nórdico claro» o «Contemporáneo»; sofá A o sofá B; suelo roble o gris) con vista previa automática, sin Claude (receta 21). **«Estilo a partir de una foto»**: se adjuntan fotos de referencia y llega a Claude como petición de interiorismo |

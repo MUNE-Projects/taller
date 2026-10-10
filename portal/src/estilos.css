@@ -163,3 +163,31 @@ input[type=file] { padding: 8px; font-size: 14px; }
 .entregable { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--linea); flex-wrap: wrap; }
 .entregable:first-of-type { border-top: 0; }
 .pequeno { font-size: 13px; padding: 7px 12px; }
+
+/* Pestañas de una promoción */
+.pestanas { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+.pestanas a { font-size: 14px; padding: 8px 12px; border-radius: 8px; color: var(--tinta-2); text-decoration: none; }
+.pestanas a:hover { background: var(--acento-suave); }
+.pestanas a[aria-current=page] { background: var(--acento); color: #fff; }
+.contador { background: #f6ead6; color: #7a4d10; border-radius: 99px; font-size: 12px; padding: 1px 7px; margin-left: 6px; font-weight: 600; }
+.pestanas a[aria-current=page] .contador { background: #fff; color: var(--acento); }
+.separado { margin-top: 18px; }
+
+/* Planos para validar (Etapa 4) */
+.plano-fila { display: grid; grid-template-columns: auto 1fr; gap: 16px; padding: 14px 0; border-top: 1px solid var(--linea); align-items: start; }
+.plano-fila:first-of-type { border-top: 0; }
+.plano-mini { display: block; width: 168px; aspect-ratio: 420 / 297; object-fit: cover; border: 1px solid var(--linea); border-radius: 8px; background: #fff; }
+.plano-info { display: grid; gap: 6px; min-width: 0; }
+.plano-titulo { display: flex; justify-content: space-between; gap: 10px; align-items: start; flex-wrap: wrap; }
+.progreso { width: 100%; height: 6px; margin: 6px 0 4px; appearance: none; border: 0; border-radius: 99px; overflow: hidden; background: var(--linea); }
+.progreso::-webkit-progress-bar { background: var(--linea); }
+.progreso::-webkit-progress-value { background: var(--acento); }
+.progreso::-moz-progress-bar { background: var(--acento); }
+.plano-grande { width: 100%; margin: 10px 0; border: 1px solid var(--linea); border-radius: 10px; background: #fff; }
+.validar { display: grid; gap: 16px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--linea); }
+.casilla { display: flex; gap: 10px; align-items: start; font-size: 14px; color: var(--tinta); }
+.casilla input { width: 18px; height: 18px; margin-top: 2px; }
+@media (max-width: 560px) {
+	.plano-fila { grid-template-columns: 1fr; }
+	.plano-mini { width: 100%; }
+}

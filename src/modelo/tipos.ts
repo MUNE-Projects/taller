@@ -224,7 +224,8 @@ export interface Promocion {
 	id: string;
 	urlBase: string;
 	marca: Marca;
-	promocion: { nombre: string; ubicacion: string; logoSvg?: string };
+	/** tipo: «unifamiliar» = un plano por vivienda (por defecto, plurifamiliar: por tipología y variante). */
+	promocion: { nombre: string; ubicacion: string; logoSvg?: string; tipo?: 'plurifamiliar' | 'unifamiliar' };
 	tipologias: { id: string; opciones: Record<string, string[]> }[];
 	viviendas: ViviendaPromocion[];
 	/** Acceso al Studio de producción (hash del código). */

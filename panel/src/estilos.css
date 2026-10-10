@@ -192,3 +192,12 @@ h2.separado { margin-top: 22px; }
 .boton.peligro { background: var(--error); }
 .boton.peligro:disabled { opacity: 0.4; cursor: not-allowed; }
 .zona-peligro .pasos { margin: 0; padding-left: 20px; display: grid; gap: 14px; color: var(--tinta-2); }
+
+/* Planos de una versión (Etapa 4) */
+h3.subtitulo { margin: 18px 0 6px; font-size: 14px; font-weight: 600; }
+.lista-planos { display: grid; }
+.fila-plano { display: flex; justify-content: space-between; align-items: start; gap: 12px; padding: 10px 0; border-top: 1px solid var(--linea); }
+.fila-plano:first-child { border-top: 0; }
+.fila-plano .acciones { align-items: center; flex-wrap: nowrap; white-space: nowrap; }
+.nota-plano { display: block; margin-top: 4px; font-size: 13px; color: var(--error); }
+.estado.rechazado { background: #f8e6e6; color: var(--error); }
