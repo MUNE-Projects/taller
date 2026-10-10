@@ -43,7 +43,7 @@ export function formFormalizacion(f: Formalizacion | null | undefined): string {
 export function datosFormalizacion(promocion: string, d: FormData): Record<string, unknown> {
 	const t = (k: string) => String(d.get(k) ?? '').trim();
 	const email = t('contacto_email');
-	if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new Error('Revisa el email: no parece válido.');
+	if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new Error('El email no parece correcto. Revísalo y vuelve a guardar.');
 	const plazo = t('plazo_dias');
 	return {
 		p_promocion: promocion,

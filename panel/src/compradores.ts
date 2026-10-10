@@ -71,7 +71,7 @@ export async function pintarCompradores(caja: HTMLElement, d: Dependencias, p: P
 		<h2>Compradores</h2>
 		<p class="ayuda">${admin
 			? 'Los códigos los genera y entrega la promotora desde MUNE Portal. Aquí ves qué viviendas tienen código y si el comprador ya ha entrado.'
-			: 'Un código por vivienda. Dáselo al comprador: con él entra en la web de la promoción, en «¿Ya eres comprador? Accede para personalizar tu vivienda». Los códigos solo se ven al generarlos: descarga el Excel y guárdalo. Si un comprador pierde el suyo, cámbialo por otro.'}</p>
+			: 'Un código por vivienda. Dáselo al comprador: con él entra en la web de la promoción, en «¿Ya eres comprador? Entra para personalizar tu vivienda». Los códigos solo se ven al generarlos: descarga el Excel y guárdalo. Si un comprador pierde el suyo, cámbialo por otro.'}</p>
 		<p class="promo-versiones">${conCodigo} de ${refs.length} vivienda${refs.length === 1 ? '' : 's'} con código</p>
 		${aviso ? `<p class="aviso" role="status">${esc(aviso)}</p>` : ''}
 		<div data-codigo-nuevo></div>

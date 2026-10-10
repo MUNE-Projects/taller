@@ -9,7 +9,7 @@ La interfaz tiene dos niveles de acceso sobre una única experiencia visual:
 
 | Acceso | Qué ve |
 |---|---|
-| **Público** (web de la promotora) | Plano, Vivienda, vistas guiadas y navegación libre. Sin personalización ni precios de mejoras. Incluye el aviso "¿Ya eres comprador? Accede para personalizar tu vivienda." |
+| **Público** (web de la promotora) | Plano, Vivienda, vistas guiadas y navegación libre. Sin personalización ni precios de mejoras. Incluye el aviso "¿Ya eres comprador? Entra para personalizar tu vivienda." |
 | **Comprador** (enlace privado de su vivienda) | Lo anterior, más **Personalizar**: opciones de su vivienda, precio, resumen tipo carrito y documento de selección en PDF |
 | **Promotora** («Acceso profesional» + código de promotora) | Lo público, más los entregables comerciales: renders HD y plano comercial en PDF vectorial o PNG de alta resolución. Sin herramientas de producción |
 | **Studio** («Acceso profesional» + código de Studio, solo producción) | Todo lo anterior, más la edición de ambientación, cámaras, acabados y precios, marca, biblioteca, interiorismo asistido, actualización de planos y exportación de datos. Ver [`docs/arquitectura-studio.md`](docs/arquitectura-studio.md) |
@@ -63,7 +63,7 @@ El escaparate (`MUNE-Projects/escaparate`) contiene solo lo publicado: `publico/
 - Cada vivienda tiene un código privado de comprador. Lo generan la promotora (portal) o la administradora (Panel), pestaña *Compradores*; se comprueba en Supabase (`panel/supabase/014_codigos_comprador.sql`) y no va en la web pública.
 - En `promocion.json` solo se guarda el **hash SHA-256** de cada código, nunca el código en claro.
 - Los enlaces para entregar a cada comprador se escriben en `accesos-privados.csv`, fuera del control de versiones.
-- El enlace es `<url>#c-xxxxxxxxxxxxxxxx`. También se puede pegar el código en "Accede para personalizar tu vivienda".
+- El enlace es `<url>#c-xxxxxxxxxxxxxxxx`. También se puede pegar el código en "Entra para personalizar tu vivienda".
 - El acceso solo identifica la vivienda: qué tipología cargar y qué opciones ofrecer. No hay usuarios, contraseñas, emails ni CRM.
 - **Limitación.** Es un acceso por enlace secreto, suficiente para separar la parte pública de la de comprador. No es autenticación fuerte: quien tenga el enlace, entra. Tampoco oculta el catálogo a alguien que inspeccione el código.
 
