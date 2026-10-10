@@ -1,4 +1,4 @@
-// Promotoras y promociones del Panel (receta 14 · Gestionar accesos).
+// Promotoras y promociones de MUNE Studio (el Panel) (receta 14 · Gestionar accesos).
 //
 // · Promotoras (#/promotoras): la lista y el alta.
 // · Una promotora (#/promotora/<id>): sus promociones, quién tiene acceso a
@@ -14,7 +14,7 @@
 
 import { datosFormalizacion, formFormalizacion, type Formalizacion } from './formalizacion';
 import { pintarActividad } from './actividad';
-import { alEnviar, anotar, conectarPlegables, esc, fecha, sb, traducir } from './comun';
+import { alEnviar, anotar, conectarPlegables, esc, fallo, fecha, sb, traducir } from './comun';
 import { pintarDocumentacion } from './documentacion';
 import { exportarPromocion, exportarPromotora, type Resultado } from './exportar';
 import { pintarPeticiones } from './peticiones';
@@ -40,7 +40,7 @@ const CAMPOS_PROMOCION = `id, nombre, ubicacion, estado, activa, promotora_id, r
 const ESTADOS: Record<string, string> = {
 	documentacion: 'Recogiendo documentación',
 	en_produccion: 'En producción',
-	en_validacion: 'Planos para validar',
+	en_validacion: 'Planos por validar',
 	publicada: 'Publicada',
 };
 
@@ -90,13 +90,13 @@ function resumenFicha(p: Ficha): string {
 		p.referencia_catastral ? `Ref. catastral ${p.referencia_catastral}` : null,
 		p.fecha_entrega ? `Entrega prevista: ${fecha(p.fecha_entrega)}` : null,
 	].filter(Boolean) as string[];
-	return partes.length ? esc(partes.join(' · ')) : '<span class="vacio">Ficha sin rellenar (la rellena la promotora en su portal)</span>';
+	return partes.length ? esc(partes.join(' · ')) : '<span class="vacio">Ficha sin rellenar: la rellena la promotora en MUNE Portal.</span>';
 }
 
 /** «Razón social · CIF · domicilio», o aviso si no está rellenado. */
 function resumenFiscal(d: DatosFiscales): string {
 	const partes = [d.razon_social, d.cif ? `CIF ${d.cif}` : null, d.domicilio_fiscal].filter(Boolean) as string[];
-	return partes.length ? esc(partes.join(' · ')) : '<span class="vacio">Datos fiscales sin rellenar (los rellena la promotora en su portal)</span>';
+	return partes.length ? esc(partes.join(' · ')) : '<span class="vacio">Datos fiscales sin rellenar: los rellena la promotora en MUNE Portal.</span>';
 }
 
 function avisador(raiz: HTMLElement): (texto: string, esError?: boolean) => void {
@@ -129,7 +129,7 @@ function tablaPersonas(lista: Acceso[]): string {
 	const estado = (a: Acceso) => !a.activo ? ['Sin acceso', '']
 		: !a.aceptada ? ['Invitación enviada', 'pendiente']
 		: a.ultima_entrada ? [`Entró el ${fecha(a.ultima_entrada)}`, 'al-dia']
-		: ['Activa, aún no ha entrado', 'al-dia'];
+		: ['Aún no ha entrado', 'al-dia'];
 	return `<div class="tabla"><table><thead><tr><th>Persona</th><th>Cargo</th><th>Estado</th><th></th></tr></thead><tbody>
 		${lista.map((a) => {
 			const [texto, clase] = estado(a);
@@ -151,10 +151,10 @@ function tablaPersonas(lista: Acceso[]): string {
 function formAcceso(clave: string, texto: string): string {
 	return `<div class="acciones"><button class="boton secundario pequeno" type="button" data-abrir="acceso">${esc(texto)}</button></div>
 		<form class="peticion-form" data-dar-acceso="${esc(clave)}" data-plegable="acceso" novalidate hidden>
-			<p class="ayuda">Le llegará un email para elegir su contraseña y entrar en el portal. Podrá subir documentación, aprobar o rechazar planos y descargar.</p>
+			<p class="ayuda">Recibirá un email para crear su contraseña y entrar en MUNE Portal. Podrá subir documentación, aprobar planos o pedir cambios y descargar archivos.</p>
 			<label>Nombre <input name="nombre" maxlength="120" required></label>
 			<label>Correo <input name="email" type="email" maxlength="200" required></label>
-			<label>Cargo (opcional) <input name="cargo" maxlength="120" placeholder="Por ejemplo: Director comercial"></label>
+			<label>Cargo (opcional) <input name="cargo" maxlength="120" placeholder="Por ejemplo: Dirección comercial"></label>
 			<p class="error" role="alert"></p>
 			<div class="acciones">
 				<button class="boton" type="submit">Dar acceso</button>
@@ -174,7 +174,7 @@ function conectarPersonas(raiz: HTMLElement, accesos: Acceso[], promotora: strin
 			await anotar(activo ? 'devuelve un acceso' : 'quita un acceso', { promotora, promocion: a.promocion_id ?? 'todas', email: a.email });
 		};
 		fila.querySelector('[data-quitar]')?.addEventListener('click', async () => {
-			if (!confirm(`¿Quitar el acceso de ${a.nombre}?\n\nDejará de verlo al instante. Se puede devolver más tarde.`)) return;
+			if (!confirm(`¿Quitar el acceso a ${a.nombre}?\n\nDejará de poder entrar desde este momento. Puedes devolvérselo más tarde.`)) return;
 			try { await cambiar(false); await recargar(); } catch (e) { avisar(traducir(e), true); }
 		});
 		fila.querySelector('[data-devolver]')?.addEventListener('click', async () => {
@@ -275,13 +275,13 @@ export async function pantallaPromotoras(destino: HTMLElement): Promise<void> {
 		<section class="tarjeta">
 			<h2>Promotoras</h2>
 			<div class="lista-enlaces">${promotoras.map((po) => `<a class="fila-enlace" href="#/promotora/${esc(po.id)}">
-				<span><strong>${esc(po.nombre)}</strong><br><span class="promo-lugar">${cuenta(po.id)} promoción(es)</span></span>
+				<span><strong>${esc(po.nombre)}</strong><br><span class="promo-lugar">${cuenta(po.id)} ${cuenta(po.id) === 1 ? 'promoción' : 'promociones'}</span></span>
 				${chipActiva(po.activa)}
 			</a>`).join('') || '<p class="vacio">Todavía no hay promotoras.</p>'}</div>
 			<div class="acciones"><button class="boton secundario" type="button" data-abrir="promotora">Nueva promotora</button></div>
 			<form class="peticion-form" data-plegable="promotora" data-nueva-promotora hidden novalidate>
 				<label>Nombre de la promotora (marca) <input name="nombre" maxlength="120" required placeholder="Por ejemplo: Construcciones Ejemplo"></label>
-				<p class="ayuda">Los datos fiscales los rellenará la promotora en su portal (también puedes hacerlo tú después).</p>
+				<p class="ayuda">Los datos fiscales los rellenará la promotora en MUNE Portal (también puedes rellenarlos tú más tarde).</p>
 				<p class="error" role="alert"></p>
 				<div class="acciones">
 					<button class="boton" type="submit">Dar de alta</button>
@@ -305,7 +305,7 @@ export async function pantallaPromotoras(destino: HTMLElement): Promise<void> {
 export async function pantallaPromotora(destino: HTMLElement, id: string): Promise<void> {
 	const po = await leerPromotora(id);
 	if (!po) {
-		destino.innerHTML = `${migas([['Promotoras', '#/promotoras'], ['No encontrada', null]])}<p class="vacio">Esa promotora no existe.</p>`;
+		destino.innerHTML = `${migas([['Promotoras', '#/promotoras'], ['No encontrada', null]])}<p class="vacio">No se ha encontrado esta promotora: puede que se haya borrado. Vuelve a «Promotoras».</p>`;
 		return;
 	}
 	const [{ data: pcs, error }, accesos] = await Promise.all([
@@ -326,7 +326,7 @@ export async function pantallaPromotora(destino: HTMLElement, id: string): Promi
 			<div class="lista-enlaces">${promociones.map((p) => `<a class="fila-enlace" href="#/promocion/${esc(p.id)}">
 				<span><strong>${esc(p.nombre)}</strong><br><span class="promo-lugar">${esc(p.ubicacion)}${p.ubicacion ? ' · ' : ''}${esc(ESTADOS[p.estado] ?? p.estado)}</span></span>
 				<span data-version="${esc(p.id)}">${p.activa ? '' : chipActiva(false)}</span>
-			</a>`).join('') || '<p class="vacio">Esta promotora no tiene promociones.</p>'}</div>
+			</a>`).join('') || '<p class="vacio">Esta promotora todavía no tiene promociones.</p>'}</div>
 			<div class="acciones"><button class="boton secundario pequeno" type="button" data-abrir="promocion">Nueva promoción</button></div>
 			<form class="peticion-form" data-nueva-promocion data-plegable="promocion" novalidate hidden>
 				<label>Nombre <input name="nombre" maxlength="120" required placeholder="Por ejemplo: Residencial Las Eras"></label>
@@ -393,11 +393,14 @@ export async function pantallaPromotora(destino: HTMLElement, id: string): Promi
 		const nuevo = identificador(nombre);
 		if (nombre.length < 2 || !nuevo) throw new Error('Escribe el nombre de la promoción.');
 		const { error: e } = await sb.from('promociones').insert({ id: nuevo, promotora_id: id, nombre, ubicacion: String(d.get('ubicacion')).trim() });
-		if (e) throw e.code === '23505' ? new Error(`Ya existe una promoción con el identificador «${nuevo}». Cambia un poco el nombre.`) : e;
+		if (e) throw e.code === '23505' ? new Error(`Ya hay una promoción con un nombre muy parecido («${nuevo}»). Cambia un poco el nombre.`) : e;
 		await anotar('da de alta una promoción', { promocion: nuevo, promotora: id });
 		// Lista estándar de documentos, que luego se puede ajustar.
 		const { error: eLista } = await sb.rpc('aplicar_lista_estandar', { p_promocion: nuevo });
-		if (eLista) throw new Error(`La promoción está creada, pero no se ha podido preparar su lista de documentos: ${traducir(eLista)}`);
+		if (eLista) {
+			console.error('[MUNE Studio]', eLista);
+			throw new Error('La promoción está creada, pero no se ha podido preparar su lista de documentos. Ábrela y, en «Documentación», pulsa «Ajustar la lista de documentos» y después «Añadir la lista estándar».');
+		}
 		location.hash = `#/promocion/${nuevo}`;
 	});
 	alEnviar(destino.querySelector<HTMLFormElement>('[data-fiscal]')!, async (d) => {
@@ -414,7 +417,7 @@ export async function pantallaPromotora(destino: HTMLElement, id: string): Promi
 		await recargar();
 	});
 	destino.querySelector('[data-activa-promotora]')!.addEventListener('click', async () => {
-		if (po.activa && !confirm(`¿Desactivar ${po.nombre}?\n\nNadie de esta promotora podrá entrar en el portal ni ver sus promociones, al instante. Las webs públicas no cambian.\n\nSi quieres una copia de todo, cancela y pulsa antes «Exportar todo (ZIP)».`)) return;
+		if (po.activa && !confirm(`¿Desactivar ${po.nombre}?\n\nDesde este momento, nadie de esta promotora podrá entrar en MUNE Portal ni ver sus promociones. Las experiencias publicadas no cambian.\n\nSi quieres una copia de todo, cancela y pulsa antes «Exportar todo (ZIP)».`)) return;
 		const { error: e } = await sb.from('promotoras').update({ activa: !po.activa }).eq('id', id);
 		if (e) { avisador(destino)(traducir(e), true); return; }
 		await anotar(po.activa ? 'desactiva una promotora' : 'activa una promotora', { promotora: id });
@@ -431,7 +434,7 @@ function conectarExportar(raiz: HTMLElement, boton: HTMLButtonElement, exportar:
 		boton.disabled = true;
 		try {
 			const r = await exportar((t) => avisar(t));
-			avisar(r.avisos.length ? `Exportación descargada (${r.archivos} archivos), con ${r.avisos.length} aviso(s): mira el LEEME.txt del ZIP.`
+			avisar(r.avisos.length ? `La exportación se ha descargado (${r.archivos} archivos), pero con ${r.avisos.length} aviso(s): míralos en el archivo LEEME.txt del ZIP.`
 				: `Exportación descargada: ${r.archivos} archivos. Está en tu carpeta de Descargas.`, r.avisos.length > 0);
 		} catch (e) {
 			avisar(traducir(e), true);
@@ -488,7 +491,7 @@ function pintarZonaBorrado(zona: HTMLElement, b: Borrado): void {
 			campo.disabled = false;
 			campo.focus();
 		} catch (e) {
-			progreso.textContent = `No se pudo exportar: ${traducir(e)}. Sin la copia no se puede borrar.`;
+			progreso.textContent = `${fallo('No se ha podido descargar la copia', e)} Sin la copia no se puede borrar.`;
 			exportar.disabled = false;
 		}
 	});
@@ -531,14 +534,14 @@ async function contar(tabla: string, promociones: string[]): Promise<number> {
 	return count ?? 0;
 }
 
-/** Aviso si alguna promoción tiene web: borrarla aquí no la quita de internet. */
+/** Aviso si alguna promoción tiene experiencia publicada: borrarla aquí no la quita de internet. */
 async function avisoWebs(promociones: { id: string; nombre: string }[]): Promise<string> {
 	const conWeb = (await Promise.all(promociones.map(async (p) => {
 		const e = await estadoVersiones(p.id);
 		return e.pub ?? e.rev ? p : null;
 	}))).filter((p) => p !== null);
-	return conWeb.length ? `<p class="aviso">${conWeb.length === 1 ? `«${esc(conWeb[0].nombre)}» tiene web` : `Tienen web: ${conWeb.map((p) => `«${esc(p.nombre)}»`).join(', ')}`}.
-		Borrar aquí <strong>no la quita de internet</strong> ni borra sus datos 3D del taller: pídeselo a Claude («retira la web de ${esc(conWeb.map((p) => p.id).join(', '))}»).</p>` : '';
+	return conWeb.length ? `<p class="aviso">${conWeb.length === 1 ? `«${esc(conWeb[0].nombre)}» tiene experiencia publicada o en vista previa` : `Tienen experiencia publicada o en vista previa: ${conWeb.map((p) => `«${esc(p.nombre)}»`).join(', ')}`}.
+		Borrar aquí <strong>no la quita de internet</strong> ni borra sus datos 3D: pídeselo a Claude («retira la web de ${esc(conWeb.map((p) => p.id).join(', '))}»).</p>` : '';
 }
 
 async function pintarBorradoPromocion(zona: HTMLElement, p: Promocion): Promise<void> {
@@ -581,7 +584,7 @@ export async function pantallaPromocion(destino: HTMLElement, id: string, pestan
 	if (error) throw error;
 	const p = data as Promocion | null;
 	if (!p) {
-		destino.innerHTML = `${migas([['Promotoras', '#/promotoras'], ['No encontrada', null]])}<p class="vacio">Esa promoción no existe.</p>`;
+		destino.innerHTML = `${migas([['Promotoras', '#/promotoras'], ['No encontrada', null]])}<p class="vacio">No se ha encontrado esta promoción: puede que se haya borrado. Vuelve a «Promotoras».</p>`;
 		return;
 	}
 	const po = await leerPromotora(p.promotora_id);
@@ -622,10 +625,10 @@ export async function pantallaPromocion(destino: HTMLElement, id: string, pestan
 			if (e) { sel.value = p.estado; avisador(destino)(traducir(e), true); return; }
 			await anotar('cambia el estado de una promoción', { promocion: id, estado: sel.value });
 			p.estado = sel.value;
-			avisador(destino)(`Estado cambiado: «${ESTADOS[sel.value]}».`);
+			avisador(destino)(`✓ Estado cambiado a «${ESTADOS[sel.value]}».`);
 		});
 		caja.querySelector('[data-activa-promo]')!.addEventListener('click', async () => {
-			if (p.activa && !confirm(`¿Desactivar ${p.nombre}?\n\nSu equipo dejará de verla en el portal al instante. La web pública no cambia.\n\nSi quieres una copia de todo, cancela y pulsa antes «Exportar todo (ZIP)».`)) return;
+			if (p.activa && !confirm(`¿Desactivar ${p.nombre}?\n\nDesde este momento, su equipo dejará de verla en MUNE Portal. La experiencia publicada no cambia.\n\nSi quieres una copia de todo, cancela y pulsa antes «Exportar todo (ZIP)».`)) return;
 			const { error: e } = await sb.from('promociones').update({ activa: !p.activa }).eq('id', id);
 			if (e) { avisador(destino)(traducir(e), true); return; }
 			await anotar(p.activa ? 'desactiva una promoción' : 'activa una promoción', { promocion: id });
@@ -653,7 +656,7 @@ export async function pantallaPromocion(destino: HTMLElement, id: string, pestan
 	if (actual === 'ficha') {
 		caja.innerHTML = `
 			<h2>Ficha de la promoción</h2>
-			<p class="ayuda">Normalmente la rellena la promotora en su portal; aquí la puedes revisar o completar.</p>
+			<p class="ayuda">Normalmente la rellena la promotora en MUNE Portal; aquí puedes revisarla o completarla.</p>
 			${formFicha(p)}
 			<h2 class="separado">Datos fiscales de la promoción</h2>
 			<p class="ayuda">La sociedad de esta promoción (puede ser distinta de la de la promotora).</p>

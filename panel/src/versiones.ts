@@ -4,7 +4,7 @@
 // vista previa del escaparate, y se comparan. Publicar y volver atrás pasan por
 // el brazo ejecutor (función «ejecutar» de Supabase → GitHub Actions).
 
-import { alEnviar, anotar, esc, fecha, sb } from './comun';
+import { alEnviar, anotar, esc, fallo, fecha, sb } from './comun';
 import { avisarPromotora } from './avisos';
 import { MOTIVO_NO_PUBLICAR, estadoPlanos, leerManifiesto, pintarPlanos, resumenListos } from './planos';
 
@@ -37,10 +37,10 @@ export async function estadoVersiones(id: string): Promise<EstadoVersiones> {
 
 /** Etiqueta de estado (Al día, vN pendiente de tu revisión…). */
 export function etiquetaVersiones(e: EstadoVersiones): string {
-	return e.sinComprobar ? '<span class="estado">Publicada: no se pudo comprobar</span>'
+	return e.sinComprobar ? '<span class="estado">Sin comprobar</span>'
 		: !e.pub && !e.rev ? '<span class="estado">Sin versiones todavía</span>'
-		: !e.pub ? '<span class="estado pendiente">Nueva · pendiente de tu revisión</span>'
-		: e.pendiente ? `<span class="estado pendiente">${esc(e.rev!.version)} pendiente de tu revisión</span>`
+		: !e.pub ? `<span class="estado pendiente">${esc(e.rev!.version)} por revisar</span>`
+		: e.pendiente ? `<span class="estado pendiente">${esc(e.rev!.version)} por revisar</span>`
 		: '<span class="estado al-dia">Al día</span>';
 }
 
@@ -69,28 +69,28 @@ function anteriores(version: string): string[] {
 async function ejecutar(aviso: HTMLElement, id: string, orden: Record<string, string>, esperada: string, repintar: () => void): Promise<boolean> {
 	aviso.hidden = false;
 	aviso.classList.remove('error');
-	aviso.textContent = 'Enviando la orden…';
+	aviso.textContent = 'Poniéndolo en marcha…';
 	const { error } = await sb.functions.invoke('ejecutar', { body: orden });
 	if (error) {
 		let texto = error.message;
 		try { texto = (await (error as { context?: Response }).context?.json())?.error ?? texto; } catch { /* sin detalle */ }
 		aviso.classList.add('error');
-		aviso.textContent = `No se ha podido iniciar: ${texto}`;
+		aviso.textContent = fallo(`No se ha podido ${orden.accion === 'aprobar' ? 'publicar' : 'volver a'} la ${esperada}`, new Error(texto));
 		return false;
 	}
-	aviso.textContent = `En marcha. GitHub está ${orden.accion === 'aprobar' ? 'publicando' : 'restaurando'} ${esperada}; suele tardar 2–3 minutos. Puedes seguir usando el Panel.`;
+	aviso.textContent = `En marcha: ${orden.accion === 'aprobar' ? 'publicando' : 'volviendo a'} la ${esperada}. Suele tardar 2 o 3 minutos; mientras, puedes seguir trabajando.`;
 	const inicio = Date.now();
 	const mirar = async (): Promise<void> => {
 		const v = await leerVersion(ESCAPARATE, id);
 		if (v && v !== 'error' && v.version === esperada) {
-			aviso.textContent = `✓ Hecho: los visitantes ya ven ${esperada}.`;
+			aviso.textContent = `✓ Hecho: la ${esperada} ya es la versión publicada.`;
 			if (orden.accion === 'aprobar') aviso.textContent += ` ${await avisarPromotora({ tipo: 'publicada', promocion: id, version: esperada })}`;
 			setTimeout(() => { if (aviso.isConnected) repintar(); }, 10000);
 			return;
 		}
 		if (Date.now() - inicio > 8 * 60 * 1000) {
 			aviso.classList.add('error');
-			aviso.textContent = 'Está tardando más de lo normal. Recarga en unos minutos; si sigue sin cambiar, dímelo en Claude Code.';
+			aviso.textContent = 'Está tardando más de lo normal. Recarga la página en unos minutos; si sigue sin cambiar, díselo a Claude.';
 			return;
 		}
 		setTimeout(() => void mirar(), 15000);
@@ -101,7 +101,7 @@ async function ejecutar(aviso: HTMLElement, id: string, orden: Record<string, st
 
 /** Bloque de versiones de una promoción: ver, publicar y volver a una anterior. */
 export async function pintarVersiones(destino: HTMLElement, p: { id: string; nombre: string }): Promise<void> {
-	destino.innerHTML = '<p class="vacio">Consultando el escaparate…</p>';
+	destino.innerHTML = '<p class="vacio">Comprobando las versiones…</p>';
 	const e = await estadoVersiones(p.id);
 	const { pub, rev, pendiente } = e;
 	const id = p.id;
@@ -113,13 +113,13 @@ export async function pintarVersiones(destino: HTMLElement, p: { id: string; nom
 	const bloqueo = listos === 'listos' || listos === 'sin_planos' ? '' : MOTIVO_NO_PUBLICAR[listos];
 	destino.innerHTML = `
 		<div class="promo-cabeza">
-			<p class="promo-versiones">${pub ? `Publicada: <strong>${esc(pub.version)}</strong> · ${esc(fecha(pub.fecha))}` : e.sinComprobar ? 'Publicada: sin comprobar' : 'Sin publicar'}
+			<p class="promo-versiones">${pub ? `Publicada: <strong>${esc(pub.version)}</strong> · ${esc(fecha(pub.fecha))}` : e.sinComprobar ? 'No se ha podido comprobar la versión publicada. Recarga la página en un momento.' : 'Todavía sin publicar'}
 				${pendiente ? ` · En revisión: <strong>${esc(rev!.version)}</strong> · ${esc(fecha(rev!.fecha))}` : ''}</p>
 			${etiquetaVersiones(e)}
 		</div>
 		<div class="acciones">
-			${pub ? enlace(`${ESCAPARATE}/${id}/`, `Ver publicada (${pub.version})`, 'abre la publicada', { id, version: pub.version }) : ''}
-			${pendiente ? enlace(`${REVISION}/${id}/`, `Ver vista previa (${rev!.version})`, 'abre la vista previa', { id, version: rev!.version }, true) : ''}
+			${pub ? enlace(`${ESCAPARATE}/${id}/`, `Ver la publicada (${pub.version})`, 'abre la publicada', { id, version: pub.version }) : ''}
+			${pendiente ? enlace(`${REVISION}/${id}/`, `Ver la vista previa (${rev!.version})`, 'abre la vista previa', { id, version: rev!.version }, true) : ''}
 			${pendiente ? `<button class="boton" type="button" data-publicar ${bloqueo ? 'disabled' : ''}>Publicar ${esc(rev!.version)}</button>` : ''}
 			${volver.length ? '<button class="boton secundario" type="button" data-abrir-volver>Volver a una anterior</button>' : ''}
 		</div>
@@ -127,7 +127,7 @@ export async function pintarVersiones(destino: HTMLElement, p: { id: string; nom
 		<p class="aviso" data-progreso role="status" hidden></p>
 		<div data-planos></div>
 		${volver.length ? `<form class="peticion-form" data-volver hidden novalidate>
-			<label>Volver la web pública de ${esc(p.nombre)} a la versión
+			<label>Volver la experiencia publicada de ${esc(p.nombre)} a la
 				<select name="version">${volver.reverse().map((v) => `<option>${v}</option>`).join('')}</select>
 			</label>
 			<label>Motivo
@@ -147,7 +147,7 @@ export async function pintarVersiones(destino: HTMLElement, p: { id: string; nom
 
 	destino.querySelector<HTMLButtonElement>('[data-publicar]')?.addEventListener('click', async (ev) => {
 		const b = ev.currentTarget as HTMLButtonElement;
-		if (!confirm(`¿Publicar ${rev!.version} de ${p.nombre}?\n\nSustituirá a la versión que ven ahora los visitantes.`)) return;
+		if (!confirm(`¿Publicar la ${rev!.version} de ${p.nombre}?\n\n${pub ? `Sustituirá a la ${pub.version}, la versión que ven ahora los visitantes.` : 'Será la primera versión publicada.'}`)) return;
 		b.disabled = true;
 		const ok = await ejecutar(aviso, id, { accion: 'aprobar', promocion: id, version: rev!.version }, rev!.version, repintar);
 		if (!ok) b.disabled = false;
@@ -162,13 +162,13 @@ export async function pintarVersiones(destino: HTMLElement, p: { id: string; nom
 		alEnviar(form, async (d) => {
 			const version = String(d.get('version'));
 			const motivo = String(d.get('motivo')).trim();
-			if (motivo.length < 3) throw new Error('Indica el motivo.');
-			if (!confirm(`¿Volver ${p.nombre} de ${pub!.version} a ${version}?\n\nLos visitantes verán ${version}. La ${pub!.version} se conserva y se puede recuperar.`)) {
+			if (motivo.length < 3) throw new Error('Escribe el motivo para volver atrás.');
+			if (!confirm(`¿Volver ${p.nombre} de la ${pub!.version} a la ${version}?\n\nLos visitantes verán la ${version}. La ${pub!.version} se conserva y se puede recuperar.`)) {
 				form.querySelector<HTMLButtonElement>('button[type=submit]')!.disabled = false;
 				return;
 			}
 			const ok = await ejecutar(aviso, id, { accion: 'volver', promocion: id, version, motivo }, version, repintar);
-			if (ok) cerrar(); else throw new Error('No se ha podido iniciar. Mira el aviso de arriba.');
+			if (ok) cerrar(); else throw new Error('No se ha podido poner en marcha. Mira el aviso de arriba.');
 		});
 	}
 }

@@ -6,8 +6,8 @@
 // la promotora los genera todos a la vez y se descargan en un Excel; si uno se
 // pierde, se cambia. Al cambiarlo se indica si es el mismo comprador (conserva
 // lo que eligió) o uno nuevo (empieza de cero).
-//   · modo «promotora» (portal): genera, cambia, busca y descarga el Excel.
-//   · modo «administradora» (Panel): consulta; generar o cambiar queda plegado
+//   · modo «promotora» (MUNE Portal): genera, cambia, busca y descarga el Excel.
+//   · modo «administradora» (MUNE Studio): consulta; generar o cambiar queda plegado
 //     en «Ayudar con un código», para cuando escriben pidiendo ayuda.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -39,7 +39,8 @@ async function leerViviendas(d: Dependencias, id: string): Promise<Vivienda[] | 
 
 const enlaceDe = (d: Dependencias, p: Promo, codigo: string) => `${d.escaparate}/${p.id}/#${codigo}`;
 const hoy = () => new Date().toISOString().slice(0, 10);
-const limpio = (t: string) => t.normalize('NFD').replace(/[^\w -]+/g, '').trim().replace(/\s+/g, '-');
+/** Para nombres de archivo: sin tildes ni símbolos («Las Eñes» → Las-Enes). */
+const limpio = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w -]+/g, '').trim().replace(/\s+/g, '-');
 
 /** Excel con los códigos recién generados (la única vez que se pueden ver). */
 function excelCodigos(d: Dependencias, p: Promo, datos: Map<string, Vivienda>, codigos: [string, string][]): void {
@@ -69,8 +70,8 @@ export async function pintarCompradores(caja: HTMLElement, d: Dependencias, p: P
 	caja.innerHTML = `
 		<h2>Compradores</h2>
 		<p class="ayuda">${admin
-			? 'Los códigos los genera y entrega la promotora desde su portal. Aquí ves qué viviendas tienen código y si el comprador ya ha entrado.'
-			: 'Un código por vivienda. Se lo dais al comprador y con él entra en la web pública, en «¿Ya eres comprador? Accede para personalizar tu vivienda». Los códigos solo se ven al generarlos: descargad el Excel y guardadlo. Si un comprador pierde el suyo, cambiadlo por otro.'}</p>
+			? 'Los códigos los genera y entrega la promotora desde MUNE Portal. Aquí ves qué viviendas tienen código y si el comprador ya ha entrado.'
+			: 'Un código por vivienda. Dáselo al comprador: con él entra en la web de la promoción, en «¿Ya eres comprador? Accede para personalizar tu vivienda». Los códigos solo se ven al generarlos: descarga el Excel y guárdalo. Si un comprador pierde el suyo, cámbialo por otro.'}</p>
 		<p class="promo-versiones">${conCodigo} de ${refs.length} vivienda${refs.length === 1 ? '' : 's'} con código</p>
 		${aviso ? `<p class="aviso" role="status">${esc(aviso)}</p>` : ''}
 		<div data-codigo-nuevo></div>
@@ -78,7 +79,7 @@ export async function pintarCompradores(caja: HTMLElement, d: Dependencias, p: P
 		${refs.length ? `
 		<label class="buscador">Buscar vivienda <input type="search" data-buscar placeholder="Por ejemplo: 1ºA" autocomplete="off"></label>
 		${admin ? `<details class="ayuda-codigos" data-ayuda><summary>Ayudar con un código</summary>
-			<p class="ayuda">Normalmente lo hace la promotora. Úsalo solo si te escriben pidiendo ayuda: aparecerán los botones para generar o cambiar el código de cada vivienda.</p></details>` : ''}
+			<p class="ayuda">Normalmente lo hace la promotora. Úsalo solo si te piden ayuda: al abrirlo aparecen los botones para generar o cambiar el código de cada vivienda.</p></details>` : ''}
 		<div class="tabla compradores${admin ? '' : ' con-acciones'}"><table>
 			<thead><tr><th>Vivienda</th><th>Código</th><th class="col-acciones"></th></tr></thead>
 			<tbody>${refs.map((ref) => {
@@ -120,13 +121,13 @@ export async function pintarCompradores(caja: HTMLElement, d: Dependencias, p: P
 	// Todos a la vez
 	caja.querySelector<HTMLButtonElement>('[data-generar-todos]')?.addEventListener('click', async (ev) => {
 		const b = ev.currentTarget as HTMLButtonElement;
-		if (!confirm(`¿Generar los códigos de ${sinCodigo.length} vivienda(s)?\n\nSe descargará un Excel con todos. Guárdalo bien: los códigos no se pueden volver a ver.`)) return;
+		if (!confirm(`¿Generar ${sinCodigo.length === 1 ? 'el código de 1 vivienda' : `los códigos de ${sinCodigo.length} viviendas`}?\n\nSe descargará un Excel con todos. Guárdalo bien: los códigos no se pueden volver a ver.`)) return;
 		b.disabled = true;
 		const { data: nuevos, error: e } = await d.sb.rpc('generar_codigos_pendientes', { p_promocion: p.id, p_viviendas: sinCodigo });
 		if (e) { b.disabled = false; alert(d.traducir(e)); return; }
 		const lista = ((nuevos ?? []) as { vivienda_ref: string; codigo: string }[]).map((x) => [x.vivienda_ref, x.codigo] as [string, string]);
 		excelCodigos(d, p, datos, lista);
-		await pintarCompradores(caja, d, p, `✓ ${lista.length} código(s) generados. Se ha descargado el Excel: guárdalo, los códigos no se pueden volver a ver.`);
+		await pintarCompradores(caja, d, p, `✓ ${lista.length === 1 ? 'Código generado' : `${lista.length} códigos generados`}. Se ha descargado el Excel: guárdalo, los códigos no se pueden volver a ver.`);
 		const zona = caja.querySelector<HTMLElement>('[data-codigo-nuevo]')!;
 		zona.innerHTML = '<div class="acciones"><button class="boton secundario pequeno" type="button" data-otra-vez>Volver a descargar el Excel</button></div>';
 		zona.querySelector('[data-otra-vez]')!.addEventListener('click', () => excelCodigos(d, p, datos, lista));
@@ -156,8 +157,8 @@ function mostrarCodigo(destino: HTMLElement, d: Dependencias, p: Promo, datos: M
 	const { esc } = d;
 	const enlace = enlaceDe(d, p, codigo);
 	const mensaje = `Hola: este es tu código de comprador de ${p.nombre} (vivienda ${ref}): ${codigo}\n\n`
-		+ `Entra en ${d.escaparate}/${p.id}/ y pulsa «¿Ya eres comprador? Accede para personalizar tu vivienda», o abre directamente este enlace: ${enlace}\n\n`
-		+ 'Guárdalo: es personal y sirve para ver y personalizar tu vivienda.';
+		+ `Entra en ${d.escaparate}/${p.id}/ y pulsa «¿Ya eres comprador?», o abre directamente este enlace: ${enlace}\n\n`
+		+ 'Guárdalo: es personal y te da acceso a tu vivienda y a su personalización.';
 	destino.innerHTML = `<div class="codigo-nuevo" role="status">
 		<p><strong>Código de ${esc(ref)}</strong> · cópialo o descárgalo ahora: no se podrá volver a ver.</p>
 		<p class="codigo">${esc(codigo)}</p>

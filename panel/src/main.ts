@@ -69,7 +69,7 @@ async function pantallaAlta(pendientes: Factor[]): Promise<void> {
 	pintar(`<form class="caja" novalidate>
 		${CABECERA}
 		<h1>Protege tu acceso con el móvil</h1>
-		<p>Cada vez que entres te pediremos también un código del móvil. Para activarlo:</p>
+		<p>Cada vez que entres, además de la contraseña, necesitarás un código del móvil. Para activarlo:</p>
 		<p>1. Abre <strong>Google Authenticator</strong> (o Microsoft Authenticator) en el móvil.<br>
 		2. Pulsa <strong>+</strong> y elige <strong>Escanear código QR</strong>.<br>
 		3. Escribe aquí el código de 6 cifras que aparece en <strong>MUNE Panel</strong>.</p>

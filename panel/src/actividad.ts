@@ -5,10 +5,14 @@ import { esc, sb, traducir } from './comun';
 
 interface Apunte { momento: string; accion: string; user_id: string; detalle: Record<string, unknown> }
 
-/** Textos de las acciones que anota la base de datos por su cuenta. */
+/**
+ * Textos de las acciones que anota la base de datos por su cuenta, y textos
+ * más claros para algunos apuntes de MUNE Studio. Las claves son datos
+ * guardados en el registro: no se cambian, solo cómo se leen.
+ */
 const ACCIONES: Record<string, string> = {
 	documento_subido: 'sube un documento',
-	documento_vigente: 'marca un documento como vigente',
+	documento_vigente: 'acepta un documento',
 	documento_rechazado: 'rechaza un documento',
 	documento_pendiente: 'vuelve a poner un documento en revisión',
 	plano_aprobado: 'aprueba un plano',
@@ -18,6 +22,9 @@ const ACCIONES: Record<string, string> = {
 	ficha_promocion: 'guarda la ficha de la promoción',
 	formalizacion_promocion: 'guarda la formalización de la promoción',
 	lista_estandar: 'prepara la lista estándar de documentos',
+	'entra en el panel': 'entra en MUNE Studio',
+	'activa doble verificación': 'activa la verificación con el móvil',
+	'abre la publicada': 'abre la versión publicada',
 };
 
 export interface FiltroActividad { promocion?: string; promotora?: string; promociones?: string[] }
@@ -57,7 +64,7 @@ export async function pintarActividad(destino: HTMLElement, filtro: FiltroActivi
 	// trae más detalle, para no ver cada cosa dos veces.
 	const apuntes = ((data ?? []) as Apunte[]).filter((a) => a.accion !== 'acceso_dado' && a.accion !== 'acceso_cambiado');
 	if (!apuntes.length) {
-		destino.innerHTML = '<p class="vacio">Sin actividad todavía.</p>';
+		destino.innerHTML = '<p class="vacio">Todavía no hay actividad.</p>';
 		return;
 	}
 	const detalle = (a: Apunte) => {

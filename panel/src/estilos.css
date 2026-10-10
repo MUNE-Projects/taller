@@ -138,7 +138,6 @@ input[type=file] { padding: 8px; font-size: 14px; }
 /* Promotoras */
 h4 { margin: 18px 0 6px; font-size: 14px; font-weight: 600; }
 .detalle { display: grid; gap: 8px; padding: 4px 0 8px 14px; border-left: 2px solid var(--linea); }
-.sub-promo { display: grid; gap: 8px; padding: 10px 0; border-top: 1px solid var(--linea); }
 .tabla { overflow-x: auto; }
 .tabla td { vertical-align: top; }
 .tabla select { min-width: 120px; padding: 6px 8px; font-size: 14px; }
