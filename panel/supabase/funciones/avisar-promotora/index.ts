@@ -31,15 +31,16 @@ const ORIGENES = [
 	...(Deno.env.get('ORIGENES_EXTRA')?.split(',') ?? []),
 ];
 
-function claveServicio(): string | undefined {
-	const legado = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-	if (legado) return legado;
+// Claves de servicio que Supabase da a la función: las nuevas (sb_secret_…) y la
+// antigua (service_role). Se usa la primera que funcione en este proyecto.
+function clavesServicio(): string[] {
+	const claves: string[] = [];
 	try {
-		const claves = JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS') ?? '{}') as Record<string, string>;
-		return claves.default ?? Object.values(claves)[0];
-	} catch {
-		return undefined;
-	}
+		claves.push(...Object.values(JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS') ?? '{}') as Record<string, string>));
+	} catch { /* sin claves nuevas */ }
+	const legado = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+	if (legado) claves.push(legado);
+	return claves.filter(Boolean);
 }
 
 const sinSesion = { persistSession: false, autoRefreshToken: false };
@@ -74,9 +75,13 @@ Deno.serve(async (req) => {
 	const [{ data: esAdmin }, { data: esRobot }] = await Promise.all([sb.rpc('es_admin'), sb.rpc('es_robot')]);
 	if (esAdmin !== true && !(tipo === 'rechazado' && esRobot === true)) return responder(403, { error: 'Sin permiso' });
 
-	const clave = claveServicio();
-	if (!clave) return responder(500, { error: 'Falta la clave de servicio de Supabase' });
-	const servicio = createClient(SUPABASE_URL, clave, { auth: sinSesion });
+	let servicio: ReturnType<typeof createClient> | null = null;
+	for (const clave of clavesServicio()) {
+		const prueba = createClient(SUPABASE_URL, clave, { auth: sinSesion });
+		const { error } = await prueba.from('avisos_enviados').select('id').limit(1);
+		if (!error) { servicio = prueba; break; }
+	}
+	if (!servicio) return responder(500, { error: 'La función no puede leer la base de datos (clave de servicio o falta pegar 012_avisos_promotora.sql)' });
 
 	// ── Qué se avisa ──
 	let promocion = String(cuerpo.promocion ?? '');
@@ -85,11 +90,13 @@ Deno.serve(async (req) => {
 	let asunto = '';
 	let texto = '';
 	let enlace = '';
-	const { data: doc } = tipo === 'rechazado'
+	const { data: doc, error: eDoc } = tipo === 'rechazado'
 		? await servicio.from('documentos').select('id, promocion_id, estado, nota, version, nombre, requisitos(elemento)').eq('id', Number(cuerpo.documento_id)).maybeSingle()
-		: { data: null };
+		: { data: null, error: null };
+	if (eDoc) return responder(500, { error: `No se ha podido leer el documento: ${eDoc.message}` });
 	if (tipo === 'rechazado') {
-		if (!doc || doc.estado !== 'rechazado') return responder(409, { error: 'Ese documento no está rechazado' });
+		if (!doc) return responder(404, { error: `No se encuentra el documento ${Number(cuerpo.documento_id)}` });
+		if (doc.estado !== 'rechazado') return responder(409, { error: 'Ese documento no está rechazado' });
 		promocion = doc.promocion_id;
 	}
 	if (!/^[a-z0-9-]{1,60}$/.test(promocion)) return responder(400, { error: 'Promoción no válida' });

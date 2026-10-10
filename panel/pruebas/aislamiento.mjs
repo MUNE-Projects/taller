@@ -702,6 +702,11 @@ await caso( DEBE_FUNCIONAR, 'Avisos a la promotora: se comprueba lo que se avisa
 	const noRechazado = codigo( await avisar( robot, { tipo: 'rechazado', documento_id: docB.data.id } ) );
 	// versión sin planos enviados
 	const sinPlanos = codigo( await avisar( admin, { tipo: 'planos', promocion: 'prueba-a', version: 'v8' } ) );
+	// un documento rechazado sí se avisa: llega hasta el envío (sin llave en las pruebas → 502)
+	await exigir( admin.from( 'documentos' ).update( { estado: 'rechazado', nota: 'Faltan las cotas' } ).eq( 'id', docB.data.id ), 'rechazar docB' );
+	const avisoRechazado = await avisar( admin, { tipo: 'rechazado', documento_id: docB.data.id } );
+	const detalleRechazado = await avisoRechazado.error?.context?.json?.().catch( () => ( {} ) );
+	if ( codigo( avisoRechazado ) !== 502 ) throw new Error( `rechazado: ${ codigo( avisoRechazado ) } ${ JSON.stringify( detalleRechazado ) }` );
 	// en las pruebas no hay llave de GitHub: falla el envío y no queda apuntado (se podrá reintentar)
 	const sinLlave = await avisar( admin, { tipo: 'planos', promocion: 'prueba-a', version: 'v3' } );
 	const { count } = await servicio.from( 'avisos_enviados' ).select( '*', { count: 'exact', head: true } );
