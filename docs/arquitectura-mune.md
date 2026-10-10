@@ -394,7 +394,7 @@ La evolución hacia fases o grupos configurables se revisará aparte. Hasta ento
 
 ## 8 bis. Documentación de la promoción
 
-- **Fase del proyecto:** la promoción indica en su ficha si está en *anteproyecto*, *proyecto básico* o *proyecto de ejecución*. No es un documento que entregar. Cada documento subido queda marcado con la fase de ese momento (`018_fase_proyecto.sql`).
+- **Fase del proyecto:** la promotora indica arriba de *Documentación* si el proyecto está en *anteproyecto*, *proyecto básico* o *proyecto de ejecución*, y la cambia ahí cuando avanza («Cambiar de fase», con historial). No es un documento que entregar. Sin fase indicada no se puede subir nada, y cada documento subido queda marcado con la fase de ese momento (`018_fase_proyecto.sql`, `019_cambio_fase.sql`). MUNE Studio ve la fase en la cabecera de cada promoción y en su Documentación.
 - **Memoria de calidades técnica:** es el nombre del documento. En el Portal aparece con su explicación: no es la memoria comercial, sino la documentación técnica de lo que hay que reproducir.
 
 ## 9. Documentación técnica con varios archivos (aprobado: paso 2)

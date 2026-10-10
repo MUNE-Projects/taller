@@ -2,6 +2,7 @@
 // Lo común (sesión de Supabase, utilidades) está en comun.ts; la validación de
 // planos, en planos.ts.
 
+import { FASES, conectarFase, htmlFase, leerHistorialFases, textoFase } from './fase';
 import { datosFormalizacion, formFormalizacion, type Formalizacion } from './formalizacion';
 import { ESCAPARATE, REVISION, INACTIVIDAD_MAX, MAX_TAM, MIN_CLAVE, CABECERA, alEnviar, app, errorEnlace, esc, fecha, pintar, sb, tipoEnlace, traducir } from './comun';
 import { pintarCompradores } from './compradores';
@@ -148,10 +149,6 @@ function formFicha(p: Ficha): string {
 		<label>Número de portales o bloques <input name="num_portales" type="number" min="1" max="500" value="${num(p.num_portales)}"></label>
 		<label>Número de plantas <input name="num_plantas" type="number" min="1" max="100" value="${num(p.num_plantas)}"></label>
 		<label>Fecha prevista de entrega (opcional) <input name="fecha_entrega" type="date" value="${esc(p.fecha_entrega ?? '')}"></label>
-		<label>Fase del proyecto <select name="fase_proyecto"><option value="">Sin indicar</option>
-			<option value="anteproyecto" ${p.fase_proyecto === 'anteproyecto' ? 'selected' : ''}>Anteproyecto</option>
-			<option value="basico" ${p.fase_proyecto === 'basico' ? 'selected' : ''}>Proyecto básico</option>
-			<option value="ejecucion" ${p.fase_proyecto === 'ejecucion' ? 'selected' : ''}>Proyecto de ejecución</option></select></label>
 		<p class="error" role="alert"></p>
 		<div class="acciones"><button class="boton" type="submit">Guardar ficha</button></div>
 		<p class="ok" data-guardado role="status"></p>
@@ -169,7 +166,6 @@ function datosFicha(promocion: string, d: FormData): Record<string, unknown> {
 		p_referencia_catastral: String(d.get('referencia_catastral') ?? ''), p_tipo: String(d.get('tipo') ?? ''),
 		p_num_viviendas: entero('num_viviendas'), p_num_portales: entero('num_portales'), p_num_plantas: entero('num_plantas'),
 		p_fecha_entrega: String(d.get('fecha_entrega') ?? '') || null,
-		p_fase_proyecto: String(d.get('fase_proyecto') ?? '') || null,
 	};
 }
 
@@ -254,9 +250,6 @@ interface Ficha {
 	referencia_catastral: string | null; tipo: string | null; num_viviendas: number | null; num_portales: number | null;
 	num_plantas: number | null; fecha_entrega: string | null; fase_proyecto?: string | null;
 }
-/** Fase del proyecto (ficha de la promoción), con la que queda marcado cada documento. */
-const FASES: Record<string, string> = { anteproyecto: 'Anteproyecto', basico: 'Proyecto básico', ejecucion: 'Proyecto de ejecución' };
-
 interface Documento { id: number; requisito_id: number; nombre: string; ruta: string; version: number; estado: string; nota: string | null; subido_en: string; fase?: string | null }
 interface Entregable { id: number; version: string; tipo: string; tipologia: string | null; nombre: string; ruta: string }
 
@@ -295,7 +288,7 @@ async function pantallaPromocion(id: string, pestana = 'resumen', extra = '', me
 		<a class="enlace volver" href="#/">← Tus promociones</a>
 		<section class="tarjeta">
 			<h2>${esc(p.nombre)}</h2>
-			<p class="promo-lugar">${esc(p.ubicacion)}</p>
+			<p class="promo-lugar">${esc(p.ubicacion)}${p.ubicacion ? ' · ' : ''}${esc(textoFase((p as unknown as Ficha).fase_proyecto))}</p>
 			<nav class="pestanas" aria-label="Secciones de la promoción">${PESTANAS.map(([k, t]) =>
 				`<a href="#/promocion/${esc(id)}/${k}" ${k === actual ? 'aria-current="page"' : ''}>${esc(t)}${contador[k] ? `<b class="contador">${esc(contador[k])}</b>` : ''}</a>`).join('')}</nav>
 		</section>
@@ -354,10 +347,19 @@ async function pantallaPromocion(id: string, pestana = 'resumen', extra = '', me
 				<p class="aviso" data-progreso="${r.id}" role="status" hidden></p>
 			</article>`;
 		}).join('')}</div>`).join('');
+		const fase = (p as unknown as Ficha).fase_proyecto ?? null;
+		const historial = await leerHistorialFases(sb, p.id);
 		caja.innerHTML = `
 			<h2>Documentación</h2>
+			${htmlFase(fase, historial, 'promotora')}
 			<p class="ayuda">Lo que necesitamos para preparar la promoción. Puedes subir archivos de hasta 50 MB. Si necesitas sustituir un archivo, sube una versión nueva. Las anteriores se conservan.</p>
 			${htmlDocs || '<p class="vacio">El equipo de MUNE aún no ha preparado la lista de documentos de esta promoción.</p>'}`;
+		conectarFase(caja, sb, p.id, fase, () => pantallaPromocion(id, 'documentacion', '', 'Fase del proyecto guardada.'), (e) => traducir(e, 'cambiar la fase'));
+		// sin fase indicada no se sube nada: cada documento tiene que llevar su fase
+		if (!fase) app.querySelectorAll<HTMLInputElement>('[data-subir]').forEach((input) => {
+			input.disabled = true;
+			input.closest('label')?.classList.add('desactivado');
+		});
 		app.querySelectorAll<HTMLInputElement>('[data-subir]').forEach((input) => input.addEventListener('change', () => {
 			const archivo = input.files?.[0];
 			if (archivo) void subir(p.id, p.promotora_id, Number(input.dataset.subir), archivo, input);

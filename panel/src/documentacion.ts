@@ -8,10 +8,11 @@
 // Las reglas (005, 008) dejan a la administradora cambiar solo el estado y la
 // nota; nadie puede borrar ni sobrescribir un documento.
 
+import { FASES, conectarFase, htmlFase, leerHistorialFases } from './fase';
 import { avisarPromotora } from './avisos';
 import { alEnviar, anotar, conectarPlegables, esc, fecha, sb, traducir } from './comun';
 
-interface PromocionMin { id: string; nombre: string; promotora_id: string }
+interface PromocionMin { id: string; nombre: string; promotora_id: string; fase_proyecto?: string | null }
 interface Requisito { id: number; bloque: string; elemento: string; descripcion: string; obligatorio: boolean; activo: boolean }
 interface Documento {
 	id: number; requisito_id: number; nombre: string; ruta: string; tamano: number; version: number;
@@ -19,8 +20,6 @@ interface Documento {
 }
 
 const BLOQUES = ['Planos', 'Viviendas y superficies', 'Calidades', 'Marca', 'Datos legales', 'Personalización'];
-/** Fase del proyecto con la que queda marcado cada documento (018_fase_proyecto.sql). */
-const FASES: Record<string, string> = { anteproyecto: 'Anteproyecto', basico: 'Proyecto básico', ejecucion: 'Proyecto de ejecución' };
 const ESTADOS_DOC: Record<string, [string, string]> = {
 	pendiente: ['En revisión', 'pendiente'],
 	vigente: ['Aceptado', 'al-dia'],
@@ -43,11 +42,12 @@ async function descargar(ruta: string, nombre: string, promocion: string): Promi
 }
 
 export async function pintarDocumentacion(caja: HTMLElement, p: PromocionMin): Promise<void> {
-	const [reqs, docs, personas] = await Promise.all([
+	const [reqs, docs, personas, historial] = await Promise.all([
 		sb.from('requisitos').select('id, bloque, elemento, descripcion, obligatorio, activo').eq('promocion_id', p.id).order('orden').order('id'),
 		sb.from('documentos').select('id, requisito_id, nombre, ruta, tamano, version, estado, nota, subido_por, subido_en, revisado_en, fase')
 			.eq('promocion_id', p.id).order('version', { ascending: false }),
 		sb.from('miembros').select('user_id, nombre').eq('promotora_id', p.promotora_id),
+		leerHistorialFases(sb, p.id),
 	]);
 	for (const r of [reqs, docs, personas]) if (r.error) throw r.error;
 	const requisitos = (reqs.data ?? []) as Requisito[];
@@ -67,6 +67,7 @@ export async function pintarDocumentacion(caja: HTMLElement, p: PromocionMin): P
 
 	caja.innerHTML = `
 		<h2>Documentación</h2>
+		${htmlFase(p.fase_proyecto, historial, 'administradora')}
 		<p class="resumen-docs">
 			<span class="estado ${entregados === obligatorios.length && obligatorios.length ? 'al-dia' : 'pendiente'}">Obligatorios entregados: ${entregados} de ${obligatorios.length}</span>
 			<span class="estado ${porRevisar ? 'pendiente' : ''}">En revisión: ${porRevisar}</span>
@@ -107,6 +108,8 @@ export async function pintarDocumentacion(caja: HTMLElement, p: PromocionMin): P
 		<div data-requisitos hidden></div>`;
 
 	conectarPlegables(caja);
+	// la fase también se ve en la cabecera de la promoción: se recarga la página entera
+	conectarFase(caja, sb, p.id, p.fase_proyecto, () => location.reload(), traducir);
 	caja.querySelectorAll<HTMLButtonElement>('[data-bajar]').forEach((b) => b.addEventListener('click', () => {
 		const d = documentos.find((x) => x.id === Number(b.dataset.bajar))!;
 		void descargar(d.ruta, d.nombre, p.id);

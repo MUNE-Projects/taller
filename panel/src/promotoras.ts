@@ -12,6 +12,7 @@
 // Todo lo comprueban las reglas de la base de datos (005–008): solo la
 // administradora, con el código del móvil.
 
+import { textoFase } from './fase';
 import { datosFormalizacion, formFormalizacion, type Formalizacion } from './formalizacion';
 import { pintarActividad } from './actividad';
 import { alEnviar, anotar, conectarPlegables, cuantos, esc, fallo, fecha, sb, traducir } from './comun';
@@ -234,10 +235,6 @@ function formFicha(p: Ficha): string {
 		<label>Número de portales o bloques <input name="num_portales" type="number" min="1" max="500" value="${num(p.num_portales)}"></label>
 		<label>Número de plantas <input name="num_plantas" type="number" min="1" max="100" value="${num(p.num_plantas)}"></label>
 		<label>Fecha prevista de entrega (opcional) <input name="fecha_entrega" type="date" value="${esc(p.fecha_entrega ?? '')}"></label>
-		<label>Fase del proyecto <select name="fase_proyecto"><option value="">Sin indicar</option>
-			<option value="anteproyecto" ${p.fase_proyecto === 'anteproyecto' ? 'selected' : ''}>Anteproyecto</option>
-			<option value="basico" ${p.fase_proyecto === 'basico' ? 'selected' : ''}>Proyecto básico</option>
-			<option value="ejecucion" ${p.fase_proyecto === 'ejecucion' ? 'selected' : ''}>Proyecto de ejecución</option></select></label>
 		<p class="error" role="alert"></p>
 		<div class="acciones"><button class="boton" type="submit">Guardar ficha</button></div>
 		<p class="ok" data-guardado role="status"></p>
@@ -256,7 +253,6 @@ function datosFicha(promocion: string, d: FormData): Record<string, unknown> {
 		p_referencia_catastral: String(d.get('referencia_catastral') ?? ''), p_tipo: String(d.get('tipo') ?? ''),
 		p_num_viviendas: entero('num_viviendas'), p_num_portales: entero('num_portales'), p_num_plantas: entero('num_plantas'),
 		p_fecha_entrega: String(d.get('fecha_entrega') ?? '') || null,
-		p_fase_proyecto: String(d.get('fase_proyecto') ?? '') || null,
 	};
 }
 
@@ -597,7 +593,7 @@ export async function pantallaPromocion(destino: HTMLElement, id: string, pestan
 
 	destino.innerHTML = `
 		${migas([['Promotoras', '#/promotoras'], [po?.nombre ?? '—', `#/promotora/${p.promotora_id}`], [p.nombre, null]])}
-		<div class="cabecera"><div><h1>${esc(p.nombre)}</h1><p class="promo-lugar">${esc(p.ubicacion)}${p.ubicacion ? ' · ' : ''}${esc(p.id)}</p></div>
+		<div class="cabecera"><div><h1>${esc(p.nombre)}</h1><p class="promo-lugar">${esc(p.ubicacion)}${p.ubicacion ? ' · ' : ''}${esc(p.id)} · ${esc(textoFase(p.fase_proyecto))}</p></div>
 			${chipActiva(p.activa, 'Visible para su equipo', 'Desactivada')}</div>
 		<nav class="pestanas" aria-label="Secciones de la promoción">${PESTANAS.map(([k, t]) =>
 			`<a href="#/promocion/${esc(id)}/${k}" ${k === actual ? 'aria-current="page"' : ''}>${esc(t)}</a>`).join('')}</nav>

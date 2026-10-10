@@ -944,6 +944,28 @@ await caso( DEBE_FUNCIONAR, 'La vigilancia da señales sin sesión (solo recibe 
 
 } );
 
+// ─── Fase del proyecto (018 y 019) ──────────────────────────────────────────
+await caso( DEBE_FUNCIONAR, 'Fase del proyecto: el equipo la cambia (con historial) y los documentos nuevos quedan marcados; nadie más la cambia ni ve el historial', async () => {
+
+	const ajenaB = await aprobB.rpc( 'cambiar_fase_proyecto', { p_promocion: 'prueba-a', p_fase: 'ejecucion' } );
+	const deRobot = await robot.rpc( 'cambiar_fase_proyecto', { p_promocion: 'prueba-a', p_fase: 'ejecucion' } );
+	const sinSesion = await anonimo.rpc( 'cambiar_fase_proyecto', { p_promocion: 'prueba-a', p_fase: 'ejecucion' } );
+	const otraPromocion = await gestorA.rpc( 'cambiar_fase_proyecto', { p_promocion: 'prueba-a2', p_fase: 'basico' } );
+	const mala = await gestorA.rpc( 'cambiar_fase_proyecto', { p_promocion: 'prueba-a', p_fase: 'obra' } );
+	await exigir( gestorA.rpc( 'cambiar_fase_proyecto', { p_promocion: 'prueba-a', p_fase: 'basico' } ), 'fase básico' );
+	await exigir( gestorA.rpc( 'cambiar_fase_proyecto', { p_promocion: 'prueba-a', p_fase: 'ejecucion' } ), 'fase ejecución' );
+	const doc = await subirDocumento( gestorA, pA.id, 'prueba-a', 'documento en fase de ejecución' );
+	const historialA = ( await gestorA.from( 'fases_promocion' ).select( 'fase' ).eq( 'promocion_id', 'prueba-a' ) ).data ?? [];
+	const historialB = await aprobB.from( 'fases_promocion' ).select( 'fase' ).eq( 'promocion_id', 'prueba-a' );
+	const historialAnonimo = await anonimo.from( 'fases_promocion' ).select( 'fase' ).limit( 1 );
+	return falla( ajenaB ) && falla( deRobot ) && falla( sinSesion ) && falla( otraPromocion ) && falla( mala )
+		&& ( await filaDe( 'promociones', 'prueba-a' ) ).fase_proyecto === 'ejecucion'
+		&& ( await filaDe( 'documentos', doc.data.id ) ).fase === 'ejecucion'
+		&& historialA.length === 2 && vacio( historialB ) && ( falla( historialAnonimo ) || vacio( historialAnonimo ) )
+		&& ( await filaDe( 'promociones', 'prueba-a2' ) ).fase_proyecto === null;
+
+} );
+
 // ─── Resumen ────────────────────────────────────────────────────────────────
 
 const fallidos = resultados.filter( ( r ) => ! r.ok );
