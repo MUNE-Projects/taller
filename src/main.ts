@@ -130,7 +130,7 @@ async function iniciar() {
 
 		const catalogo = catalogoPara( v );
 		const propia = comprador?.ref === v.ref;
-		return new Configurador( catalogo, v.precioBase, packsDeVivienda( PROMOCION, propia ? v : { ...v, selecciones: undefined }, catalogo.categorias ) );
+		return new Configurador( catalogo, packsDeVivienda( PROMOCION, propia ? v : { ...v, selecciones: undefined }, catalogo.categorias ) );
 
 	};
 	let conf = crearConfigurador( fichaVivienda );
@@ -863,7 +863,8 @@ async function iniciar() {
 	// ---------------------------------------------------------------- documento de selección
 	const dialogo = $<HTMLDialogElement>( '#resumen-configuracion' );
 	let packResumen = '';
-	const CLAVE_COMPRADOR = 'inmobiliarias:comprador';
+	// versiones anteriores recordaban el nombre y el DNI en el navegador: se borran
+	guardar( 'inmobiliarias:comprador', null );
 	const escapar = ( t: string ) => t.replace( /[&<>"]/g, ( c ) => ( { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' } )[ c ]! );
 	const conceptoPago = ( pack: string ) => ( PROMOCION.pagos?.concepto ?? '{ref} · {pack}' )
 		.replace( '{ref}', fichaVivienda.ref ).replace( '{pack}', pack ).replace( '{promocion}', PROMOCION.promocion.nombre );
@@ -880,12 +881,6 @@ async function iniciar() {
 		} ).join( '' );
 		const total = conf.totalPack( packId );
 		const pg = PROMOCION.pagos;
-		let datos: { nombre?: string; dni?: string } = {};
-		try {
-
-			datos = JSON.parse( leer( CLAVE_COMPRADOR ) ?? '{}' );
-
-		} catch { /* sin datos guardados */ }
 
 		$( '#titulo-resumen' ).textContent = pv.pack.titulo;
 		dialogo.querySelector( '.contenido' )!.innerHTML = `
@@ -896,8 +891,8 @@ async function iniciar() {
 			</table>
 			<fieldset class="datos-comprador">
 				<legend>Datos del comprador <span>(opcional: también puede rellenarlos a mano en el documento)</span></legend>
-				<label>Nombre y apellidos<input name="nombre" autocomplete="name" value="${ escapar( datos.nombre ?? '' ) }"></label>
-				<label>DNI / NIE<input name="dni" autocomplete="off" value="${ escapar( datos.dni ?? '' ) }"></label>
+				<label>Nombre y apellidos<input name="nombre" autocomplete="name" value=""></label>
+				<label>DNI / NIE<input name="dni" autocomplete="off" value=""></label>
 			</fieldset>
 			${ total && pg ? `<div class="pago">
 				<p><strong>Pago por transferencia: ${ fmtEuros( total ) }</strong></p>
@@ -908,12 +903,11 @@ async function iniciar() {
 
 	};
 
-	/** Datos del comprador escritos en el diálogo (se recuerdan solo en este navegador). */
+	/** Datos del comprador escritos en el diálogo: solo van al PDF, no se guardan en ningún sitio. */
 	const datosComprador = () => {
 
 		const f = ( n: string ) => ( dialogo.querySelector( `input[name="${ n }"]` ) as HTMLInputElement | null )?.value.trim() ?? '';
 		const d = { nombre: f( 'nombre' ), dni: f( 'dni' ).toUpperCase() };
-		guardar( CLAVE_COMPRADOR, JSON.stringify( d ) );
 		return d;
 
 	};

@@ -559,21 +559,6 @@ export async function abrirStudio( api: ApiStudio ) {
 			campoPago( 'Beneficiario', 'titular' ), campoPago( 'Entidad', 'banco' ), campoPago( 'IBAN', 'iban' ), campoPago( 'BIC / SWIFT', 'bic' ),
 			campoPago( 'Concepto', 'concepto' ), campoPago( 'Instrucciones adicionales', 'instrucciones' ) );
 
-		out.push( h( 'h3', {}, 'Viviendas' ) );
-		for ( const v of api.promocion.viviendas ) {
-
-			const precio = h( 'input', { type: 'number', step: '1000', value: String( v.precioBase ), 'aria-label': `Precio base ${ v.ref }` } ) as HTMLInputElement;
-			precio.addEventListener( 'change', () => {
-
-				v.precioBase = Number( precio.value ) || v.precioBase;
-				api.refrescarCatalogo();
-				cambio( false );
-
-			} );
-			out.push( h( 'div', { class: 'st-opcion' }, h( 'span', {}, `${ v.ref } · tipología ${ v.tipologia.toUpperCase() }${ v.espejo ? ' (simétrica)' : '' }` ), precio ) );
-
-		}
-
 		return out;
 
 	}

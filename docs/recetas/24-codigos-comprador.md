@@ -15,6 +15,9 @@
 - **Límite de intentos:** 10 fallos en 15 minutos desde la misma dirección (o 300 en una hora en la promoción) bloquean un rato.
 - La pestaña muestra si el comprador ya ha entrado, cuándo fue la última vez y cuántas veces.
 - En la web, el comprador ve **su vivienda** («Portal 3 · Bajo A»), no la tipología de la que sale.
+- **Ningún dato personal:** el código no se asocia a nombre, DNI ni email (el comercial sabe a quién se lo da). El nombre y el DNI que el comprador escribe antes de descargar su PDF solo van al PDF; no se guardan en ningún sitio.
+- El comprador ve el **total de su personalización**, nunca el precio de la vivienda (la plataforma no lo conoce: decisión 37).
+- *Copiar mensaje para el comprador* copia un texto listo para pegar en WhatsApp o en un email: el código, la dirección de la web y el enlace directo.
 
 ## Piezas
 - `panel/supabase/014_codigos_comprador.sql`: códigos (huella), selecciones formalizadas de cada comprador, intentos, `generar_codigo_comprador`, `codigos_de_promocion`, `entrar_comprador` (la llama la web pública, sin sesión).

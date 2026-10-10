@@ -258,8 +258,8 @@ export class Panel {
 		const n = c.extras.length;
 		( this.raiz.querySelector( '.n-mejoras' ) as HTMLElement ).textContent = n === 0 ? 'sin mejoras' : `${ n } ${ n === 1 ? 'mejora' : 'mejoras' }`;
 		( this.raiz.querySelector( '[data-precio="extras"]' ) as HTMLElement ).textContent = `+${ fmtEuros( c.totalExtras ) }`;
-		( this.raiz.querySelector( '[data-precio="base"]' ) as HTMLElement ).textContent = `Precio base ${ fmtEuros( c.precioBase ) }`;
-		( this.raiz.querySelector( '[data-precio="total"]' ) as HTMLElement ).textContent = fmtEuros( c.total );
+		// Solo el coste de la personalización: el precio de la vivienda no está en la plataforma (decisión 37)
+		( this.raiz.querySelector( '[data-precio="total"]' ) as HTMLElement ).textContent = c.totalExtras ? `+${ fmtEuros( c.totalExtras ) }` : '0 €';
 		const editables = c.extras.filter( ( x ) => c.editable( x.categoria.id ) ).length;
 		( this.raiz.querySelector( '.restablecer' ) as HTMLElement ).hidden = editables === 0;
 		if ( editables === 0 ) ( this.raiz.querySelector( '.confirmar-restablecer' ) as HTMLElement ).hidden = true;
@@ -271,7 +271,7 @@ export class Panel {
 		if ( chip ) {
 
 			chip.hidden = c.totalExtras === 0;
-			chip.textContent = `Con tu personalización: ${ fmtEuros( c.total ) }`;
+			chip.textContent = `Tu personalización: +${ fmtEuros( c.totalExtras ) }`;
 
 		}
 

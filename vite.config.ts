@@ -21,11 +21,13 @@ const sinDatosDeStudio = (): Plugin => ( {
 		if ( ! /promociones[\\/][^\\/]+[\\/]promocion\.json$/.test( id ) ) return null;
 		const datos = JSON.parse( codigo );
 		delete datos.studio;
-		// los códigos y lo formalizado por cada comprador viven en Supabase, nunca en la web
+		// los códigos y lo formalizado por cada comprador viven en Supabase, nunca en la web;
+		// el precio de venta no está en la plataforma (si quedara en datos antiguos, no sale)
 		for ( const v of datos.viviendas ?? [] ) {
 
 			delete v.acceso;
 			delete v.selecciones;
+			delete v.precioBase;
 
 		}
 		return { code: JSON.stringify( datos ), map: null };

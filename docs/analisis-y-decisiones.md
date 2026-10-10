@@ -129,7 +129,7 @@ La opción de baños no tiene cámara maestra propia, así que mantiene la vista
 
 ### Cambios
 
-- **Estructura:** Promoción → Tipologías → Viviendas → Opciones. La geometría, las alternativas y las cámaras maestras van por tipología. Bajo B (ejemplo) es la tipología A espejada, con otro precio base y sin piscina.
+- **Estructura:** Promoción → Tipologías → Viviendas → Opciones. La geometría, las alternativas y las cámaras maestras van por tipología. Bajo B (ejemplo) es la tipología A espejada, sin piscina.
 - **Acceso sin base de datos:** enlace privado por vivienda (`#c-…`). Solo se guarda su hash. La parte pública no muestra personalización ni precios.
 - **Carrito:** quitar mejoras desde el resumen, restablecer con confirmación, y total, número de mejoras y extras siempre visibles.
 - **Documento de selección en PDF**, que sustituye a "Guardar configuración". Se genera con jsPDF en el navegador.

@@ -165,7 +165,6 @@ export interface ViviendaPromocion {
 	/** Vivienda simétrica de su tipología (se espeja la geometría al cargar). */
 	espejo: boolean;
 	orientacion: string;
-	precioBase: number;
 	superficies: { util: number; exterior: number; construida: number };
 	/** Restricciones de opciones para esta vivienda (por categoría). */
 	opciones?: Record<string, string[]>;

@@ -55,7 +55,7 @@ El escaparate (`MUNE-Projects/escaparate`) contiene solo lo publicado: `publico/
 
 - **Una tipología por geometría distinta,** no un modelo por vivienda. Las viviendas que comparten geometría cargan la misma tipología.
 - **Viviendas simétricas** (`"espejo": true`): se espejan los datos al cargar (muros, huecos, giros de puerta, mobiliario, alternativas, cámaras y piscina) en lugar de crear otro modelo.
-- **Cada vivienda aporta sus datos:** referencia, planta, orientación, superficies, precio base y, si hace falta, restricciones de opciones. En el ejemplo, Bajo B no admite piscina.
+- **Cada vivienda aporta sus datos:** referencia, planta, orientación, superficies y, si hace falta, restricciones de opciones. En el ejemplo, Bajo B no admite piscina.
 - **Catálogo.** Se carga una vez por promoción. La tipología indica qué opciones admite. Una categoría con una sola opción posible no se muestra.
 
 ## Acceso de comprador sin base de datos
@@ -70,7 +70,7 @@ El escaparate (`MUNE-Projects/escaparate`) contiene solo lo publicado: `publico/
 ## Personalizar y documento de selección
 
 - **Cajón compacto** con categorías plegables (una abierta a la vez). Al desplegar una categoría, la cámara va a la estancia afectada.
-- **Resumen tipo carrito:** *Tu selección · N mejoras · +X €* y el precio total, siempre visibles.
+- **Resumen tipo carrito:** *Tu selección · N mejoras · +X €* y el total de la personalización, siempre visibles (la plataforma no conoce el precio de la vivienda: decisión 37).
   - Cada mejora se quita con su ×: vuelve a la opción incluida y el modelo y el precio se actualizan al instante.
   - "Restablecer" pide confirmación dentro de la propia página.
 - **Documento de selección.** "Generar documento de selección" muestra el resumen y ofrece *Descargar PDF · Seguir personalizando · Cerrar*. El PDF es un documento comercial de la promotora e incluye:

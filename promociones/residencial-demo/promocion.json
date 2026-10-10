@@ -77,7 +77,6 @@
       "tipologia": "a",
       "espejo": false,
       "orientacion": "Sur",
-      "precioBase": 425000,
       "superficies": {
         "util": 88.18,
         "exterior": 32.71,
@@ -91,7 +90,6 @@
       "tipologia": "a",
       "espejo": true,
       "orientacion": "Sur",
-      "precioBase": 419000,
       "superficies": {
         "util": 88.18,
         "exterior": 32.71,
