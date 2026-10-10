@@ -1,8 +1,8 @@
 import type { Factor } from '@supabase/supabase-js';
-import { pintarActividad } from './actividad';
 import { alEnviar, anotar, esc, INACTIVIDAD_MAX, sb, traducir } from './comun';
 import { pantallaInicio } from './inicio';
 import { pantallaPromocion, pantallaPromotora, pantallaPromotoras } from './promotoras';
+import { pantallaSistema } from './sistema';
 
 const app = document.getElementById('app')!;
 
@@ -168,15 +168,6 @@ addEventListener('hashchange', () => {
 	scrollTo(0, 0);
 	void mostrar();
 });
-
-async function pantallaSistema(destino: HTMLElement): Promise<void> {
-	destino.innerHTML = `<section class="tarjeta">
-		<h2>Registro de actividad completo</h2>
-		<p class="ayuda">Todo lo que ha pasado, de todas las promotoras y promociones, más tus entradas al Panel. Lo de cada promoción también está en su pestaña «Actividad».</p>
-		<div data-actividad><p class="vacio">Cargando…</p></div>
-	</section>`;
-	await pintarActividad(destino.querySelector<HTMLElement>('[data-actividad]')!, {}, 100);
-}
 
 // ── Utilidades de sesión ──────────────────────────────────────────────────
 

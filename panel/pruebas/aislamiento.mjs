@@ -881,6 +881,44 @@ await caso( DEBE_FUNCIONAR, 'Volver a invitar a la misma promoción no duplica; 
 
 } );
 
+// ─── Avisos del sistema (Etapa 6, 015_sistema.sql) ──────────────────────────
+
+await caso( DEBE_FALLAR, 'Nadie más que la administradora (con el código del móvil) ve los avisos, el estado del sistema o las llaves, ni cambia una llave', async () => {
+
+	for ( const sb of [ anonimo, gestorA, robot, adminSinMovil ] ) {
+
+		if ( ! falla( await sb.rpc( 'avisos_sistema' ) ) || ! falla( await sb.rpc( 'estado_sistema' ) ) ) return false;
+		if ( ! falla( await sb.rpc( 'renovar_llave', { p_id: 'llave-a', p_caduca: '2027-12-01' } ) ) ) return false;
+		const l = await sb.from( 'llaves' ).select( 'id' );
+		if ( ! l.error && l.data.length ) return false;
+		const t = await sb.from( 'latido' ).select( '*' );
+		if ( ! t.error && t.data.length ) return false;
+
+	}
+	return true;
+
+} );
+
+await caso( DEBE_FUNCIONAR, 'La vigilancia da señales sin sesión (solo recibe los días que faltan) y la administradora ve avisos, estado y renueva una llave', async () => {
+
+	const { data: dias, error } = await anonimo.rpc( 'latido' );
+	if ( error || typeof dias !== 'number' ) throw new Error( `latido: ${ error?.message ?? dias }` );
+	const estado = await exigir( admin.rpc( 'estado_sistema' ), 'estado' );
+	if ( ! estado.latido || estado.llaves.length !== 2 || ! ( estado.datos > 0 ) ) throw new Error( 'estado incompleto' );
+	// a 20 días, la llave A sale como urgente
+	execFileSync( 'psql', [ DB_URL, '-q', '-c', "update public.llaves set caduca = current_date + 20 where id = 'llave-a'" ] );
+	const avisos = await exigir( admin.rpc( 'avisos_sistema' ), 'avisos' );
+	const a = avisos.find( ( x ) => x.clave === 'llave:llave-a' );
+	if ( ! a || a.nivel !== 'alerta' || ! /20 días/.test( a.titulo ) ) throw new Error( `aviso de llave: ${ JSON.stringify( avisos ) }` );
+	if ( ( await anonimo.rpc( 'latido' ) ).data !== 20 ) throw new Error( 'latido no ve la caducidad' );
+	const nueva = new Date( Date.now() + 300 * 86_400_000 ).toISOString().slice( 0, 10 );
+	await exigir( admin.rpc( 'renovar_llave', { p_id: 'llave-a', p_caduca: nueva } ), 'renovar' );
+	const despues = await exigir( admin.rpc( 'avisos_sistema' ), 'avisos después' );
+	const pasada = await admin.rpc( 'renovar_llave', { p_id: 'llave-a', p_caduca: '2020-01-01' } );
+	return ! despues.some( ( x ) => x.clave === 'llave:llave-a' ) && falla( pasada );
+
+} );
+
 // ─── Resumen ────────────────────────────────────────────────────────────────
 
 const fallidos = resultados.filter( ( r ) => ! r.ok );

@@ -1,15 +1,31 @@
-// Inicio del Panel: lo que necesita tu atención (versiones pendientes de
-// revisar y peticiones abiertas), con enlace a cada promoción. En la Etapa 6 se
-// amplía con documentación nueva, planos validados y avisos del sistema.
+// Inicio del Panel: lo que necesita tu atención, con enlace a cada sitio.
+// Arriba, los avisos del sistema (015_sistema.sql); después, las versiones
+// pendientes con el estado de sus planos, la documentación por revisar y las
+// peticiones abiertas.
 
-import { esc, fecha, sb } from './comun';
+import { esc, fecha, sb, traducir } from './comun';
 import { ESTADOS_PETICION, peticionesAbiertas } from './peticiones';
-import { estadoVersiones } from './versiones';
+import { estadoPlanos, leerManifiesto, resumenListos, type Listos } from './planos';
+import { avisosSistema, pintarAvisos } from './sistema';
+import { REVISION, estadoVersiones } from './versiones';
+
+/** Qué toca hacer con una versión pendiente, según sus planos. */
+const PASO: Record<Listos, [string, string, string]> = {
+	sin_planos: ['Revisar y publicar', 'pendiente', 'Revisa la vista previa y publícala si está bien.'],
+	sin_enviar: ['Revisar y enviar planos', 'pendiente', 'Revisa la vista previa y envía los planos a la promotora.'],
+	pendientes: ['Esperando a la promotora', '', 'La promotora está validando los planos.'],
+	cambios: ['Cambios pedidos', 'rechazado', 'La promotora ha pedido cambios en algún plano.'],
+	listos: ['Lista para publicar', 'al-dia', 'La promotora ha aprobado todos los planos.'],
+};
 
 export async function pantallaInicio(destino: HTMLElement): Promise<void> {
 	destino.innerHTML = `
+		<section class="tarjeta" data-avisos hidden>
+			<h2>Avisos del sistema</h2>
+			<div data-lista-avisos></div>
+		</section>
 		<section class="tarjeta">
-			<h2>Versiones pendientes de tu revisión</h2>
+			<h2>Versiones pendientes</h2>
 			<div data-versiones><p class="vacio">Consultando el escaparate…</p></div>
 		</section>
 		<section class="tarjeta">
@@ -21,20 +37,45 @@ export async function pantallaInicio(destino: HTMLElement): Promise<void> {
 			<p class="ayuda">Cuando quieras que Claude se ponga con ellas, díselo en Claude Code: «revisa las peticiones del Panel».</p>
 			<div data-peticiones><p class="vacio">Cargando…</p></div>
 		</section>
+		<p class="ayuda" data-sistema-en-orden hidden>✓ El sistema está en orden: llaves vigentes, espacio de sobra y vigilancia funcionando. <a href="#/sistema">Ver el estado</a></p>
 		<div class="acciones"><a class="boton secundario" href="#/promotoras">Ver todas las promotoras y promociones</a></div>`;
+
+	void avisosSistema().then((avisos) => {
+		const caja = destino.querySelector<HTMLElement>('[data-avisos]');
+		if (!caja) return;
+		caja.hidden = !avisos.length;
+		destino.querySelector<HTMLElement>('[data-sistema-en-orden]')!.hidden = !!avisos.length;
+		caja.querySelector<HTMLElement>('[data-lista-avisos]')!.innerHTML = pintarAvisos(avisos);
+	}, (e) => {
+		const caja = destino.querySelector<HTMLElement>('[data-avisos]');
+		if (!caja) return;
+		caja.hidden = false;
+		caja.querySelector<HTMLElement>('[data-lista-avisos]')!.innerHTML = `<p class="error">${esc(traducir(e))}</p>`;
+	});
 
 	const { data } = await sb.from('promociones').select('id, nombre, promotoras(nombre)').eq('activa', true).order('nombre');
 	const promociones = (data ?? []) as unknown as { id: string; nombre: string; promotoras: { nombre: string } | null }[];
 
-	void Promise.all(promociones.map(async (p) => ({ p, e: await estadoVersiones(p.id) }))).then((lista) => {
-		const pendientes = lista.filter(({ e }) => e.pendiente);
+	void Promise.all(promociones.map(async (p) => {
+		const e = await estadoVersiones(p.id);
+		if (!e.pendiente) return null;
+		const version = e.rev!.version;
+		const [m, planos] = await Promise.all([leerManifiesto(REVISION, p.id, version), estadoPlanos(p.id, version).catch(() => [])]);
+		return { p, version, fechaV: e.rev!.fecha, listos: resumenListos(planos, !!m), aprobados: planos.filter((x) => x.decision === 'aprobado').length, total: planos.length };
+	})).then((lista) => {
+		// Primero lo que depende de ti (publicar, enviar planos, corregir); al final lo que espera a la promotora
+		const orden: Listos[] = ['listos', 'cambios', 'sin_enviar', 'sin_planos', 'pendientes'];
+		const pendientes = lista.filter((x) => x !== null).sort((a, b) => orden.indexOf(a.listos) - orden.indexOf(b.listos));
 		const caja = destino.querySelector<HTMLElement>('[data-versiones]');
 		if (!caja) return;
-		caja.innerHTML = pendientes.length ? `<div class="lista-enlaces">${pendientes.map(({ p, e }) => `
-			<a class="fila-enlace" href="#/promocion/${esc(p.id)}/resumen">
-				<span><strong>${esc(p.nombre)}</strong><br><span class="promo-lugar">${esc(p.promotoras?.nombre ?? '')} · ${esc(e.rev!.version)} del ${esc(fecha(e.rev!.fecha))}</span></span>
-				<span class="estado pendiente">${esc(e.rev!.version)} por revisar</span>
-			</a>`).join('')}</div>` : '<p class="vacio">Nada pendiente: todas las promociones están al día.</p>';
+		caja.innerHTML = pendientes.length ? `<div class="lista-enlaces">${pendientes.map((x) => {
+			const [etiqueta, clase, texto] = PASO[x.listos];
+			const cuenta = x.total && x.listos !== 'listos' ? ` (${x.aprobados} de ${x.total} planos aprobados)` : '';
+			return `<a class="fila-enlace" href="#/promocion/${esc(x.p.id)}/resumen">
+				<span><strong>${esc(x.p.nombre)} · ${esc(x.version)}</strong><br><span class="promo-lugar">${esc(x.p.promotoras?.nombre ?? '')} · preparada el ${esc(fecha(x.fechaV))}. ${esc(texto)}${esc(cuenta)}</span></span>
+				<span class="estado ${clase}">${esc(etiqueta)}</span>
+			</a>`;
+		}).join('')}</div>` : '<p class="vacio">Nada pendiente: todas las promociones están al día.</p>';
 	});
 
 	void sb.from('documentos').select('id, promocion_id, requisito_id, version, subido_en, promociones(nombre)')

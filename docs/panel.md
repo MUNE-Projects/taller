@@ -13,11 +13,11 @@ Este documento es la referencia: todo lo que se construya en el Panel sigue este
 
 Menú fijo arriba: **Inicio · Promotoras · Sistema · Salir**, y arriba de cada página «dónde estás» (*Promotoras › Promotora › Promoción*).
 
-- `#/` **Inicio**: versiones pendientes de revisar y peticiones abiertas, con enlace a su promoción.
+- `#/` **Inicio**: avisos del sistema; versiones pendientes con el estado de sus planos (lista para publicar, cambios pedidos, enviar planos, esperando a la promotora); documentación por revisar y peticiones abiertas, cada una con enlace a su sitio.
 - `#/promotoras` **Promotoras**: la lista y el alta.
 - `#/promotora/<id>` **Una promotora**: sus promociones, quién tiene acceso a todas, sus datos y su actividad (la suya y la de todas sus promociones).
 - `#/promocion/<id>/<pestaña>` **Una promoción**, con pestañas: *Resumen y versiones* (publicar, volver atrás, estado), *Equipo*, *Documentación*, *Ficha y datos*, *Compradores* (códigos de comprador, receta 24), *Peticiones de cambios* y *Actividad*.
-- `#/sistema` **Sistema**: el registro de actividad completo (auditoría). Más adelante, copias y avisos de llaves.
+- `#/sistema` **Sistema**: llaves con su caducidad (*Ya la he renovado*), espacio usado del plan gratuito, última señal de la vigilancia automática y el registro de actividad completo (auditoría). Más adelante, copias (Etapa 7).
 
 ## Secciones
 
@@ -29,7 +29,7 @@ Bandeja con lo pendiente de todas las promociones:
 - documentación nueva subida por promotoras;
 - planos validados o rechazados por la promotora;
 - peticiones a Claude terminadas;
-- avisos del sistema: copias, cuotas, Supabase a punto de dormirse, accesos sin uso.
+- avisos del sistema (Etapa 6, receta 19): llaves a punto de caducar, espacio casi lleno, vigilancia automática parada, invitaciones sin aceptar y accesos sin uso. Las copias llegan en la Etapa 7.
 
 ### 2. Promotoras
 
@@ -99,9 +99,9 @@ Panel (botón) → función «ejecutar» de Supabase → GitHub Actions «public
 | Pieza | Dónde | Qué comprueba o permite |
 |---|---|---|
 | Función `ejecutar` | `panel/supabase/funciones/ejecutar/index.ts`, en Supabase → Edge Functions | Que quien pulsa es administradora con doble verificación (`es_admin()`); valida la orden; anota en el registro |
-| Llave A `GITHUB_EJECUTOR` | Secreto de Supabase (Edge Functions → Secrets) | Solo arrancar procesos del almacén `taller` (Actions: lectura y escritura). Caduca a los 90 días |
+| Llave A `GITHUB_EJECUTOR` | Secreto de Supabase (Edge Functions → Secrets) | Solo arrancar procesos del almacén `taller` (Actions: lectura y escritura). Caduca el 7/10/2027: aviso en Inicio y por email un mes antes (receta 19) |
 | Proceso `publicar.yml` | `.github/workflows/publicar.yml` | Ejecuta `herramientas/publicacion.mjs aprobar` o `volver`; uno detrás de otro, nunca dos a la vez |
-| Llave B `ESCAPARATE_TOKEN` | Secreto del almacén `taller` (Settings → Secrets → Actions) | Solo escribir en `escaparate` (Contents: lectura y escritura). Caduca a los 90 días |
+| Llave B `ESCAPARATE_TOKEN` | Secreto del almacén `taller` (Settings → Secrets → Actions) | Solo escribir en `escaparate` (Contents: lectura y escritura). Caduca el 7/10/2027: aviso en Inicio y por email un mes antes (receta 19) |
 | `GITHUB_TOKEN` | Automática de GitHub | Guardar el registro de versiones en el taller; solo dura ese proceso |
 
 Flujo de versiones:
