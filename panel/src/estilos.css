@@ -213,3 +213,14 @@ h3.subtitulo { margin: 18px 0 6px; font-size: 14px; font-weight: 600; }
 .ayuda-codigos { margin: 6px 0; font-size: 14px; color: var(--tinta-2); }
 .ayuda-codigos summary { cursor: pointer; color: var(--acento); }
 tr[hidden] { display: none; }
+
+/* Avisos y estado del sistema (Etapa 6) */
+.aviso-sistema.alerta { border-color: rgb(155 44 44 / 0.35); background: #fdf6f6; }
+.aviso-sistema.aviso { border-color: rgb(122 77 16 / 0.3); background: #fdf9f2; }
+.uso { margin-bottom: 12px; }
+.uso p { margin: 0 0 4px; }
+.uso progress { width: 100%; height: 10px; accent-color: var(--acento); }
+.uso progress.casi { accent-color: #b7791f; }
+.uso progress.lleno { accent-color: var(--error); }
+form.renovar { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; margin-top: 8px; }
+form.renovar label { margin: 0; }

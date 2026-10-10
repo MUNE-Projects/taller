@@ -1,0 +1,91 @@
+# Vigilancia automática (Etapa 6, 015_sistema.sql).
+#
+# Cada 3 días llama a latido() de Supabase con la clave pública (la misma que
+# llevan las páginas; no es secreta). Sirve para dos cosas:
+#  · que Supabase no se duerma: el plan gratuito se pausa tras 7 días sin uso;
+#  · avisar por email (un aviso de GitHub) si Supabase no responde o si una
+#    llave del sistema caduca en 30 días o menos.
+# Sin coste: minutos gratuitos de GitHub Actions. Se puede lanzar a mano desde
+# Actions → «Vigilancia automática» → Run workflow.
+
+name: Vigilancia automática
+run-name: vigilancia
+
+on:
+  schedule:
+    - cron: '17 6 */3 * *'
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+concurrency:
+  group: vigilancia
+  cancel-in-progress: false
+
+jobs:
+  vigilar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      SUPABASE_URL: https://iowtdenlkxjqzlpwizgb.supabase.co
+      CLAVE_PUBLICA: sb_publishable_LLvwP-xexV-Hlz2R585IQQ_H2NfJebR
+      PANEL: https://panel.mune-projects.workers.dev
+    steps:
+      - name: Dar señales a Supabase y comprobar las llaves
+        run: |
+          gh label create sistema --repo "$REPO" --color 9B2C2C \
+            --description "Avisos del sistema (vigilancia automática)" 2>/dev/null || true
+          # Abre un aviso con ese título si no hay ya uno abierto (para no repetir emails)
+          avisar() {
+            export TITULO="$1"
+            abierto=$(gh issue list --repo "$REPO" --label sistema --state open --limit 100 --json number,title \
+              --jq '.[] | select(.title == $ENV.TITULO) | .number' | head -n1)
+            [[ -n "$abierto" ]] || gh issue create --repo "$REPO" --label sistema --title "$1" --body "$2"
+          }
+          cerrar() {
+            export TITULO="$1"
+            for n in $(gh issue list --repo "$REPO" --label sistema --state open --limit 100 --json number,title \
+              --jq '.[] | select(.title == $ENV.TITULO) | .number'); do
+              gh issue close "$n" --repo "$REPO" --comment "Resuelto: la vigilancia de hoy ha ido bien."
+            done
+          }
+
+          dias=""
+          for intento in 1 2 3; do
+            respuesta=$(curl -sS -m 30 -X POST "$SUPABASE_URL/rest/v1/rpc/latido" \
+              -H "apikey: $CLAVE_PUBLICA" -H "Content-Type: application/json" -d '{}' -w '\n%{http_code}' || true)
+            codigo=$(tail -n1 <<<"$respuesta")
+            cuerpo=$(head -n -1 <<<"$respuesta")
+            if [[ "$codigo" == "200" && "$cuerpo" =~ ^-?[0-9]+$|^null$ ]]; then dias="$cuerpo"; break; fi
+            echo "Intento $intento: respuesta $codigo"
+            sleep 60
+          done
+
+          NO_RESPONDE="⚠️ Supabase no responde"
+          if [[ -z "$dias" ]]; then
+            avisar "$NO_RESPONDE" "$(printf '%s\n' \
+              "La vigilancia automática no ha podido hablar con Supabase (3 intentos)." "" \
+              "**Qué hacer:**" \
+              "1. Entra en https://supabase.com/dashboard/project/iowtdenlkxjqzlpwizgb" \
+              "2. Si pone que el proyecto está en pausa (*paused*), pulsa **Restore project** y espera unos minutos." \
+              "3. Si no, díselo a Claude." "" \
+              "_Este aviso se cierra solo la próxima vez que la vigilancia funcione._")"
+            exit 1
+          fi
+          cerrar "$NO_RESPONDE"
+          echo "Supabase responde. Días hasta la primera caducidad de una llave: $dias"
+
+          if [[ "$dias" =~ ^-?[0-9]+$ ]] && (( dias <= 30 )); then
+            if (( dias < 0 )); then titulo="🔑 Una llave del sistema ha caducado"
+            else titulo="🔑 Una llave del sistema caduca pronto"; fi
+            avisar "$titulo" "$(printf '%s\n' \
+              "Quedan **$dias días** para que caduque una llave del sistema. Sin ella no se puede publicar desde el Panel." "" \
+              "**Qué hacer:**" \
+              "1. Mira cuál es en tu Panel: $PANEL/#/sistema" \
+              "2. Renuévala siguiendo la receta \`docs/recetas/19-sistema-y-llaves.md\` (o pídele a Claude que te guíe)." \
+              "3. Apunta la fecha nueva en el Panel con **Ya la he renovado**." "" \
+              "_Cierra este aviso cuando esté hecho._")"
+          fi
