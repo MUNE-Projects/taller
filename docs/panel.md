@@ -1,6 +1,6 @@
-# Panel de administración: mapa completo
+# MUNE Studio (Panel de administración): mapa completo
 
-El Panel es el cuadro de mandos de la administradora. Las promotoras tienen su propio portal (Fase 1) para subir documentación, validar planos y ver sus versiones. En el Panel se ve todo, se decide todo y se lanza el trabajo.
+El Panel es la parte web de **MUNE Studio**, el entorno interno de MUNE (decisión 39): el cuadro de mandos de la administradora. Las promotoras tienen su propio portal (Fase 1) para subir documentación, validar planos y ver sus versiones. En el Panel se ve todo, se decide todo y se lanza el trabajo.
 
 Cada botón dispara una de dos cosas:
 
