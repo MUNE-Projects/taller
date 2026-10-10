@@ -109,7 +109,7 @@ Ahora la web pública está en **v7**, y la **v8** (de prueba, idéntica) sigue 
 1. ✔ cimientos de datos y prueba de aislamiento (`005_portal.sql`, `panel/pruebas/`, `aislamiento.yml`);
 2. ✔ portal de promotoras y accesos (receta 14): `portal/`, sección *Promotoras* del Panel, función `invitar`, `006_accesos.sql`, `007_equipos.sql` (equipos por promoción, sin roles, datos fiscales: decisión 28) y `008_ficha_promocion.sql` (ficha y lista estándar de documentos: decisión 29);
 3. ✔ documentación (recetas 2 y 13, email de subida): pestaña *Documentación* del Panel, `009_aviso_subida.sql`, `010_borrar.sql` (exportar todo en ZIP y borrar promociones o promotoras desactivadas: decisión 33), función `aviso-subida` + `aviso-documento.yml`, `herramientas/documentos.mjs` y `docs/recetas/`;
-4. validación de planos (decisión 34): `herramientas/planos.mjs` (planos de cada versión, al preparar), *Enviar los planos a la promotora* en el Panel, pestaña *Planos* del portal, `011_planos.sql`, `aviso-plano.yml`; solo se publica con todos aprobados;
+4. validación de planos (decisión 34): `herramientas/planos.mjs` (planos de cada versión, al preparar), *Enviar los planos a la promotora* en el Panel, pestaña *Planos* del portal, `011_planos.sql`, `aviso-plano.yml`; solo se publica con todos aprobados. Avisos por email a la promotora (decisión 35): función `avisar-promotora`, `aviso-promotora.yml` (Gmail de MUNE, secreto `AVISOS_GMAIL_CLAVE`), `012_avisos_promotora.sql`;
 5. códigos de comprador (receta 24), desde el botón que ya existe en la web pública;
 6. bandeja de Inicio y avisos del sistema;
 7. copias en el almacén privado `copias` de GitHub y simulacro (receta 18);

@@ -678,6 +678,43 @@ await caso( DEBE_FUNCIONAR, 'Planos: la promotora valida, se publica solo con to
 
 } );
 
+// ─── Avisos por email a la promotora (función «avisar-promotora», 012) ──────
+
+const avisar = ( sb, cuerpo ) => sb.functions.invoke( 'avisar-promotora', { body: cuerpo } );
+const codigo = ( r ) => r.error ? r.error.context?.status : 200;
+
+await caso( DEBE_FALLAR, '30. Una promotora o alguien sin sesión intenta enviar avisos; el robot, avisos que no son de documentos rechazados', async () => {
+
+	const r = {
+		promotora: codigo( await avisar( aprobA, { tipo: 'planos', promocion: 'prueba-a', version: 'v3' } ) ),
+		anonimo: codigo( await avisar( anonimo, { tipo: 'planos', promocion: 'prueba-a', version: 'v3' } ) ),
+		robotPlanos: codigo( await avisar( robot, { tipo: 'planos', promocion: 'prueba-a', version: 'v3' } ) ),
+		robotPublicada: codigo( await avisar( robot, { tipo: 'publicada', promocion: 'prueba-a', version: 'v3' } ) ),
+	};
+	if ( r.promotora !== 403 || ! [ 401, 403 ].includes( r.anonimo ) || r.robotPlanos !== 403 || r.robotPublicada !== 403 ) throw new Error( JSON.stringify( r ) );
+	return true;
+
+} );
+
+await caso( DEBE_FUNCIONAR, 'Avisos a la promotora: se comprueba lo que se avisa y, si no se puede enviar, se puede reintentar', async () => {
+
+	// un documento que no está rechazado no se avisa (ni siquiera el robot)
+	const noRechazado = codigo( await avisar( robot, { tipo: 'rechazado', documento_id: docB.data.id } ) );
+	// versión sin planos enviados
+	const sinPlanos = codigo( await avisar( admin, { tipo: 'planos', promocion: 'prueba-a', version: 'v8' } ) );
+	// en las pruebas no hay llave de GitHub: falla el envío y no queda apuntado (se podrá reintentar)
+	const sinLlave = await avisar( admin, { tipo: 'planos', promocion: 'prueba-a', version: 'v3' } );
+	const { count } = await servicio.from( 'avisos_enviados' ).select( '*', { count: 'exact', head: true } );
+	// promoción desactivada: no se avisa a nadie
+	const { data: baja } = await avisar( admin, { tipo: 'publicada', promocion: 'prueba-a-baja', version: 'v1' } );
+	// la tabla de avisos solo la ve la administradora
+	const ajena = await aprobA.from( 'avisos_enviados' ).select( 'id' );
+	const detalle = await sinLlave.error?.context?.json?.().catch( () => ( {} ) );
+	if ( noRechazado !== 409 || sinPlanos !== 409 || codigo( sinLlave ) !== 502 ) throw new Error( JSON.stringify( { noRechazado, sinPlanos, sinLlave: codigo( sinLlave ), detalle } ) );
+	return count === 0 && baja?.enviado === false && /desactivada/.test( baja?.motivo ?? '' ) && vacio( ajena );
+
+} );
+
 // ─── Accesos e invitaciones (función «invitar», receta 14) ──────────────────
 
 const invitar = ( sb, cuerpo ) => sb.functions.invoke( 'invitar', { body: cuerpo } );

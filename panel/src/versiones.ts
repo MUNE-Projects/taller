@@ -5,6 +5,7 @@
 // el brazo ejecutor (función «ejecutar» de Supabase → GitHub Actions).
 
 import { alEnviar, anotar, esc, fecha, sb } from './comun';
+import { avisarPromotora } from './avisos';
 import { MOTIVO_NO_PUBLICAR, estadoPlanos, leerManifiesto, pintarPlanos, resumenListos } from './planos';
 
 export const ESCAPARATE: string = import.meta.env.VITE_ESCAPARATE ?? 'https://escaparate.mune-projects.workers.dev';
@@ -83,7 +84,8 @@ async function ejecutar(aviso: HTMLElement, id: string, orden: Record<string, st
 		const v = await leerVersion(ESCAPARATE, id);
 		if (v && v !== 'error' && v.version === esperada) {
 			aviso.textContent = `✓ Hecho: los visitantes ya ven ${esperada}.`;
-			setTimeout(() => { if (aviso.isConnected) repintar(); }, 4000);
+			if (orden.accion === 'aprobar') aviso.textContent += ` ${await avisarPromotora({ tipo: 'publicada', promocion: id, version: esperada })}`;
+			setTimeout(() => { if (aviso.isConnected) repintar(); }, 10000);
 			return;
 		}
 		if (Date.now() - inicio > 8 * 60 * 1000) {

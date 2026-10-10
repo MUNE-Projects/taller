@@ -128,6 +128,19 @@ async function cambiarEstado( token, id, estado ) {
 	} );
 	if ( ! filas?.length ) fallo( `No existe el documento #${ id } (o el robot no tiene permiso)` );
 	console.log( `✓ Documento #${ id } → ${ estado }${ nota ? ` (nota: ${ nota })` : '' }` );
+	if ( estado === 'rechazado' ) {
+
+		// aviso por email al equipo de la promotora (función «avisar-promotora»)
+		const r = await fetch( `${ SUPABASE_URL }/functions/v1/avisar-promotora`, {
+			method: 'POST',
+			headers: { apikey: SUPABASE_CLAVE_PUBLICA, Authorization: `Bearer ${ token }`, 'Content-Type': 'application/json' },
+			body: JSON.stringify( { tipo: 'rechazado', documento_id: Number( id ) } ),
+		} ).catch( () => null );
+		const datos = r ? await r.json().catch( () => ( {} ) ) : {};
+		console.log( r?.ok && datos.enviado ? `✓ Avisado por email a ${ datos.destinatarios } persona(s) de la promotora.`
+			: `! Sin aviso por email: ${ datos.motivo ?? datos.error ?? 'no se ha podido contactar con Supabase' }.` );
+
+	}
 
 }
 
